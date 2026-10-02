@@ -1,5 +1,9 @@
 # Agent Instructions
 
+Fork work must first read [DOX.md](DOX.md) and every applicable child contract.
+See [FORK.md](FORK.md) for the fork scope and shipped baseline.
+
+
 <!-- bd-doctor-divergence: ok -->
 
 See [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) for full instructions.
