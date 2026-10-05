@@ -36,6 +36,7 @@ var (
 	graphCompact bool
 	graphBox     bool
 	graphAll     bool
+	graphProject bool
 	graphDOT     bool
 	graphHTML    bool
 	graphOpen    bool
@@ -49,6 +50,11 @@ var graphCmd = &cobra.Command{
 
 For epics, shows all children and their dependencies.
 For regular issues, shows the issue and its direct dependencies.
+
+With --project, exports a read-only workspace overview of all tasks (including
+closed/deferred), explicit knowledge and complete indexed directory summaries.
+Use --html for the native explorer or --json for its snapshot. This mode requires
+a direct workspace connection; it does not follow foreign workspace routes.
 
 With --all, shows all open issues grouped by connected component.
 With --open, filters to only open/actionable issues (compact layer format).
@@ -77,6 +83,7 @@ Examples:
   bd graph --all --html > all.html       # All issues, interactive
   bd graph --open issue-id       # Open issues only, layered by blocking order
   bd graph --all --open          # All open issues, compact layers
+  bd graph --project --html > project.html  # Workspace overview, offline
 
 --max-rows / BEADS_MAX_ROWS caveat: the cap is checked differently per mode.
 Single-issue graphs (no --all) check the connected-component node count
@@ -94,6 +101,10 @@ in total before any individual status trips it.`,
 				c.CloseEventAndAdd(evt)
 			}
 		}()
+
+		if graphProject {
+			return runProjectGraph(cmd, args)
+		}
 
 		if graphAll && len(args) > 0 {
 			return HandleErrorRespectJSON("cannot specify issue ID with --all flag")
@@ -354,6 +365,7 @@ func renderGraphCheck(cycles [][]*types.Issue) error {
 }
 
 func init() {
+	graphCmd.Flags().BoolVar(&graphProject, "project", false, "Export tasks, knowledge and indexed directories in one read-only snapshot")
 	graphCmd.Flags().BoolVar(&graphAll, "all", false, "Show graph for all open issues")
 	graphCmd.Flags().BoolVar(&graphCompact, "compact", false, "Tree format, one line per issue, more scannable")
 	graphCmd.Flags().BoolVar(&graphBox, "box", false, "ASCII boxes showing layers")

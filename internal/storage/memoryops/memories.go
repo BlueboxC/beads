@@ -40,6 +40,7 @@ import (
 
 	"github.com/steveyegge/beads/internal/storage/issueops"
 	"github.com/steveyegge/beads/internal/storage/kvkeys"
+	publicmemoryops "github.com/steveyegge/beads/memoryops"
 )
 
 // StorageKey encodes a user key as the config-table key it is stored under.
@@ -132,17 +133,32 @@ func ForgetInTx(ctx context.Context, tx *sql.Tx, key string) (previous string, f
 	return previous, true, nil
 }
 
-// ListInTx reads the whole memory plane in the caller's transaction, keyed by
-// user key.
-//
-// It reads the whole config table and narrows in Go rather than issuing a LIKE.
-// The plane is tens of rows inside a table of tens of rows, so the query would
-// buy nothing; what it would cost is a second definition of which rows are
-// memories, expressed in a pattern language where `_` is a wildcard and
-// "kv.memory." contains one.
-func ListInTx(ctx context.Context, tx *sql.Tx) (map[string]string, error) {
-	all, err := issueops.GetAllConfigInTx(ctx, tx)
+// ListInTx selects memory namespaces before transferring values from SQL.
+// Binary comparisons keep literal prefixes independent of database collation.
+// Search retains its Go case-folding semantics at the adapter boundary.
+func ListInTx(ctx context.Context, tx *sql.Tx, req publicmemoryops.ListRequest) (map[string]string, error) {
+	prefix := StorageKey(req.KeyPrefix)
+	query := "SELECT `key`, value FROM config WHERE BINARY LEFT(`key`, CHAR_LENGTH(?)) = BINARY ?"
+	args := []any{prefix, prefix}
+	if req.ExcludeKeyPrefix != "" {
+		excluded := StorageKey(req.ExcludeKeyPrefix)
+		query += " AND BINARY LEFT(`key`, CHAR_LENGTH(?)) <> BINARY ?"
+		args = append(args, excluded, excluded)
+	}
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
+		return nil, fmt.Errorf("list memory namespaces: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	all := make(map[string]string)
+	for rows.Next() {
+		var key, value string
+		if err := rows.Scan(&key, &value); err != nil {
+			return nil, err
+		}
+		all[key] = value
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	return MemoriesFromConfig(all), nil

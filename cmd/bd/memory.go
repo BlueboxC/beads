@@ -383,7 +383,9 @@ Examples:
 		// The term goes to the role RAW. Case folding is List's, so the two
 		// routes cannot come to disagree about what matches — which is the
 		// whole reason the filter moved down.
-		result, err := memories.List(rootCtx, memoryops.ListRequest{Search: search})
+		prefix, _ := cmd.Flags().GetString("key-prefix")
+		excluded, _ := cmd.Flags().GetString("exclude-key-prefix")
+		result, err := memories.List(rootCtx, memoryops.ListRequest{Search: search, KeyPrefix: prefix, ExcludeKeyPrefix: excluded})
 		if err != nil {
 			return HandleErrorRespectJSON("listing memories: %v", err)
 		}
@@ -484,6 +486,8 @@ func truncateMemory(s string, maxLen int) string {
 }
 
 func init() {
+	memoriesCmd.Flags().String("key-prefix", "", "Select a literal, case-sensitive user-key prefix")
+	memoriesCmd.Flags().String("exclude-key-prefix", "", "Exclude a literal, case-sensitive user-key prefix")
 	rememberCmd.Flags().StringVar(&memoryKeyFlag, "key", "", "Explicit key for the memory (auto-generated from content if not set). If a memory with this key already exists, it will be updated in place")
 
 	rootCmd.AddCommand(rememberCmd)

@@ -97,6 +97,11 @@ type ForgetResult struct {
 
 // ListRequest asks for the memory plane, optionally narrowed.
 type ListRequest struct {
+	// KeyPrefix and ExcludeKeyPrefix select literal, case-sensitive user-key
+	// prefixes. Empty means no restriction. Both combine with Search by AND;
+	// %, _ and backslash have no wildcard meaning.
+	KeyPrefix        string
+	ExcludeKeyPrefix string
 	// Search filters the answer: a memory matches when the lowercase of its key
 	// or the lowercase of its value contains the lowercase of Search. "" means
 	// everything.
@@ -108,7 +113,7 @@ type ListRequest struct {
 	Search string
 }
 
-// ListResult is the memory plane, narrowed by the request's Search.
+// ListResult is the memory plane, narrowed by the request.
 type ListResult struct {
 	// Memories maps USER key (prefix stripped) to stored value, for every row
 	// of the memory plane that matched — and ONLY the memory plane. Settings
@@ -188,7 +193,7 @@ type Memories interface {
 	// same way.
 	Forget(ctx context.Context, req ForgetRequest) (ForgetResult, error)
 
-	// List returns the memory plane, narrowed by the request's Search.
+	// List returns the memory plane, narrowed by the request.
 	//
 	// A read, on the same terms as Recall, and one that SUBSUMES the matching:
 	// the caller hands over the search term the user typed and this role owns

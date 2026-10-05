@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/steveyegge/beads"
+	"github.com/steveyegge/beads/internal/activity"
 	internalbeads "github.com/steveyegge/beads/internal/beads"
 	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/metrics"
@@ -21,13 +22,15 @@ import (
 )
 
 var (
-	primeFullMode     bool
-	primeMCPMode      bool
-	primeStealthMode  bool
-	primeExportMode   bool
-	primeMemoriesOnly bool
-	primeNoMemories   bool
-	primeHookJSONMode bool
+	primeFullMode          bool
+	primeMCPMode           bool
+	primeStealthMode       bool
+	primeExportMode        bool
+	primeMemoriesOnly      bool
+	primeNoMemories        bool
+	primeHookJSONMode      bool
+	primeRequireMemoryLoad bool
+	primeMemoryLoadError   error
 
 	primeMaxMemories       int
 	primeMaxMemoryChars    int
@@ -36,8 +39,9 @@ var (
 )
 
 const (
-	primeStoreTimeoutEnv     = "BEADS_PRIME_TIMEOUT"
-	primeStoreTimeoutDefault = 10 * time.Second
+	primeRequireMemoryLoadFlag = "require-memory-load"
+	primeStoreTimeoutEnv       = "BEADS_PRIME_TIMEOUT"
+	primeStoreTimeoutDefault   = 10 * time.Second
 )
 
 var ensureStoreActiveForPrime = ensureStoreActiveWithContext
@@ -134,12 +138,20 @@ Memory injection caps:
 		primeMaxMemoriesSet = cmd.Flags().Changed("max-memories")
 		primeMaxMemoryCharsSet = cmd.Flags().Changed("max-memory-chars")
 
-		emit := func(content string) {
+		primeMemoryLoadError = nil
+		if primeRequireMemoryLoad && primeNoMemories && !primeMemoriesOnly {
+			return errors.New("required memory context cannot omit memories")
+		}
+		emit := func(content string) error {
+			if primeRequireMemoryLoad && primeMemoryLoadError != nil {
+				return fmt.Errorf("Beads memory context unavailable: %s", primeErrorSummary(primeMemoryLoadError))
+			}
 			if primeHookJSONMode {
 				_ = outputHookJSON(os.Stdout, content)
 			} else {
 				fmt.Print(content)
 			}
+			return nil
 		}
 
 		beadsDir := beads.FindBeadsDir()
@@ -177,8 +189,7 @@ Memory injection caps:
 				}
 				return nil
 			}
-			emit(buf.String())
-			return nil
+			return emit(buf.String())
 		}
 
 		// Check for custom PRIME.md override (unless --export flag).
@@ -193,8 +204,7 @@ Memory injection caps:
 						content += mem
 					}
 				}
-				emit(content)
-				return nil
+				return emit(content)
 			}
 		}
 
@@ -210,8 +220,7 @@ Memory injection caps:
 		// files are independent regulars carrying the bd marker; otherwise this
 		// adds nothing (zero output, negligible cost).
 		buf.WriteString(primeDivergenceReminder(""))
-		emit(buf.String())
-		return nil
+		return emit(buf.String())
 	},
 }
 
@@ -225,6 +234,8 @@ func init() {
 	primeCmd.Flags().BoolVar(&primeHookJSONMode, "hook-json", false, "Wrap output in the SessionStart hook JSON envelope (Claude Code, Gemini CLI, Codex)")
 	primeCmd.Flags().IntVar(&primeMaxMemories, "max-memories", 0, "Cap injected persistent memories to N entries (0 = unlimited; falls back to the prime.max-memories config key)")
 	primeCmd.Flags().IntVar(&primeMaxMemoryChars, "max-memory-chars", 0, "Cap the total bytes of injected memory entries, at whole-memory boundaries; section header and banner are not counted (0 = unlimited; falls back to the prime.max-memory-chars config key)")
+	primeCmd.Flags().BoolVar(&primeRequireMemoryLoad, primeRequireMemoryLoadFlag, false, "Fail without output when memory context cannot be read")
+	_ = primeCmd.Flags().MarkHidden(primeRequireMemoryLoadFlag)
 	rootCmd.AddCommand(primeCmd)
 }
 
@@ -423,9 +434,9 @@ func outputMemoriesOnlyContext(w io.Writer) error {
 }
 
 // formatMemoriesForPrime reads the memory plane through memoryops.Memories and
-// formats it for injection. Prime still never fails a session-start hook over
-// the memory plane — but "degrade" is not "go quiet": a plane that could not be
-// read renders the unavailable banner (or the timeout banner on a deadline), so
+// formats it for injection. Ordinary prime renders an advisory unavailable
+// banner (or timeout banner on a deadline). Required hook reads also record
+// the failure so the caller withholds incomplete context before emitting, and
 // an operator can tell "this workspace has no memories" from "this agent woke
 // with no recall because the store is down" (gh#5877). Only two cases stay
 // silent: no workspace at all (nothing to inject), and a healthy store with
@@ -485,8 +496,14 @@ func renderPrimeMemoryPlane(memories map[string]string, compact bool) string {
 	if len(memories) == 0 {
 		return ""
 	}
+	plain, projectKnowledge := knowledgeForPrime(memories)
+	for key := range plain {
+		if strings.HasPrefix(key, activity.Prefix) {
+			delete(plain, key)
+		}
+	}
 	maxCount, maxChars := primeMemoryCaps()
-	return renderPrimeMemories(memories, compact, maxCount, maxChars)
+	return renderPrimeMemories(plain, compact, maxCount, maxChars) + projectKnowledge + activity.Context(memories)
 }
 
 // primeConfigInt reads an integer config key (stubbable for tests).
@@ -600,6 +617,9 @@ func primeMemoryCapNote(maxCount, maxChars int) string {
 }
 
 func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
+	if primeRequireMemoryLoad {
+		primeMemoryLoadError = context.DeadlineExceeded
+	}
 	if timeout <= 0 {
 		timeout = primeStoreTimeoutDefault
 	}
@@ -622,6 +642,9 @@ func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
 // memory plane is down — every instrument read healthy while agents woke with
 // zero recall (gh#5877).
 func formatPrimeMemoryUnavailable(compact bool, err error) string {
+	if primeRequireMemoryLoad {
+		primeMemoryLoadError = errors.New(primeErrorSummary(err))
+	}
 	msg := fmt.Sprintf("Skipped: beads storage unavailable (%s) — persistent memories were NOT injected this session. Run `bd doctor`; if the store is a Dolt server, check it is running and reachable.", primeErrorSummary(err))
 	if compact {
 		return "\n## Memories\n- " + msg + "\n"

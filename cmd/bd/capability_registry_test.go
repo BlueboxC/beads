@@ -276,6 +276,10 @@ func TestProxyCapabilityRegistryReasonsAreAssignedIndividually(t *testing.T) {
 		"vc": true, "vc merge": true, "vc commit": true, "vc status": true,
 		"federation": true, "federation sync": true, "federation status": true,
 		"federation add-peer": true, "federation remove-peer": true, "federation list-peers": true,
+		// Derived maintenance has no atomic concurrent publication contract on a shared SQL store.
+		"maintain": true, "maintain once": true, "maintain watch": true,
+		// Activity explicitly commits only to an initialized embedded local workspace, never a remote/shared store.
+		"activity": true, "activity enable": true, "activity disable": true, "activity list": true, "activity status": true, "codex-activity": true,
 		"repo": true, "repo add": true, "repo remove": true, "repo list": true, "repo sync": true,
 		// `migrate hooks` is deliberately NOT here: it migrates git hook files
 		// and opens no store, so the surgery rationale the rest of this block

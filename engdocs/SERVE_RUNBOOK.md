@@ -1,6 +1,6 @@
 # `bd serve` operator runbook
 
-Last reviewed: 2026-08-10
+Last reviewed: 2026-10-03
 
 Freshness source: `internal/httpapi/server.go`,
 `internal/httpapi/events_watch.go`, `cmd/bd/serve.go` and
@@ -17,6 +17,29 @@ error vocabulary, the cursor, the loopback posture — see
 Every number below is a constant in `internal/httpapi/server.go` unless stated
 otherwise. They are not flags yet; when they become flags the wire contract does
 not change.
+
+## Native live graph (local fork)
+
+`bd serve --graph-viewer --addr 127.0.0.1:18740` selects an exclusive read-only
+viewer at `/viewer`. Only the generic shell, `/viewer/graph` and `/healthz` are
+registered; no v0 issue operations are advertised. The existing bind, Host,
+authentication, request bounds and shutdown controls apply. The public shell
+contains no workspace data; the data endpoint requires bearer auth when set.
+Enter that token in the browser field, which retains it only in RAM.
+
+This mode supports embedded Dolt through a bounded strict-readonly CLI snapshot
+per five-second query interval, releasing its store before the next interval.
+The standard write API still refuses embedded Dolt. Concurrent viewers share
+one in-memory presentation cache; unchanged graphs return 304 with an ETag.
+The query deadline is 30 seconds and output cap 64 MiB. Errors return 503 and
+the client labels its retained data disconnected, retries with backoff and
+fully resynchronizes after reconnect. Hidden tabs pause polling.
+
+Task/knowledge changes and source validity appear automatically while layout,
+zoom, selection, filters and labels remain stable. This mode does not scan code,
+renew assertions or install a startup service. Use separate explicit ports for
+different projects and the normal signals to stop each instance. See the
+[knowledge guide](../docs/core-concepts/knowledge.md) for selection and limits.
 
 ## Deployment
 

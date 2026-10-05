@@ -23,3 +23,9 @@ Use the affected existing checks selected in engdocs/TESTING.md; verify indexed 
 ## Child DOX Index
 
 - [storage/DOX.md](storage/DOX.md) — Storage boundary.
+- [graphview/DOX.md](graphview/DOX.md) — Shared native offline/live graph viewer.
+- [httpapi/DOX.md](httpapi/DOX.md) — HTTP transport and exclusive read-only viewer mode.
+- [knowledge/DOX.md](knowledge/DOX.md) — Source-backed project knowledge and offline graph.
+- [codeindex/DOX.md](codeindex/DOX.md) — Derived multilingual symbols, static references and index lifecycle.
+
+- [activity/DOX.md](activity/DOX.md) — Bounded observed session/turn journal, distinct from reviewed knowledge.

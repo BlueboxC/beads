@@ -664,11 +664,20 @@ func codexConfigLineKey(trimmed string) string {
 
 func codexManagedHooks() map[string]interface{} {
 	return map[string]interface{}{
-		"SessionStart":     []interface{}{codexHookEntry("startup|resume|clear", "bd codex-hook SessionStart", "Loading Beads context")},
+		"SessionStart":     []interface{}{codexHookEntry("startup|resume|clear|compact", "bd codex-hook SessionStart", "Loading Beads context")},
 		"PreCompact":       []interface{}{codexHookEntry("manual|auto", "bd codex-hook PreCompact", "Checking Beads context")},
 		"PostCompact":      []interface{}{codexHookEntry("manual|auto", "bd codex-hook PostCompact", "Scheduling Beads context refresh")},
 		"UserPromptSubmit": []interface{}{codexHookEntry("", "bd codex-hook UserPromptSubmit", "Refreshing Beads context")},
+		"PostToolUse":      []interface{}{codexActivityHookEntry("PostToolUse", "Recording Beads operation", 30)},
+		"Stop":             []interface{}{codexActivityHookEntry("Stop", "Recording Beads turn handoff", 30)},
+		"SessionEnd":       []interface{}{codexActivityHookEntry("SessionEnd", "Recording Beads session closure", 3)},
 	}
+}
+
+func codexActivityHookEntry(event, status string, timeout int) map[string]interface{} {
+	entry := codexHookEntry("", "bd codex-activity "+event, status)
+	entry["hooks"].([]interface{})[0].(map[string]interface{})["timeout"] = timeout
+	return entry
 }
 
 func codexHookEntry(matcher, command, status string) map[string]interface{} {
@@ -734,7 +743,7 @@ func codexManagedHooksCurrent(config map[string]interface{}) bool {
 }
 
 // codexBeadsHooksPresent reports whether a parsed hooks.json config contains any
-// bd-managed Codex hook entry ("bd codex-hook " command) or the exact legacy
+// bd-managed Codex hook entry ("bd codex-hook " or "bd codex-activity " command) or the exact legacy
 // SessionStart pipeline. It mirrors
 // cursorBeadsHooksPresent so codexIntegrationInstalled can detect a hooks-only
 // Codex install (no AGENTS.md section) the same way cursorIntegrationInstalledAt
@@ -758,7 +767,7 @@ func removeCodexManagedHookEvent(hooks map[string]interface{}, event string) {
 	entries := toInterfaceSlice(hooks[event])
 	filtered := entries[:0]
 	for _, entry := range entries {
-		if codexHookEntryManaged(entry) {
+		if !removeCodexManagedCommands(entry) {
 			continue
 		}
 		if event == "SessionStart" && !removeCodexLegacySessionStartCommand(entry) {
@@ -771,6 +780,38 @@ func removeCodexManagedHookEvent(hooks map[string]interface{}, event string) {
 	} else {
 		hooks[event] = filtered
 	}
+}
+
+// Preserve other handlers even when they share an entry with a Beads command.
+func removeCodexManagedCommands(entry interface{}) bool {
+	m, ok := entry.(map[string]interface{})
+	if !ok {
+		return true
+	}
+	commands := toInterfaceSlice(m["hooks"])
+	if commands == nil {
+		return true
+	}
+	kept := commands[:0]
+	removed := false
+	for _, handler := range commands {
+		if h, ok := handler.(map[string]interface{}); ok {
+			command, _ := h["command"].(string)
+			if strings.HasPrefix(command, "bd codex-hook ") || strings.HasPrefix(command, "bd codex-activity ") {
+				removed = true
+				continue
+			}
+		}
+		kept = append(kept, handler)
+	}
+	if !removed {
+		return true
+	}
+	if len(kept) == 0 {
+		return false
+	}
+	m["hooks"] = kept
+	return true
 }
 
 func codexHookEntriesContain(entries []interface{}, want interface{}) bool {
@@ -795,7 +836,7 @@ func codexHookEntryManaged(entry interface{}) bool {
 		if !ok {
 			continue
 		}
-		if commandString, _ := commandMap["command"].(string); strings.HasPrefix(commandString, "bd codex-hook ") {
+		if commandString, _ := commandMap["command"].(string); strings.HasPrefix(commandString, "bd codex-hook ") || strings.HasPrefix(commandString, "bd codex-activity ") {
 			return true
 		}
 	}

@@ -91,10 +91,10 @@ func (m *memories) List(ctx context.Context, req memoryops.ListRequest) (memoryo
 	var all map[string]string
 	if err := m.store.withReadTx(ctx, func(tx *sql.Tx) error {
 		var err error
-		all, err = storagememoryops.ListInTx(ctx, tx)
+		all, err = storagememoryops.ListInTx(ctx, tx, req)
 		return err
 	}); err != nil {
 		return memoryops.ListResult{}, err
 	}
-	return memoryops.ListResult{Memories: memoryapi.FilterMemories(all, req.Search)}, nil
+	return memoryops.ListResult{Memories: memoryapi.SelectMemories(all, req)}, nil
 }

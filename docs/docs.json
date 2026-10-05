@@ -244,7 +244,10 @@
           "core-concepts/graph-links",
           "core-concepts/sync-concepts",
           "core-concepts/labels",
-          "core-concepts/metadata"
+          "core-concepts/metadata",
+          "core-concepts/fork-continuity",
+          "core-concepts/knowledge",
+          "core-concepts/code-index"
         ]
       },
       {

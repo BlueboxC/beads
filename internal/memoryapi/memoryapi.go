@@ -158,3 +158,16 @@ func FilterMemories(all map[string]string, search string) map[string]string {
 	}
 	return out
 }
+
+// SelectMemories applies literal namespace selection and the existing search.
+// It returns a fresh map, including when the selection is empty.
+func SelectMemories(all map[string]string, req memoryops.ListRequest) map[string]string {
+	selected := make(map[string]string)
+	for key, value := range all {
+		if !strings.HasPrefix(key, req.KeyPrefix) || (req.ExcludeKeyPrefix != "" && strings.HasPrefix(key, req.ExcludeKeyPrefix)) {
+			continue
+		}
+		selected[key] = value
+	}
+	return FilterMemories(selected, req.Search)
+}

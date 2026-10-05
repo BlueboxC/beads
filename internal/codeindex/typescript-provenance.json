@@ -1,0 +1,14 @@
+{
+  "package": "typescript",
+  "version": "5.9.3",
+  "license": "Apache-2.0",
+  "registry_url": "https://registry.npmjs.org/typescript/5.9.3",
+  "tarball": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
+  "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+  "tarball_sha256": "10e108c9cf7d5f2879053dff18515fb405abf2ccef63eaaf017d9c571687a1d3",
+  "compiler_sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+  "compiler_bytes": 9112572,
+  "embedded_compressed_bytes": 1633583,
+  "git_head": "c63de15a992d37f0d6cec03ac7631872838602cb",
+  "install_scripts_executed": false
+}

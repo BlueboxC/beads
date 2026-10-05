@@ -36,6 +36,7 @@ func TestServeFlags(t *testing.T) {
 
 	want := []string{
 		"addr", "allow-non-loopback", "allowed-host", "auth-token-file",
+		"graph-viewer",
 		"insecure-no-auth",
 	}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
@@ -304,6 +305,10 @@ func TestServeNamesOneDatabaseSourcePerServerItBuilds(t *testing.T) {
 				reader, claimer := keys["Reader"], keys["Claimer"]
 
 				switch {
+				case keys["GraphViewer"]:
+					if provider || reader || claimer {
+						t.Errorf("%s: exclusive viewer includes an issue API source", fset.Position(lit.Pos()))
+					}
 				case provider && (reader || claimer):
 					t.Errorf("%s: this httpapi.Config names two database sources; pass exactly one",
 						fset.Position(lit.Pos()))

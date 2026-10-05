@@ -14,7 +14,11 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
+Memory namespace selectors preserve exact prefix semantics across adapters. All three adapters select namespaces in SQL before transferring values; the unit-of-work adapter uses ConfigUseCase/repository within its existing read transaction. Case-insensitive memory search remains in Go.
+
 Keep Dolt engine behavior behind the existing storage boundary. Do not bypass it from CLI or other internal packages.
+
+Proxy transport fixtures bind TCP to explicit loopback endpoints; they never use operator-managed servers.
 
 ## Verification
 

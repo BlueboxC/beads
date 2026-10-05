@@ -18,9 +18,10 @@ import (
 
 // runBdPrime shells out to `bd prime [args...]` and returns its combined output.
 // The hooks exec a subprocess (rather than calling prime in process) to avoid
-// re-entrant store initialization.
+// re-entrant store initialization. Required memory loading distinguishes a
+// healthy empty workspace from an advisory diagnostic without recalling data.
 func runBdPrime(ctx context.Context, args ...string) (string, error) {
-	cmdArgs := append([]string{"prime"}, args...)
+	cmdArgs := append([]string{"prime", "--" + primeRequireMemoryLoadFlag}, args...)
 	// #nosec G702 - os.Args[0] is this bd binary re-invoking itself; cmdArgs is the
 	// fixed "prime" subcommand plus internal flags, never attacker-controlled input.
 	cmd := exec.CommandContext(ctx, os.Args[0], cmdArgs...)

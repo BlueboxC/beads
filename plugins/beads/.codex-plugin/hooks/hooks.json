@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|resume|clear",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
@@ -43,6 +43,42 @@
             "type": "command",
             "command": "bd codex-hook UserPromptSubmit",
             "statusMessage": "Refreshing Beads context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd codex-activity PostToolUse",
+            "statusMessage": "Recording Beads operation",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd codex-activity Stop",
+            "statusMessage": "Recording Beads turn handoff",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd codex-activity SessionEnd",
+            "statusMessage": "Recording Beads session closure",
+            "timeout": 3
           }
         ]
       }
