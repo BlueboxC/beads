@@ -13,7 +13,7 @@ Root owns fork policy, public API packages, license, build/version files, small 
 - Read this file and every indexed DOX.md along the target path before edits. A closer contract cannot weaken this framework.
 - Keep the DOX hierarchy current after meaningful changes; update affected indexes and remove stale text.
 - Preserve upstream attribution and the MIT license. Keep origin pointed at BlueboxC/beads and upstream at gastownhall/beads.
-- Public memory lists support literal case-sensitive user-key prefix inclusion/exclusion, combined with the existing case-insensitive search; empty selectors preserve full-plane behavior.
+- Public memory lists support literal case-sensitive user-key prefix inclusion/exclusion, combined with the existing case-insensitive search; empty selectors preserve full-plane behavior. The optional AtomicMemories capability guards and mutates derived generations in one storage transaction; basic Memories callers remain compatible.
 - Use bd for tasks, dependencies and durable facts; record evidence before closing work. Keep private project records out of this public fork.
 
 ## Work Guidance

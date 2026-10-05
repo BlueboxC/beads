@@ -223,6 +223,7 @@ This is useful for:
 | `bd knowledge scan/sources/list/context` | Selected documents/DOX, explicit records, source hashes and evidence validity. |
 | `bd knowledge prepare/propose/proposals/review` | Guided source-backed candidates, pinned session origins and supervised acceptance with preserved history. |
 | `bd code scan/status/query/graph` | Incremental Python, Go, JavaScript and TypeScript symbols/references and reviewed solution links. |
+| `bd code impact/relink/prune` | Static change review, supervised identical-content move drafts and explicit derived cleanup with preserved history. |
 | `bd graph --project --html` | Native interactive overview of tasks, knowledge and all indexed directories/files/symbols. |
 | `bd serve --graph-viewer` | Read-only live graph and Historial, manual/automatic refresh and retained layout/filters. |
 | `bd maintain once/watch` | Explicit maintenance of saved derived code/document selections without renewing human evidence. |

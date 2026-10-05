@@ -539,6 +539,7 @@ var proxyPermittedPaths = []string{
 	"knowledge context", "knowledge graph", "knowledge list", "knowledge record", "knowledge scan",
 	"knowledge sources", "knowledge prepare", "knowledge propose", "knowledge proposals", "knowledge review",
 	"code", "code scan", "code status", "code query", "code graph",
+	"code impact", "code relink", "code prune",
 	"swarm status", "swarm validate",
 
 	// human-in-the-loop queue

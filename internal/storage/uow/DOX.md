@@ -20,6 +20,8 @@ Memories.List translates user prefixes to the memory namespace and calls ConfigU
 
 ## Verification
 
+The shared optional AtomicMemories case is explicitly wired and skips with a stated reason when the accessor does not advertise it; no atomic-batch capability is inferred for this adapter.
+
 Use the affected existing checks selected in engdocs/TESTING.md; verify indexed child contracts. TestMemoriesListSelectionBoundsTransferredValues exercises the real config SQL/use-case boundary with an isolated Dolt fixture and counts returned key/value bytes, excluding engine reads and protocol overhead. TestMemoriesContract owns backend semantic conformance.
 
 ## Child DOX Index

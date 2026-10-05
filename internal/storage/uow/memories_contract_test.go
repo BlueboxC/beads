@@ -86,6 +86,9 @@ func TestMemoriesContract(t *testing.T) {
 	t.Run("ARefusedWriteRecordsNoHistory", func(t *testing.T) {
 		conformance.RunMemoriesARefusedWriteRecordsNoHistory(t, ctx, fixture)
 	})
+	t.Run("AtomicBatchGuardedNoopAndPreservation", func(t *testing.T) {
+		conformance.RunMemoriesAtomicBatchGuardedNoopAndPreservation(t, ctx, fixture)
+	})
 }
 
 func newUOWMemoriesFixture(t *testing.T, ctx context.Context, prefix string) conformance.MemoriesFixture {

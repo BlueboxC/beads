@@ -851,3 +851,43 @@ func RunMemoriesListLiteralPrefixes(t *testing.T, ctx context.Context, fixture M
 		}
 	}
 }
+
+// Optional atomic publication must guard the whole generation and preserve all
+// neighboring planes. Backends without this capability retain the basic role.
+func RunMemoriesAtomicBatchGuardedNoopAndPreservation(t *testing.T, ctx context.Context, fixture MemoriesFixture) {
+	t.Helper()
+	var atomic memoryops.AtomicMemories
+	var ok bool
+	atomic, ok = fixture.Memories.(memoryops.AtomicMemories)
+	if !ok {
+		t.Skip("optional atomic memory capability unavailable")
+	}
+	neighbors := seedMemoriesAllFourClasses(t, ctx, fixture)
+	base := fixture.IssuePrefix + "-atomic/"
+	manifest, oldBlob, newBlob := base+"manifest", base+"old", base+"new"
+	result, err := atomic.Apply(ctx, memoryops.BatchRequest{Expected: map[string]string{manifest: ""}, Remember: map[string]string{manifest: "generation-1", oldBlob: "old"}})
+	if err != nil || result.Written != 2 || result.Deleted != 0 {
+		t.Fatalf("initial publish: %+v %v", result, err)
+	}
+	if _, err := atomic.Apply(ctx, memoryops.BatchRequest{Expected: map[string]string{manifest: "wrong"}, Remember: map[string]string{manifest: "wrong-generation"}, Forget: []string{oldBlob}}); err == nil {
+		t.Fatal("changed generation not refused")
+	}
+	assertMemoriesRawValue(t, ctx, fixture, "kv.memory."+manifest, "generation-1")
+	assertMemoriesRawValue(t, ctx, fixture, "kv.memory."+oldBlob, "old")
+	result, err = atomic.Apply(ctx, memoryops.BatchRequest{Expected: map[string]string{manifest: "generation-1"}, Remember: map[string]string{manifest: "generation-2", newBlob: "new"}, Forget: []string{oldBlob}})
+	if err != nil || result.Written != 2 || result.Deleted != 1 {
+		t.Fatalf("atomic replace: %+v %v", result, err)
+	}
+	assertMemoriesRawValue(t, ctx, fixture, "kv.memory."+manifest, "generation-2")
+	assertMemoriesRawValue(t, ctx, fixture, "kv.memory."+newBlob, "new")
+	assertMemoriesRawAbsent(t, ctx, fixture, "kv.memory."+oldBlob)
+	result, err = atomic.Apply(ctx, memoryops.BatchRequest{Expected: map[string]string{manifest: "generation-2"}, Remember: map[string]string{manifest: "generation-2", newBlob: "new"}, Forget: []string{oldBlob}})
+	if err != nil || result.Written != 0 || result.Deleted != 0 {
+		t.Fatalf("no-op wrote: %+v %v", result, err)
+	}
+	if _, err := atomic.Apply(ctx, memoryops.BatchRequest{Remember: map[string]string{manifest: "changed"}, Forget: []string{manifest}}); err == nil {
+		t.Fatal("conflicting write/delete accepted")
+	}
+	assertMemoriesRawValue(t, ctx, fixture, "kv.memory."+manifest, "generation-2")
+	assertMemoriesNeighborsSurvived(t, ctx, fixture, neighbors)
+}

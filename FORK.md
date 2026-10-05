@@ -19,10 +19,13 @@ contain them. See [installation and workflow](docs/core-concepts/fork-continuity
 | Documents and DOX | Selected document catalogs, source hashes and explicit objectives, constraints, decisions, modules and solutions | A scanned document is source material; scanning does not extract or certify a learning. |
 | Supervised learning | Source-backed pending proposals, explicit accept/reject reviews, immutable history and pinned activity origins | A supervising human or agent reviews evidence. Existing solutions and historical verification scopes are preserved. |
 | Code structure | Incremental Python, Go, JavaScript and TypeScript AST index, imports/calls, symbols, source locations and reviewed learning links | Static references are not runtime proof. Dynamic or ambiguous references remain unresolved. |
+| Change review | Conservative inverse static file dependencies, shortest witness paths, associated learnings and candidate tests; unique identical-content move drafts | Dynamic impact and edited/ambiguous moves require manual analysis; a draft never renews prior evidence. |
+| Derived retention | Read-only prune plan and explicit guarded atomic cleanup in upgraded direct embedded workspaces | Human records and Dolt history remain intact; cleanup is never automatic and does not promise filesystem savings. |
 | Native graphs | One interactive task/knowledge/code explorer with typed colors, grouped drag, zoom, filters, source/symbol details, back navigation and separate Fit/Reset | Families are presentation scopes, not ownership or task blockers. Offline exports are snapshots. |
 | Live viewer | Read-only graph/history queries, Actualizar grafo, Manual/Automático selection, visible disconnects and preserved layout | Refresh reads saved data; it does not parse code or renew evidence. |
 | Derived maintenance | Explicit `maintain once` and `maintain watch` over saved document/code selections | Only approved directory roots discover new files. Human records and task state are not rewritten. |
 | Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
+| Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata | Local stdout success does not prove native context admission or universal reliability. |
 | Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
 
 Detailed references: [knowledge](docs/core-concepts/knowledge.md),
@@ -52,11 +55,13 @@ project execution, deployment or reopening completed work.
   observed exit codes do not prove a repair or successful deployment.
 - The live viewer and maintenance require direct embedded workspaces; they do
   not aggregate unrelated projects or provide a writable web interface.
-- Old derived blobs and Dolt history are retained. Stored payload measurements
-  do not represent the entire database footprint.
-- Compact dispatch and fallback have handler/process coverage. An actual
-  context-limit-triggered midturn compact still needs end-to-end qualification
-  in the target Codex environment; configuration alone is not that evidence.
+- Unreferenced derived blobs can be pruned explicitly on upgraded direct embedded
+  writers. Dolt history is retained; live payload savings do not establish disk savings.
+  Server/proxied prune application and mixed older writers are not qualified.
+- Compact dispatch, cold-output fallback and bounded diagnostics have handler/process
+  coverage. Native context-limit-triggered midturn recovery must be qualified for
+  each deployed source/binary cut; historical positive cycles do not establish
+  universal reliability or explain previously missing deliveries.
 
 ## Development
 

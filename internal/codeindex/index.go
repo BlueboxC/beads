@@ -320,6 +320,16 @@ func Save(ctx context.Context, memories memoryops.Memories, plane map[string]str
 	if err != nil {
 		return 0, err
 	}
+	if atomic, ok := memories.(memoryops.AtomicMemories); ok {
+		// A pruning writer must never race a reused blob against manifest publication.
+		// The storage capability checks the prior generation and writes every required
+		// row together, skipping equal values within that same transaction.
+		blobs[manifestKey] = encoded
+		_, err := atomic.Apply(ctx, memoryops.BatchRequest{
+			Expected: map[string]string{manifestKey: plane[manifestKey]}, Remember: blobs,
+		})
+		return stored + len(encoded), err
+	}
 	keys := make([]string, 0, len(blobs))
 	for key := range blobs {
 		keys = append(keys, key)
@@ -841,4 +851,9 @@ func Summary(plane map[string]string) string {
 		label = "Code index (" + strings.Join(entry.Languages, ", ") + ")"
 	}
 	return fmt.Sprintf("\n%s snapshot: %d files, %d symbols, %d imports, %d call sites, %d parse errors. Inspect current hashes with bd code status; query bd code query <path-or-symbol>. Static references are not runtime proof. Rebuild preserves human records.\n", label, entry.Stats.Files, entry.Stats.Symbols, entry.Stats.Imports, entry.Stats.Calls, entry.Stats.ParseErrors)
+}
+
+// Knowledge joins the same confined source reader with explicit human records.
+func (r *Reader) Knowledge(plane map[string]string) knowledge.State {
+	return r.sources.Refresh(knowledge.Decode(plane))
 }

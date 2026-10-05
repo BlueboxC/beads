@@ -1,9 +1,9 @@
 # Error Handling Guidelines
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-10-06
 
-Freshness source: `cmd/bd/*.go`, especially command error exits and JSON error
-helpers in `cmd/bd/errors.go`.
+Freshness source: `cmd/bd/*.go`, especially error helpers in `cmd/bd/errors.go`,
+exit handling in `cmd/bd/main.go` and setup/sync auxiliaries.
 
 This document describes the error handling patterns used throughout the beads codebase and provides guidelines for when each pattern should be applied.
 
@@ -80,10 +80,8 @@ if err := createConfigYaml(beadsDir, false); err != nil {
 - Core functionality still works
 
 **Files using this pattern:**
-- `cmd/bd/init.go` (lines 155-157, 161-163, 167-169, 188-190, 236-238, 272-274, etc.)
-- `cmd/bd/sync.go` (lines 156, 257, 281, 329, 335, 720-722, 740, 743, 752, 762)
-- `cmd/bd/create.go` (lines 333-334, 340-341)
-- `cmd/bd/sync.go` *(handles Dolt sync operations)*
+- `cmd/bd/init.go` (optional setup and metadata operations)
+- `cmd/bd/sync.go` (Dolt sync auxiliaries)
 
 ---
 
@@ -107,9 +105,8 @@ _ = os.Remove(tempPath)
 - Primary error already reported
 
 **Files using this pattern:**
-- `cmd/bd/init.go` (line 209, 326-327)
-- `cmd/bd/sync.go` (lines 696-698)
-- `cmd/bd/sync.go` *(sync cleanup)*
+- `cmd/bd/init.go` (resource cleanup)
+- `cmd/bd/sync.go` (sync cleanup)
 - Dozens of other locations throughout the codebase
 
 ---
@@ -324,7 +321,7 @@ if err := store.SetMetadata(ctx, "last_import_hash", hash); err != nil {
 
 **Rationale:** System degrades gracefully if tracking metadata is unavailable. Core functionality (creating issues, importing data) still works. Failures here might indicate temporary issues (e.g., read-only filesystem) that shouldn't block the entire operation.
 
-**See also:** `cmd/bd/init.go` lines 206-272 for detailed inline documentation of this distinction.
+**See also:** `cmd/bd/init.go` for setup and metadata error handling.
 
 ### File Permission Errors
 

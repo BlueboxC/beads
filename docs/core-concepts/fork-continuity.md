@@ -190,3 +190,30 @@ Static calls, current hashes and successful local tests do not by themselves
 qualify installation, native compact behavior or production. Old binary rollback
 must respect derived manifest versions and expanded limits; retain the prior
 derived manifest as well as the binary/database backup.
+
+
+## Review a change and manage derived retention
+
+```bash
+bd code impact src/context.py --depth 8 --limit 200 --json
+bd code relink src/old.py src/new.py --json
+bd code prune --readonly --json
+```
+
+Impact returns conservative file dependencies, witness paths, recorded learnings
+and candidate tests. It does not run those tests or establish runtime coverage.
+Relink emits review drafts only for a unique identical-content move with current
+destination symbols and contracts; inspect and explicitly review the draft.
+Earlier verification remains historical.
+
+Prune defaults to a plan. Explicit `bd code prune --apply --json` needs upgraded
+direct embedded writers and a backup. All writes/deletes are guarded in the
+existing storage transaction; other adapters refuse application. Human knowledge
+and Dolt history are preserved. Retention reduces current rows, not necessarily
+disk use; restore a complete historical generation or rebuild after pruning.
+See [code-index boundaries](/core-concepts/code-index#derived-blob-retention).
+
+Context-hook diagnostics retain bounded private metadata beside the refresh
+marker. A failed cold stdout delivery keeps the next-prompt fallback; successful
+local delivery alone does not establish native context admission. See
+[hook diagnostics](/integrations/codex#local-hook-diagnostics).

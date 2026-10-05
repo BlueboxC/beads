@@ -81,9 +81,10 @@ parser fingerprints, so expanding a Python index reuses its unchanged files.
 Older clients refuse version 3 explicitly: back up the previous derived manifest
 before migration and restore it before reverting the binary. Human records and
 immutable blobs remain separate.
-Each scan prepares bounded immutable blob rows and atomically publishes one
-manifest through memoryops. Failure before publication leaves the prior index
-readable. Old blobs are retained for rollback and Dolt history can grow; the
+Each scan prepares bounded immutable blob rows through memoryops. Embedded
+atomic publication commits all needed rows and the manifest together; other
+adapters publish blobs before one atomic manifest. Failure leaves the prior
+index readable. Old blobs are retained unless explicitly pruned, and Dolt history can grow; the
 reported stored payload is not the total database size. Human memories and
 assertions are separate keys and remain unchanged.
 
@@ -150,7 +151,7 @@ failures up to five minutes (or a longer selected interval). Its default is not
 a freshness guarantee: a busy base or continuously changing/invalid selection
 can delay updates. Each child has a two-minute budget and bounded output. Errors
 are visible; use `bd maintain once` to inspect their details. A complete derivation
-must succeed before publication begins; index blobs publish before its atomic
+must succeed before publication begins; code publishes as one embedded atomic batch; catalog parts precede their atomic
 manifest. Code and catalog are separate publications: a write failure after one
 succeeds can leave that complete new projection beside the previous other one;
 the next pass converges without renewing human evidence. The driver owns concurrency; no Beads flock or engine recovery exists.
@@ -167,3 +168,61 @@ and needs review when its sources change, even if the derived index is current.
 The watcher starts only when explicitly invoked. It is independent of the live
 viewer and no boot/Codex hook starts it. A running viewer picks up published
 changes on its next graph query, preserving its normal layout and filters.
+
+
+## Impact and rename review
+
+```bash
+bd code impact src/context_pack.py --depth 8 --limit 200 --json
+bd code impact 'src/context_pack.py::select_evidence' --json
+bd code relink src/old.py src/new.py --json
+```
+
+Impact traverses inverse resolved imports/calls over the whole saved index,
+terminates cycles and returns shortest static witness paths. Both file and symbol
+selectors use conservative **file** granularity. Depth is bounded to 1–32; the
+display limit is 1–1024, with omitted-file/depth-limit flags. Linked knowledge
+retains its validity and verification scope; issue IDs are references, not task
+changes. Conventional test paths and tests bound by associated learning are
+candidates to inspect, never verified coverage or tests that were executed.
+Unresolved references remain visible; dynamic/external/unindexed code can add
+effects. Refresh or review stale source hashes before relying on a path.
+
+Relink prepares JSON review drafts only when the old path is missing, the new
+indexed file is current and parsed, and exactly one destination has identical
+content in the same language. Prior learning must bind that original content;
+named symbols must exist at the destination. Edited or ambiguous moves are
+refused. Drafts include current source/DOX hashes, any new ancestor contracts,
+recorded scope and the complete previous assertion/evidence for comparison.
+Nothing is written. Read all affected sources/DOX, then explicitly review the
+draft with `knowledge record --file -`; never submit an established topic as a
+replacement proposal or treat a move as new test evidence.
+
+## Derived-blob retention
+
+```bash
+bd code prune --readonly --json       # inspect current/obsolete payload bytes
+bd code prune --apply --json          # explicit upgraded embedded writer only
+```
+
+Prune removes only content-addressed code blobs not referenced by the complete
+current manifest. It refuses an unreadable current generation and never changes
+human memories, assertions, proposals, journal, task state or source files.
+The default is a plan; hooks, maintenance and viewers never apply it. Keep a
+backup and upgrade every writing client first: mixed older writers and shared,
+server or proxied application are not qualified.
+
+The embedded optional AtomicMemories batch checks the expected manifest and
+candidate values, then deletes in one existing transaction. Embedded scans use
+the same capability to publish **all** needed blobs and the manifest together,
+guarding the previous manifest and skipping equal rows. This prevents a reused
+blob from being pruned between selection and publication. A changed generation
+or any failed write rolls back; reread before trying a new operation. Other
+adapters retain their original publication route and refuse prune application.
+Readers of a retired generation can fail closed; refresh to the current one.
+
+Dolt commits/history remain intact, including old complete generations for
+rollback. This reduces live rows and future enumeration payload, not necessarily
+filesystem size or version history. No automatic retention, history flattening
+or engine garbage collection is performed. Restoring only an old manifest after
+prune is insufficient: restore its full historical generation or rebuild it.

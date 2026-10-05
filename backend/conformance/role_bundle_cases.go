@@ -461,6 +461,7 @@ var roleContractCases = []roleContract{
 		RunMemoriesListSearchMatchesKeyOrValueCaseInsensitively,
 		RunMemoriesARefusedWriteRecordsNoHistory,
 		RunMemoriesListLiteralPrefixes,
+		RunMemoriesAtomicBatchGuardedNoopAndPreservation,
 	),
 
 	roleCases("MetadataCAS", "MetadataCAS()", oncePerRole,
