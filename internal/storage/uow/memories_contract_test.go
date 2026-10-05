@@ -80,6 +80,9 @@ func TestMemoriesContract(t *testing.T) {
 	t.Run("ListSearchMatchesKeyOrValueCaseInsensitively", func(t *testing.T) {
 		conformance.RunMemoriesListSearchMatchesKeyOrValueCaseInsensitively(t, ctx, fixture)
 	})
+	t.Run("ListLiteralPrefixes", func(t *testing.T) {
+		conformance.RunMemoriesListLiteralPrefixes(t, ctx, fixture)
+	})
 	t.Run("ARefusedWriteRecordsNoHistory", func(t *testing.T) {
 		conformance.RunMemoriesARefusedWriteRecordsNoHistory(t, ctx, fixture)
 	})

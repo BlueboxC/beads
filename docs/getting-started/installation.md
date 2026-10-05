@@ -296,7 +296,7 @@ bd setup mux      # Mux - creates/updates AGENTS.md
 **How it works:**
 - `bd init` creates or updates `AGENTS.md` and installs project Claude/Codex integrations by default unless you use `--skip-agents` or `--stealth`
 - Editor hooks/rules inject `bd prime` automatically on session start
-- Codex 0.129.0+ uses native `/hooks`: SessionStart injects `bd prime`, compact hooks mark context stale, and the next prompt after compaction refreshes Beads context once
+- Codex native `/hooks`: SessionStart injects `bd prime` on startup and immediately after manual/automatic compaction; a pending next-prompt refresh remains as a fallback when delivery is unavailable
 - `bd prime` provides ~1-2k tokens of workflow context
 - You use `bd` CLI commands directly
 - Git hooks (installed by `bd init`) refresh exports and legacy fallbacks; `bd dolt push/pull` syncs the database

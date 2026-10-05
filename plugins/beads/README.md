@@ -20,6 +20,8 @@ With Codex 0.129.0+, `/hooks` shows these lifecycle handlers:
 - `PostCompact` runs `bd codex-hook PostCompact` for `manual|auto` and records a one-shot refresh marker in the user cache/temp directory.
 - `UserPromptSubmit` runs `bd codex-hook UserPromptSubmit` and, when a refresh marker exists, injects full `bd prime` output once before clearing it.
 
+Three additional handlers invoke `bd codex-activity`: PostToolUse records delivered local tool metadata, Stop records a reported handoff, and SessionEnd records closure. They require `bd activity enable` in an existing embedded project and normal hook trust. Raw tool payloads/transcripts are not stored; task and knowledge promotion remain explicit. See [coverage and privacy](../../docs/integrations/codex.md#observed-activity).
+
 If the plugin is not installed, `bd setup codex` writes an equivalent `.codex/hooks.json` fallback and enables `[features].hooks = true`.
 
 ## Local Development

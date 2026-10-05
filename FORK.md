@@ -1,34 +1,67 @@
-# BlueboxC Beads fork
+# BlueboxC Beads continuity fork
 
-This fork supports persistent project context for Codex: project direction,
-work dependencies, existing modules, verified solutions and the evidence that
-allows another session to resume without repeating completed work.
+This fork extends [gastownhall/beads](https://github.com/gastownhall/beads) to
+preserve project direction, existing modules, decisions and resolved problems
+across coding sessions. It builds on upstream **v1.3.1** at
+`c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c` and the published bootstrap
+`6fd8ea6288a1c9c5fa23dcb22a47183e779ca59c`.
 
-The bootstrap branch is `codex/software-factory-memory`, based on upstream
-v1.3.1 (`c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c`). The installed macOS binary is
-the checksum-verified upstream release for that exact source revision. This
-bootstrap adds DOX contracts; it does not change executable behavior.
+The extensions share Beads' existing **Dolt memory plane**. No second graph
+service, vector database, schema migration or hosted model is introduced.
+Upstream attribution and the MIT license remain intact. Fork additions are
+available on `codex/project-continuity`; upstream installation channels do not
+contain them. See [installation and workflow](docs/core-concepts/fork-continuity.md).
 
-Beads already provides durable tasks, relationships, project facts with
-`bd remember`, and context recovery with `bd prime`. Its Codex integration
-provides a skill and SessionStart, PreCompact, PostCompact and UserPromptSubmit
-hooks. Codex separately requires trusting the installed hook definitions.
+## Added capabilities
 
-The extension objective is one product using the existing Dolt storage
-boundary. Code indexing, automatic extraction of learned solutions, semantic
-retrieval and a graphical explorer are not implemented in this bootstrap.
-Derived code indexes must be reproducible; verified decisions and solutions
-must retain source revision, affected module, evidence and validity status.
-Workflow blockers and code/knowledge relationships have different semantics;
-code cycles must not be treated as task dependency cycles.
+| Area | Added behavior | Boundary |
+| --- | --- | --- |
+| Documents and DOX | Selected document catalogs, source hashes and explicit objectives, constraints, decisions, modules and solutions | A scanned document is source material; scanning does not extract or certify a learning. |
+| Supervised learning | Source-backed pending proposals, explicit accept/reject reviews, immutable history and pinned activity origins | A supervising human or agent reviews evidence. Existing solutions and historical verification scopes are preserved. |
+| Code structure | Incremental Python, Go, JavaScript and TypeScript AST index, imports/calls, symbols, source locations and reviewed learning links | Static references are not runtime proof. Dynamic or ambiguous references remain unresolved. |
+| Native graphs | One interactive task/knowledge/code explorer with typed colors, grouped drag, zoom, filters, source/symbol details, back navigation and separate Fit/Reset | Families are presentation scopes, not ownership or task blockers. Offline exports are snapshots. |
+| Live viewer | Read-only graph/history queries, Actualizar grafo, Manual/Automático selection, visible disconnects and preserved layout | Refresh reads saved data; it does not parse code or renew evidence. |
+| Derived maintenance | Explicit `maintain once` and `maintain watch` over saved document/code selections | Only approved directory roots discover new files. Human records and task state are not rewritten. |
+| Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
+| Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
 
-Prefer existing metadata and interfaces before introducing schema. Follow the
-[project charter](engdocs/PROJECT_CHARTER.md) and
-[test authority](engdocs/TESTING.md) for implementation. Track extension work
-in Beads rather than maintaining a competing Markdown task list.
+Detailed references: [knowledge](docs/core-concepts/knowledge.md),
+[code index and maintenance](docs/core-concepts/code-index.md),
+[Codex hooks and activity](docs/integrations/codex.md), and
+[HTTP operation](engdocs/SERVE_RUNBOOK.md).
 
-Keep `main` available for upstream synchronization. Develop fork changes on
-the bootstrap branch until a separately reviewed release is ready. Do not
-publish private project databases or machine configuration in this public
-source repository. Global Codex configuration and installation backups belong
-to the operator's machine, outside Git.
+## Public source and private operation
+
+This public branch starts from already-published history. Operator-only
+vulnerability patches are not included. Project databases, learned project
+records, chat/session exports, machine configuration, credentials, backups and
+installation evidence remain outside this repository. Source publication does
+not authorize publishing `refs/dolt/data`.
+
+Initialize each chosen project explicitly; global setup does not enroll new
+projects. Activity capture, derived maintenance and the live viewer have
+separate opt-in steps. Use the normal Codex hook trust flow; setup never grants
+trust. Neither indexing, source currency nor an accepted learning authorizes
+project execution, deployment or reopening completed work.
+
+## Remaining limits
+
+- Autonomous semantic extraction, embedding/vector retrieval and whole-language
+  type analysis are not implemented. Codex supplies and reviews semantic content.
+- Journal capture is partial and redaction is best effort. Reported summaries and
+  observed exit codes do not prove a repair or successful deployment.
+- The live viewer and maintenance require direct embedded workspaces; they do
+  not aggregate unrelated projects or provide a writable web interface.
+- Old derived blobs and Dolt history are retained. Stored payload measurements
+  do not represent the entire database footprint.
+- Compact dispatch and fallback have handler/process coverage. An actual
+  context-limit-triggered midturn compact still needs end-to-end qualification
+  in the target Codex environment; configuration alone is not that evidence.
+
+## Development
+
+Keep `main` available for upstream synchronization and scope fork work to
+`codex/` branches. Use Beads for durable development tasks, the existing storage
+interfaces for persistence, and [engdocs/TESTING.md](engdocs/TESTING.md) for
+verification. Follow the DOX hierarchy before edits. Preserve the bundled D3
+and TypeScript licenses/notices; `bd code --licenses` exposes parser attribution.

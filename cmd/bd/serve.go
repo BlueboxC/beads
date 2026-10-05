@@ -52,6 +52,7 @@ var (
 	serveAuthTokenFile    string
 	serveInsecureNoAuth   bool
 	serveAllowedHosts     []string
+	serveGraphViewer      bool
 )
 
 var serveCmd = &cobra.Command{
@@ -62,6 +63,17 @@ automation clients that would otherwise fork a bd subprocess per call.
 
 The wire contract is described by an OpenAPI document (/v0); GET
 /v0/beads/context reports which operations this build actually implements.
+
+LIVE GRAPH
+
+  --graph-viewer serves only /viewer, /viewer/graph and /healthz. It opens
+  bounded read-only CLI snapshots against this one workspace, then releases
+  the store, including embedded Dolt. No issue-write API is published. The
+  browser polls every five seconds while visible, preserves its layout and
+  reports disconnection. Code/DOX changes mark evidence stale; this mode never
+  scans code or renews assertions. Stop with Ctrl-C; nothing is installed as
+  an automatic startup service. Bearer-authenticated viewers accept the token
+  in an in-memory browser input; it is never placed in a URL or storage.
 
 DEPLOYMENT
 
@@ -165,6 +177,8 @@ func init() {
 // merges every inherited persistent flag into a command's own FlagSet the first
 // time it parses one, and that mutation outlives the run.
 func registerServeFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVar(&serveGraphViewer, "graph-viewer", false,
+		"Serve only the native live project graph at /viewer; bounded read-only queries, including embedded Dolt")
 	cmd.Flags().StringVar(&serveAddr, "addr", "127.0.0.1:0",
 		"Address to bind as IP:PORT; the host must be a numeric IP literal, and port 0 takes an ephemeral port")
 	cmd.Flags().BoolVar(&serveAllowNonLoopback, "allow-non-loopback", false,
@@ -254,6 +268,9 @@ func runServe() error {
 	opts, err := resolveServeConfig()
 	if err != nil {
 		return HandleError("%v", err)
+	}
+	if serveGraphViewer {
+		return runGraphViewer(opts)
 	}
 	if readonlyMode {
 		return HandleError("%v", errServeReadonly())

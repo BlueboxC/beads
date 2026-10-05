@@ -112,6 +112,9 @@ const (
 // Config is everything the server needs to answer. It is assembled by the
 // caller — the package resolves no workspace state of its own.
 type Config struct {
+	// GraphViewer selects an exclusive read-only presentation surface. No v0
+	// issue API is registered and no persistent database handle is held.
+	GraphViewer http.Handler
 	// Addr is the host:port to bind. The host must be a numeric IP literal;
 	// see ValidateBindAddr.
 	Addr string
@@ -540,6 +543,10 @@ func Listen(cfg Config) (*Server, error) {
 		maxConns: maxConns,
 	}
 
+	if cfg.GraphViewer != nil {
+		s.ctxBody.Capabilities = []string{"project_graph_readonly"}
+	}
+
 	ln, err := net.Listen("tcp", cfg.Addr)
 	if err != nil {
 		return nil, fmt.Errorf("bind %s: %w", cfg.Addr, err)
@@ -647,6 +654,12 @@ func anyRoleFiresHooks(cfg Config) bool {
 }
 
 func checkDatabaseSource(cfg Config) error {
+	if cfg.GraphViewer != nil {
+		if cfg.Provider != nil || anyRoleSet(cfg) || cfg.EventsJournal != nil || cfg.EventsJournalEnabled {
+			return errors.New("httpapi: graph viewer cannot be combined with an issue API database source")
+		}
+		return nil
+	}
 	switch {
 	case cfg.Provider != nil && (anyRoleSet(cfg) || cfg.EventsJournal != nil):
 		return errors.New("httpapi: both a unit-of-work provider and issue roles were set; pass exactly one database source")
@@ -1309,6 +1322,9 @@ func (s *Server) handler() http.Handler {
 	shared := map[string][]route{}
 	var sharedOrder []string
 	for _, rt := range routeTable {
+		if s.cfg.GraphViewer != nil && rt.op != OpHealth {
+			continue
+		}
 		if rt.customMethod == "" {
 			mux.Handle(rt.method+" "+rt.pattern, s.route(rt))
 			continue
@@ -1321,6 +1337,15 @@ func (s *Server) handler() http.Handler {
 	}
 	for _, key := range sharedOrder {
 		mux.Handle(key, s.dispatchCustomMethod(shared[key]))
+	}
+
+	if s.cfg.GraphViewer != nil {
+		for _, path := range []string{"/viewer", "/viewer/graph"} {
+			mux.Handle("GET "+path, s.route(route{op: "project_graph", projectExempt: true,
+				authExempt: path == "/viewer", handler: func(_ *Server, w http.ResponseWriter, r *http.Request) {
+					s.cfg.GraphViewer.ServeHTTP(w, r)
+				}}))
+		}
 	}
 
 	// Not an operation and deliberately not in the route table: it exists so
@@ -1977,6 +2002,9 @@ func (s *Server) logStartup() {
 // true value and is indistinguishable, on its own, from instrumentation that
 // broke. This is the line that tells them apart.
 func (s *Server) dbSource() string {
+	if s.cfg.GraphViewer != nil {
+		return "graph-viewer-readonly"
+	}
 	if s.provider != nil {
 		return "provider"
 	}

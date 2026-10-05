@@ -17,6 +17,9 @@ type ConfigSQLRepository interface {
 	SetConfig(ctx context.Context, key, value string) error
 	DeleteConfig(ctx context.Context, key string) error
 	GetAllConfig(ctx context.Context) (map[string]string, error)
+	// GetConfigByPrefix selects literal, case-sensitive stored-key prefixes.
+	// Empty inclusion selects all keys; empty exclusion excludes nothing.
+	GetConfigByPrefix(ctx context.Context, keyPrefix, excludeKeyPrefix string) (map[string]string, error)
 
 	GetCustomTypes(ctx context.Context) ([]string, error)
 	GetAllowedPrefixes(ctx context.Context) (string, error)
@@ -41,6 +44,9 @@ type ConfigUseCase interface {
 	SetConfig(ctx context.Context, key, value string) error
 	DeleteConfig(ctx context.Context, key string) error
 	GetAllConfig(ctx context.Context) (map[string]string, error)
+	// GetConfigByPrefix selects literal, case-sensitive stored-key prefixes.
+	// Empty inclusion selects all keys; empty exclusion excludes nothing.
+	GetConfigByPrefix(ctx context.Context, keyPrefix, excludeKeyPrefix string) (map[string]string, error)
 	GetMetadata(ctx context.Context, key string) (string, error)
 	// SetMetadata writes one durable metadata value inside the caller's unit of
 	// work. It is the write half of the GetMetadata above it:
@@ -225,6 +231,14 @@ func (u *configUseCaseImpl) GetAllConfig(ctx context.Context) (map[string]string
 	out, err := u.cfgRepo.GetAllConfig(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllConfig: %w", err)
+	}
+	return out, nil
+}
+
+func (u *configUseCaseImpl) GetConfigByPrefix(ctx context.Context, keyPrefix, excludeKeyPrefix string) (map[string]string, error) {
+	out, err := u.cfgRepo.GetConfigByPrefix(ctx, keyPrefix, excludeKeyPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("GetConfigByPrefix: %w", err)
 	}
 	return out, nil
 }

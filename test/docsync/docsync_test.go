@@ -242,6 +242,9 @@ func TestEveryDocsPageIsPublished(t *testing.T) {
 
 	var orphans []string
 	for _, path := range files {
+		if filepath.Base(path) == "DOX.md" {
+			continue // Repository contracts are not Mintlify pages.
+		}
 		rel, err := filepath.Rel(docsRoot, path)
 		if err != nil {
 			t.Fatal(err)
@@ -281,6 +284,9 @@ func TestDocsSiteLinks(t *testing.T) {
 
 	var broken []string
 	for _, path := range files {
+		if filepath.Base(path) == "DOX.md" {
+			continue // DOX links follow actual repository paths.
+		}
 		rel, _ := filepath.Rel(docsRoot, path)
 		rel = filepath.ToSlash(rel)
 		isStub := docsPublishExemptions[rel]

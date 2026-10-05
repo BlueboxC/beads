@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -124,3 +125,155 @@ func TestCodexHookPostCompactMarksAndUserPromptRefreshesOnce(t *testing.T) {
 type ioDiscard struct{}
 
 func (ioDiscard) Write(p []byte) (int, error) { return len(p), nil }
+
+func TestCodexHookSessionStartSatisfiesPendingRefresh(t *testing.T) {
+	for _, trigger := range []string{"manual", "auto"} {
+		t.Run(trigger, func(t *testing.T) {
+			codexHookMarkerDirOverride = t.TempDir()
+			t.Cleanup(func() { codexHookMarkerDirOverride = "" })
+			calls := 0
+			stubCodexHookPrime(t, func(memoriesOnly bool) (string, error) {
+				calls++
+				return "EXISTING MODULE AND SOLUTION\n", nil
+			})
+			input := codexHookInput{SessionID: "s1", CWD: "/repo", Trigger: trigger}
+			data, _ := json.Marshal(input)
+			if err := runCodexHook(context.Background(), codexHookPostCompact, bytes.NewReader(data), io.Discard); err != nil {
+				t.Fatal(err)
+			}
+			var start bytes.Buffer
+			if err := runCodexHook(context.Background(), codexHookSessionStart, bytes.NewReader(data), &start); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(start.String(), "EXISTING MODULE AND SOLUTION") {
+				t.Fatalf("SessionStart lost context: %s", start.String())
+			}
+			var prompt bytes.Buffer
+			if err := runCodexHook(context.Background(), codexHookUserPromptSubmit, bytes.NewReader(data), &prompt); err != nil {
+				t.Fatal(err)
+			}
+			if prompt.Len() != 0 || calls != 1 {
+				t.Fatalf("context was injected twice: prime calls=%d, prompt=%s", calls, prompt.String())
+			}
+		})
+	}
+}
+
+func TestCodexHookFailedProjectionPreservesPendingRefresh(t *testing.T) {
+	for _, event := range []string{codexHookSessionStart, codexHookUserPromptSubmit} {
+		for _, failure := range []string{"prime", "empty", "output"} {
+			t.Run(event+"/"+failure, func(t *testing.T) {
+				codexHookMarkerDirOverride = t.TempDir()
+				t.Cleanup(func() { codexHookMarkerDirOverride = "" })
+				first := true
+				stubCodexHookPrime(t, func(memoriesOnly bool) (string, error) {
+					if first && failure == "prime" {
+						return "", errors.New("store temporarily unavailable")
+					}
+					if first && failure == "empty" {
+						return " \n", nil
+					}
+					return "RECOVERED CONTEXT\n", nil
+				})
+				input := codexHookInput{SessionID: "s1", CWD: "/repo"}
+				data, _ := json.Marshal(input)
+				if err := runCodexHook(context.Background(), codexHookPostCompact, bytes.NewReader(data), io.Discard); err != nil {
+					t.Fatal(err)
+				}
+				var failed bytes.Buffer
+				var writer io.Writer = &failed
+				if failure == "output" {
+					writer = codexHookErrorWriter{}
+				}
+				err := runCodexHook(context.Background(), event, bytes.NewReader(data), writer)
+				if failure == "output" && err == nil {
+					t.Fatal("output error was ignored")
+				}
+				if failure != "output" && err != nil {
+					t.Fatal(err)
+				}
+				if _, err := os.Stat(codexHookRefreshMarkerPath(input)); err != nil {
+					t.Fatalf("failed projection discarded the pending refresh: %v", err)
+				}
+				first = false
+				var recovered bytes.Buffer
+				if err := runCodexHook(context.Background(), codexHookUserPromptSubmit, bytes.NewReader(data), &recovered); err != nil {
+					t.Fatal(err)
+				}
+				if !strings.Contains(recovered.String(), "RECOVERED CONTEXT") {
+					t.Fatalf("retry lost context: %s", recovered.String())
+				}
+				recovered.Reset()
+				if err := runCodexHook(context.Background(), codexHookUserPromptSubmit, bytes.NewReader(data), &recovered); err != nil {
+					t.Fatal(err)
+				}
+				if recovered.Len() != 0 {
+					t.Fatalf("successful retry injected again: %s", recovered.String())
+				}
+			})
+		}
+	}
+}
+
+func TestCodexHookSessionStartKeepsOtherRefreshMarkers(t *testing.T) {
+	codexHookMarkerDirOverride = t.TempDir()
+	t.Cleanup(func() { codexHookMarkerDirOverride = "" })
+	stubCodexHookPrime(t, func(memoriesOnly bool) (string, error) { return "CONTEXT\n", nil })
+	pending := codexHookInput{SessionID: "s1", CWD: "/repo"}
+	data, _ := json.Marshal(pending)
+	if err := runCodexHook(context.Background(), codexHookPostCompact, bytes.NewReader(data), io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, other := range []codexHookInput{{SessionID: "s2", CWD: "/repo"}, {SessionID: "s1", CWD: "/other"}} {
+		otherData, _ := json.Marshal(other)
+		if err := runCodexHook(context.Background(), codexHookSessionStart, bytes.NewReader(otherData), io.Discard); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(codexHookRefreshMarkerPath(pending)); err != nil {
+			t.Fatalf("another session/workspace consumed this refresh: %v", err)
+		}
+	}
+}
+
+type codexHookErrorWriter struct{}
+
+func (codexHookErrorWriter) Write([]byte) (int, error) { return 0, errors.New("output unavailable") }
+
+func TestCodexHookUnavailableStartupQueuesNextPrompt(t *testing.T) {
+	codexHookMarkerDirOverride = t.TempDir()
+	t.Cleanup(func() { codexHookMarkerDirOverride = "" })
+	calls := 0
+	stubCodexHookPrime(t, func(bool) (string, error) {
+		calls++
+		if calls == 1 {
+			return "", errors.New("memory read unavailable")
+		}
+		return "RECOVERED SOLVED MODULE\n", nil
+	})
+	input := codexHookInput{SessionID: "startup", CWD: "/repo"}
+	data, _ := json.Marshal(input)
+	var out bytes.Buffer
+	if err := runCodexHook(context.Background(), codexHookSessionStart, bytes.NewReader(data), &out); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(codexHookRefreshMarkerPath(input)); err != nil {
+		t.Fatalf("failed startup lost refresh: %v", err)
+	}
+	if !strings.Contains(out.String(), "refresh retained") {
+		t.Fatal(out.String())
+	}
+	out.Reset()
+	if err := runCodexHook(context.Background(), codexHookUserPromptSubmit, bytes.NewReader(data), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "RECOVERED SOLVED MODULE") {
+		t.Fatal(out.String())
+	}
+	out.Reset()
+	if err := runCodexHook(context.Background(), codexHookUserPromptSubmit, bytes.NewReader(data), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Len() != 0 || calls != 2 {
+		t.Fatal("recovered startup injected twice")
+	}
+}

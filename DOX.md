@@ -6,20 +6,21 @@ Own the BlueboxC Beads fork and its development contracts for persistent project
 
 ## Ownership
 
-Root owns fork policy, public API packages, license, build/version files, small packaging assets and the Child DOX Index. Indexed children own their subtrees. FORK.md describes the shipped baseline and extension objective.
+Root owns fork policy, public API packages, license, build/version files, small packaging assets and the Child DOX Index. Indexed children own their subtrees. FORK.md describes the public baseline and implemented extensions; docs/core-concepts/fork-continuity.md owns fork onboarding and capability limits.
 
 ## Local Contracts
 
 - Read this file and every indexed DOX.md along the target path before edits. A closer contract cannot weaken this framework.
 - Keep the DOX hierarchy current after meaningful changes; update affected indexes and remove stale text.
 - Preserve upstream attribution and the MIT license. Keep origin pointed at BlueboxC/beads and upstream at gastownhall/beads.
+- Public memory lists support literal case-sensitive user-key prefix inclusion/exclusion, combined with the existing case-insensitive search; empty selectors preserve full-plane behavior.
 - Use bd for tasks, dependencies and durable facts; record evidence before closing work. Keep private project records out of this public fork.
 
 ## Work Guidance
 
 - Prefer the simplest complete implementation and existing extension points. Avoid speculative configuration and dependencies.
 - The fork objective is continuity: recover project direction, existing modules, verified fixes and their evidence. Use one Beads product and its existing Dolt storage boundary.
-- Native baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c. Bootstrap changes are documentation; they do not implement an AST graph or automatic solution capture.
+- Public baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c, plus the published bootstrap. Continuity extensions reuse the existing Dolt memory boundary. Keep operator configuration, project databases and undisclosed vulnerability patches outside public commits.
 - Follow AGENTS.md, AGENT_INSTRUCTIONS.md and engdocs/TESTING.md. Keep manual experiments in disposable directories.
 
 ## Verification

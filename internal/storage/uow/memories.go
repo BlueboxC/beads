@@ -56,8 +56,7 @@ var _ memoryops.Memories = (*memories)(nil)
 // The probe is GetAllConfig rather than GetConfig because Replaced is about the
 // ROW: this seam maps a missing row and a row stored empty to the same "", and
 // the map's key set is the only place the difference survives. It is one extra
-// query on a table that holds tens of rows, and it is what makes the answer the
-// same on this backend as on the other two.
+// query, and it makes the answer the same on this backend as on the other two.
 func (m *memories) Remember(ctx context.Context, req memoryops.RememberRequest) (memoryops.RememberResult, error) {
 	key, err := memoryapi.ResolveKey(req.Key, req.Content)
 	if err != nil {
@@ -131,11 +130,15 @@ func (m *memories) Forget(ctx context.Context, req memoryops.ForgetRequest) (mem
 
 func (m *memories) List(ctx context.Context, req memoryops.ListRequest) (memoryops.ListResult, error) {
 	return RunTxRead(ctx, m.provider, func(ctx context.Context, uw UnitOfWork) (memoryops.ListResult, error) {
-		all, err := uw.ConfigUseCase().GetAllConfig(ctx)
+		excluded := ""
+		if req.ExcludeKeyPrefix != "" {
+			excluded = storagememoryops.StorageKey(req.ExcludeKeyPrefix)
+		}
+		all, err := uw.ConfigUseCase().GetConfigByPrefix(ctx, storagememoryops.StorageKey(req.KeyPrefix), excluded)
 		if err != nil {
 			return memoryops.ListResult{}, err
 		}
 		plane := storagememoryops.MemoriesFromConfig(all)
-		return memoryops.ListResult{Memories: memoryapi.FilterMemories(plane, req.Search)}, nil
+		return memoryops.ListResult{Memories: memoryapi.SelectMemories(plane, req)}, nil
 	})
 }

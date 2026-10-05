@@ -107,21 +107,35 @@ func (r *configSQLRepositoryImpl) DeleteConfig(ctx context.Context, key string) 
 }
 
 func (r *configSQLRepositoryImpl) GetAllConfig(ctx context.Context) (map[string]string, error) {
-	rows, err := r.runner.QueryContext(ctx, "SELECT `key`, value FROM config")
+	return r.queryConfig(ctx, "GetAllConfig", "SELECT `key`, value FROM config")
+}
+
+func (r *configSQLRepositoryImpl) GetConfigByPrefix(ctx context.Context, keyPrefix, excludeKeyPrefix string) (map[string]string, error) {
+	query := "SELECT `key`, value FROM config WHERE BINARY LEFT(`key`, CHAR_LENGTH(?)) = BINARY ?"
+	args := []any{keyPrefix, keyPrefix}
+	if excludeKeyPrefix != "" {
+		query += " AND BINARY LEFT(`key`, CHAR_LENGTH(?)) <> BINARY ?"
+		args = append(args, excludeKeyPrefix, excludeKeyPrefix)
+	}
+	return r.queryConfig(ctx, "GetConfigByPrefix", query, args...)
+}
+
+func (r *configSQLRepositoryImpl) queryConfig(ctx context.Context, operation, query string, args ...any) (map[string]string, error) {
+	rows, err := r.runner.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("db: GetAllConfig: %w", err)
+		return nil, fmt.Errorf("db: %s: %w", operation, err)
 	}
 	defer rows.Close()
 	out := make(map[string]string)
 	for rows.Next() {
 		var k, v string
 		if err := rows.Scan(&k, &v); err != nil {
-			return nil, fmt.Errorf("db: GetAllConfig: scan: %w", err)
+			return nil, fmt.Errorf("db: %s: scan: %w", operation, err)
 		}
 		out[k] = v
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("db: GetAllConfig: read: %w", err)
+		return nil, fmt.Errorf("db: %s: read: %w", operation, err)
 	}
 	return out, nil
 }

@@ -1220,7 +1220,7 @@ var rootCmd = &cobra.Command{
 		// Check both the command name and parent command name for subcommands
 		cmdName := cmd.Name()
 		isSubcommand := cmd.Parent() != nil && cmd.Parent().Name() != "bd"
-		skipsStoreInit := false
+		skipsStoreInit := (cmd == serveCmd && serveGraphViewer) || cmd == codeCmd // The code parent only shows help or bundled licenses.
 		if cmd.Parent() != nil {
 			parentName := cmd.Parent().Name()
 			if parentName == "dolt" && slices.Contains(needsStoreDoltSubcommands, cmdName) {

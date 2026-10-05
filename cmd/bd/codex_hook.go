@@ -76,7 +76,7 @@ func runCodexHook(ctx context.Context, event string, stdin io.Reader, stdout io.
 
 	switch event {
 	case codexHookSessionStart:
-		return codexHookInjectPrime(ctx, stdout, codexHookSessionStart)
+		return codexHookInjectPrime(ctx, input, stdout)
 	case codexHookPreCompact:
 		return codexHookPreCompactCheck(ctx, stdout)
 	case codexHookPostCompact:
@@ -88,12 +88,23 @@ func runCodexHook(ctx context.Context, event string, stdin io.Reader, stdout io.
 	}
 }
 
-func codexHookInjectPrime(ctx context.Context, stdout io.Writer, event string) error {
+func codexHookInjectPrime(ctx context.Context, input codexHookInput, stdout io.Writer) error {
 	out, err := codexHookExecPrime(ctx, false)
-	if err != nil || strings.TrimSpace(out) == "" {
+	if err != nil {
+		if markerErr := codexHookMarkNeedsRefresh(input); markerErr != nil {
+			return markerErr
+		}
+		return writeCodexHookSystemMessage(stdout, fmt.Sprintf("Beads context unavailable at session start; refresh retained for the next prompt: %v", err))
+	}
+	if strings.TrimSpace(out) == "" {
 		return nil
 	}
-	return writeCodexHookAdditionalContext(stdout, event, out)
+	if err := writeCodexHookAdditionalContext(stdout, codexHookSessionStart, out); err != nil {
+		return err
+	}
+	// A successful start/resume already satisfies this workspace's pending refresh.
+	_ = os.Remove(codexHookRefreshMarkerPath(input))
+	return nil
 }
 
 func codexHookPreCompactCheck(ctx context.Context, stdout io.Writer) error {
@@ -116,11 +127,14 @@ func codexHookMaybeRefresh(ctx context.Context, input codexHookInput, stdout io.
 	if err != nil {
 		return writeCodexHookSystemMessage(stdout, fmt.Sprintf("Beads context refresh after compaction failed: %v", err))
 	}
-	_ = os.Remove(path)
 	if strings.TrimSpace(out) == "" {
 		return nil
 	}
-	return writeCodexHookAdditionalContext(stdout, codexHookUserPromptSubmit, out)
+	if err := writeCodexHookAdditionalContext(stdout, codexHookUserPromptSubmit, out); err != nil {
+		return err
+	}
+	_ = os.Remove(path)
+	return nil
 }
 
 func codexHookRefreshMarkerPath(input codexHookInput) string {

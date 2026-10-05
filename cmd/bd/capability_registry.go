@@ -312,6 +312,19 @@ var proxyCapabilityRegistry = []capabilityRow{
 	refusedPath("federation remove-peer", "proxy.federation.unsupported", ProxyReasonDesign, ""),
 	refusedPath("federation list-peers", "proxy.federation.unsupported", ProxyReasonDesign, ""),
 
+	// Derived maintenance requires the embedded driver's single-writer lifecycle.
+	refusedPath("maintain", "proxy.maintain.unsupported", ProxyReasonDesign, "").asParentGroup(),
+	refusedPath("maintain once", "proxy.maintain.unsupported", ProxyReasonDesign, ""),
+	refusedPath("maintain watch", "proxy.maintain.unsupported", ProxyReasonDesign, ""),
+
+	// Observed activity uses only the initialized embedded project's memory plane.
+	refusedPath("activity", "proxy.activity.unsupported", ProxyReasonDesign, "").asParentGroup(),
+	refusedPath("activity enable", "proxy.activity.unsupported", ProxyReasonDesign, ""),
+	refusedPath("activity disable", "proxy.activity.unsupported", ProxyReasonDesign, ""),
+	refusedPath("activity list", "proxy.activity.unsupported", ProxyReasonDesign, ""),
+	refusedPath("activity status", "proxy.activity.unsupported", ProxyReasonDesign, ""),
+	refusedPath("codex-activity", "proxy.activity.unsupported", ProxyReasonDesign, ""),
+
 	// --- multi-repo routing -------------------------------------------------
 	// Routing to another workspace bypasses the proxied root entirely, which is
 	// the same reason --repo is N/A mode-wide.
@@ -522,6 +535,10 @@ var proxyPermittedPaths = []string{
 	// formulas (parser-only), agent memory, swarm reads
 	"formula convert", "formula list", "formula schema", "formula show",
 	"mail", "memories", "ping", "prime", "recall", "remember",
+	// Fork knowledge uses the same direct/proxied memory role.
+	"knowledge context", "knowledge graph", "knowledge list", "knowledge record", "knowledge scan",
+	"knowledge sources", "knowledge prepare", "knowledge propose", "knowledge proposals", "knowledge review",
+	"code", "code scan", "code status", "code query", "code graph",
 	"swarm status", "swarm validate",
 
 	// human-in-the-loop queue

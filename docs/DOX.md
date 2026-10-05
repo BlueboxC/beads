@@ -15,6 +15,7 @@ Root DOX.md and the parent chain remain binding.
 ## Work Guidance
 
 Document shipped behavior and distinguish fork goals from implemented capabilities.
+Fork behavior and onboarding: core-concepts/fork-continuity.md. Detailed commands: core-concepts/knowledge.md and core-concepts/code-index.md. Generated CLI pages and upstream installation channels describe the upstream release. DOX contracts stay outside Mintlify navigation.
 
 ## Verification
 

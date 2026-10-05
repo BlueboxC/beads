@@ -804,3 +804,50 @@ func assertMemoriesRawAbsent(t *testing.T, ctx context.Context, fixture Memories
 		t.Fatalf("raw config row %q exists (%d rows), want none", storageKey, rows)
 	}
 }
+
+// Literal namespace selection must agree across collations and adapters.
+func RunMemoriesListLiteralPrefixes(t *testing.T, ctx context.Context, fixture MemoriesFixture) {
+	t.Helper()
+	seedMemoriesAllFourClasses(t, ctx, fixture)
+	base := fixture.IssuePrefix + "-literal/"
+	keys := []string{"a_%\\/✓", "a_%\\/✓/child", "aX%\\/✓", "A_%\\/✓", "á/one", "Á/one", "code/blob", "note"}
+	for _, key := range keys {
+		rememberMemory(t, ctx, fixture, memoryops.RememberRequest{Key: base + key, Content: "Mixed TARGET"})
+	}
+	cases := []struct {
+		req  memoryops.ListRequest
+		want []string
+	}{
+		{memoryops.ListRequest{KeyPrefix: base + "a_%\\/✓"}, keys[:2]},
+		{memoryops.ListRequest{KeyPrefix: base + "a_%\\/✓", ExcludeKeyPrefix: base + "a_%\\/✓/"}, keys[:1]},
+		{memoryops.ListRequest{KeyPrefix: base + "á/"}, []string{"á/one"}},
+		{memoryops.ListRequest{KeyPrefix: base + "a_%\\/✓", Search: "tArGeT"}, keys[:2]},
+		{memoryops.ListRequest{KeyPrefix: base + "a_%\\/✓", Search: "absent"}, nil},
+		{memoryops.ListRequest{KeyPrefix: base, ExcludeKeyPrefix: base}, nil},
+		{memoryops.ListRequest{KeyPrefix: base + "missing"}, nil},
+	}
+	for _, c := range cases {
+		result, err := fixture.Memories.List(ctx, c.req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.Memories == nil || len(result.Memories) != len(c.want) {
+			t.Fatalf("%+v: got %v, want %v", c.req, result.Memories, c.want)
+		}
+		for _, key := range c.want {
+			if result.Memories[base+key] != "Mixed TARGET" {
+				t.Fatalf("literal prefix lost %q", key)
+			}
+		}
+	}
+	// No include selector must still honor an exclusion without altering rows.
+	all, err := fixture.Memories.List(ctx, memoryops.ListRequest{ExcludeKeyPrefix: base})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key := range all.Memories {
+		if strings.HasPrefix(key, base) {
+			t.Fatal("exclusion ignored")
+		}
+	}
+}
