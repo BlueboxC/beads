@@ -16,7 +16,7 @@ Root DOX.md and the parent chain remain binding.
 
 Verify commit, rollback and failure behavior at the affected transaction boundary.
 
-Memories.List translates user prefixes to the memory namespace and calls ConfigUseCase.GetConfigByPrefix within one read-only unit of work. It never enumerates unrelated config or reserved namespaces to answer a selected list; empty selectors retain the complete memory plane. Remember keeps its existing atomic row-existence probe.
+Memories.List translates user prefixes to the memory namespace and calls ConfigUseCase.GetConfigByPrefix within one read-only unit of work. It never enumerates unrelated config or reserved namespaces to answer a selected list; empty selectors retain the complete memory plane. Remember, Recall and Forget derive presence from the selected key map within the same transaction, including stored empty values.
 
 ## Verification
 

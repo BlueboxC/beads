@@ -6,8 +6,10 @@ across coding sessions. It builds on upstream **v1.3.1** at
 `c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c` and the published bootstrap
 `6fd8ea6288a1c9c5fa23dcb22a47183e779ca59c`.
 
-The extensions share Beads' existing **Dolt memory plane**. No second graph
-service, vector database, schema migration or hosted model is introduced.
+The continuity extensions share Beads' existing **Dolt memory plane**, without
+another graph service, vector database or hosted model. Native correctness
+repairs include forward blocked-state migrations 0067 and ignored/0027; shipped
+predecessors and the Dolt dependency pin remain unchanged.
 Upstream attribution and the MIT license remain intact. Fork additions are
 available on `codex/project-continuity`; upstream installation channels do not
 contain them. See [installation and workflow](docs/core-concepts/fork-continuity.md).
@@ -54,6 +56,10 @@ preserving this fork's existing corrections:
 
 | Report | Included behavior | Source proposal |
 | --- | --- | --- |
+| [#7289](https://github.com/gastownhall/beads/issues/7289) | Retried single/batch creates regenerate IDs from the new snapshot and preserve concurrent writers. Explicit import IDs retain upsert semantics. | Fork fix; reporter's collision probe extended to tasks, wisps and batches |
+| [#7037](https://github.com/gastownhall/beads/issues/7037) | Forward migrations 0067 and ignored/0027 repair false blockers using separate target joins, without modifying shipped migration bytes or user timestamps. | Fork repair following the reporter's OR-free query design |
+| [#5963](https://github.com/gastownhall/beads/issues/5963) | Recall/Forget and CLI/HTTP recognize imported empty memory rows as present. New empty content remains refused. Selected-prefix reads and atomic batches remain supported. | [#5964](https://github.com/gastownhall/beads/pull/5964), adapted to preserve bounded UOW selection |
+| [#7091](https://github.com/gastownhall/beads/issues/7091) | Empty-parent updates for dotted IDs are refused atomically rather than claiming a detach that legacy readers undo. Explicit nonempty reparenting and nondotted detachment remain supported. | Fork compatibility guard; full dotted-ID detachment is not introduced |
 | [#7300](https://github.com/gastownhall/beads/issues/7300) | Ready readers and counts hide children of an indefinitely deferred parent. `IncludeDeferred` and unrelated relationships retain their behavior. | [#7304](https://github.com/gastownhall/beads/pull/7304), adapted to the baseline storage API |
 | [#7275](https://github.com/gastownhall/beads/issues/7275) | Long or dotted lowercase read-shaped memory keys cannot overwrite a neighboring memory. Explicit keyed writes keep their semantics. | [#7278](https://github.com/gastownhall/beads/pull/7278) |
 | [#7214](https://github.com/gastownhall/beads/issues/7214) | Failed process inspection preserves a live Dolt pid/port; EPERM means alive; stop does not signal an unverifiable or recycled PID. | [#7229](https://github.com/gastownhall/beads/pull/7229) |
@@ -82,7 +88,10 @@ These adaptations do not merge, approve or reopen the upstream pull requests.
 The verified local source cut passed the canonical Go baseline (102 packages),
 targeted regressions, native/Windows cross-lint, documentation checks and real
 Python-client round trips. Embedded Dolt has separate complete batch inventories.
-These results do not qualify server/Docker, native Windows, production or every
+Focused local-server tests reproduce concurrent data loss and migration false
+blockers and verify their repairs; embedded and UOW tests verify memory presence
+and parent-update parity. These results do not qualify all server/Docker paths,
+native Windows, production or every
 native compact cycle, and do not claim all advisory inventory warnings vanished.
 Private reproduction reports, installation evidence and backups stay local.
 

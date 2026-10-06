@@ -122,8 +122,8 @@ func isBareMemoryKey(value string) bool {
 
 // rememberBareKeyPath renders an exact-key recall or a refusal. A suggestion
 // is only a hint; it must never substitute another memory for the requested key.
-func rememberBareKeyPath(key, insight, existing, suggestion string) error {
-	if existing != "" {
+func rememberBareKeyPath(key, insight, existing, suggestion string, found bool) error {
+	if found {
 		if jsonOutput {
 			return outputJSON(map[string]interface{}{
 				"key":    key,
@@ -226,21 +226,21 @@ func printForgetResult(key, existing string) error {
 
 // printRecallResult renders the `bd recall` output (including the not-found
 // SilentExit contract).
-func printRecallResult(key, value string) error {
+func printRecallResult(key, value string, found bool) error {
 	if jsonOutput {
 		if jerr := outputJSON(map[string]interface{}{
 			"key":   key,
 			"value": value,
-			"found": value != "",
+			"found": found,
 		}); jerr != nil {
 			return jerr
 		}
-		if value == "" {
+		if !found {
 			return SilentExit()
 		}
 		return nil
 	}
-	if value == "" {
+	if !found {
 		fmt.Fprintf(os.Stderr, "No memory with key %q\n", key)
 		return SilentExit()
 	}
@@ -326,7 +326,7 @@ Examples:
 					suggestion = derived
 				}
 			}
-			return rememberBareKeyPath(insight, insight, recalled.Value, suggestion)
+			return rememberBareKeyPath(insight, insight, recalled.Value, suggestion, recalled.Found)
 		}
 
 		result, err := memories.Remember(rootCtx, memoryops.RememberRequest{Key: memoryKeyFlag, Content: insight})
@@ -479,7 +479,7 @@ Examples:
 			return HandleErrorRespectJSON("recalling memory: %v", err)
 		}
 
-		return printRecallResult(result.Key, result.Value)
+		return printRecallResult(result.Key, result.Value, result.Found)
 	},
 }
 

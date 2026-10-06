@@ -14,7 +14,7 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
-Keep semantic contracts explicit and shared across backends.
+Keep semantic contracts explicit and shared across backends. Empty-parent reparent requests for dotted IDs are refused before writing; preserve legacy implicit ancestry and explicit nonempty reparenting.
 
 ConfigUseCase/GetConfigByPrefix selects literal, case-sensitive stored-key prefixes inside the caller transaction, with optional exclusion. Empty inclusion selects all config; empty exclusion removes no keys. SQL is owned by domain/db. Failed queries, scans or iteration return an error without partial config.
 

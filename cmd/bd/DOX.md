@@ -12,6 +12,7 @@ Commands, flags, help, output and CLI fixtures.
 
 Root DOX.md and the parent chain remain binding.
 
+- Recall, bare-key remember and forget distinguish missing rows from imported empty values. Presence follows the memory role result; empty rows can be recalled and forgotten.
 - Bare lowercase memory keys may contain dots and exceed the automatic 50-character write-key truncation; recall-shaped misses remain read-only. Explicit `--key` writes retain their existing semantics.
 - Local backup restore refuses missing/non-directory sources and missing, empty or non-regular manifests before the existing Dolt restore call. This is structural preflight, not full backup integrity or atomic restore qualification.
 - Codex recovery uses the event's absolute existing cwd with the original operator environment, clearing inherited path/database selectors so caller startup cannot route the child prime to another project. An uninitialized event workspace emits no context. Missing cwd retains legacy caller behavior; invalid explicit cwd fails without emitting project context. Git observations and authority text name and apply only to the inspected workspace.

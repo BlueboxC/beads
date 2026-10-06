@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/storage/dberrors"
@@ -380,6 +381,15 @@ func (u *dependencyUseCaseImpl) ReparentWisp(ctx context.Context, childWispID, n
 	return u.reparent(ctx, childWispID, newParentID, actor, true)
 }
 
+// ValidateParentDetach refuses a clear that dotted-ID readers would undo.
+// Reparenting remains supported without changing existing identifiers.
+func ValidateParentDetach(childID, newParentID string) error {
+	if newParentID == "" && strings.Contains(childID, ".") {
+		return fmt.Errorf("%w: cannot detach dotted ID %s: legacy readers infer its parent from the ID; use a nonempty parent to reparent instead", storage.ErrValidation, childID)
+	}
+	return nil
+}
+
 func (u *dependencyUseCaseImpl) reparent(ctx context.Context, childID, newParentID, actor string, useWisp bool) error {
 	if childID == "" {
 		return fmt.Errorf("reparent: childID must not be empty")
@@ -388,6 +398,9 @@ func (u *dependencyUseCaseImpl) reparent(ctx context.Context, childID, newParent
 		return fmt.Errorf("reparent: %s cannot be its own parent", childID)
 	}
 
+	if err := ValidateParentDetach(childID, newParentID); err != nil {
+		return err
+	}
 	opts := DepInsertOpts{UseWispsTable: useWisp}
 	res, err := u.depRepo.ListByIssueIDs(ctx, []string{childID}, DepListOpts{
 		Types:         []types.DependencyType{types.DepParentChild},

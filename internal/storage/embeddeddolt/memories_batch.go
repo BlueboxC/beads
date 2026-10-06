@@ -37,7 +37,7 @@ func (m *memories) Apply(ctx context.Context, req memoryops.BatchRequest) (memor
 	var result memoryops.BatchResult
 	err := m.store.withConn(ctx, true, func(tx *sql.Tx) error {
 		for key, expected := range req.Expected {
-			value, err := storagememoryops.RecallInTx(ctx, tx, key)
+			value, _, err := storagememoryops.RecallInTx(ctx, tx, key)
 			if err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ func (m *memories) Apply(ctx context.Context, req memoryops.BatchRequest) (memor
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			value, err := storagememoryops.RecallInTx(ctx, tx, key)
+			value, _, err := storagememoryops.RecallInTx(ctx, tx, key)
 			if err != nil {
 				return err
 			}
