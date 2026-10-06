@@ -12,6 +12,8 @@ Storage interfaces, backend selection and persistence operations.
 
 Root DOX.md and the parent chain remain binding.
 
+- Ready-work readers withhold children connected by `parent-child` when the parent has deferred status or a future `defer_until`. `IncludeDeferred` lifts this selection filter; non-parent relations do not inherit it. Preserve parity between shared issueops and domain/db readers without rewriting stored task state.
+
 ## Work Guidance
 
 Memory namespace selectors preserve exact prefix semantics across adapters. All three adapters select namespaces in SQL before transferring values; the unit-of-work adapter uses ConfigUseCase/repository within its existing read transaction. Case-insensitive memory search remains in Go.

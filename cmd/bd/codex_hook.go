@@ -21,11 +21,11 @@ const (
 
 var codexHookMarkerDirOverride string
 
-var codexHookExecPrime = func(ctx context.Context, memoriesOnly bool) (string, error) {
+var codexHookExecPrime = func(ctx context.Context, cwd string, memoriesOnly bool) (string, error) {
 	if memoriesOnly {
-		return runBdPrime(ctx, "--memories-only")
+		return runBdPrimeInDir(ctx, cwd, "--memories-only")
 	}
-	return runBdPrime(ctx)
+	return runBdPrimeInDir(ctx, cwd)
 }
 
 type codexHookInput struct {

@@ -128,7 +128,14 @@ func TestKnowledgeProcessPersistenceAndHookProjection(t *testing.T) {
 		t.Fatalf("stored graph: %+v", graph)
 	}
 	outside := t.TempDir()
-	if out := run(outside, string(hookInput), "codex-hook", "SessionStart"); strings.Contains(out, "approved-goal") {
+	if out := run(outside, string(hookInput), "codex-hook", "SessionStart"); !strings.Contains(out, "approved-goal") {
+		t.Fatal("initialized event workspace lost knowledge when caller cwd differed")
+	}
+	outsideInput, err := json.Marshal(map[string]string{"session_id": "knowledge-outside", "cwd": outside})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out := run(outside, string(outsideInput), "codex-hook", "SessionStart"); strings.Contains(out, "approved-goal") {
 		t.Fatal("knowledge leaked outside initialized workspace")
 	}
 	// Distinct persistence regression: the old single TEXT value fails here.

@@ -13,7 +13,7 @@ import (
 )
 
 func deferredParentProbeRegex(issueTable string) string {
-	return `SELECT 1 FROM ` + issueTable + `\s+WHERE defer_until IS NOT NULL\s+AND defer_until > UTC_TIMESTAMP\(\)\s+LIMIT 1`
+	return `SELECT 1 FROM ` + issueTable + `\s+WHERE status = 'deferred'\s+OR \(defer_until IS NOT NULL AND defer_until > UTC_TIMESTAMP\(\)\)\s+LIMIT 1`
 }
 
 func deferredChildrenQueryRegex(depTable, issueTable string) string {
@@ -21,7 +21,7 @@ func deferredChildrenQueryRegex(depTable, issueTable string) string {
 	if issueTable == "wisps" {
 		targetCol = "depends_on_wisp_id"
 	}
-	return `SELECT dep\.issue_id\s+FROM ` + depTable + ` dep\s+JOIN ` + issueTable + ` parent ON parent\.id = dep\.` + targetCol + `\s+WHERE dep\.type = 'parent-child'\s+AND parent\.defer_until IS NOT NULL\s+AND parent\.defer_until > UTC_TIMESTAMP\(\)`
+	return `SELECT dep\.issue_id\s+FROM ` + depTable + ` dep\s+JOIN ` + issueTable + ` parent ON parent\.id = dep\.` + targetCol + `\s+WHERE dep\.type = 'parent-child'\s+AND \(parent\.status = 'deferred'\s+OR \(parent\.defer_until IS NOT NULL AND parent\.defer_until > UTC_TIMESTAMP\(\)\)\)`
 }
 
 func beginMockTx(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *sql.Tx) {

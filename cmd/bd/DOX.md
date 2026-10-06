@@ -12,6 +12,10 @@ Commands, flags, help, output and CLI fixtures.
 
 Root DOX.md and the parent chain remain binding.
 
+- Bare lowercase memory keys may contain dots and exceed the automatic 50-character write-key truncation; recall-shaped misses remain read-only. Explicit `--key` writes retain their existing semantics.
+- Local backup restore refuses missing/non-directory sources and missing, empty or non-regular manifests before the existing Dolt restore call. This is structural preflight, not full backup integrity or atomic restore qualification.
+- Codex recovery uses the event's absolute existing cwd with the original operator environment, clearing inherited path/database selectors so caller startup cannot route the child prime to another project. An uninitialized event workspace emits no context. Missing cwd retains legacy caller behavior; invalid explicit cwd fails without emitting project context. Git observations and authority text name and apply only to the inspected workspace.
+
 - Project `.env` loads only explicit selector and passive Dolt connection keys; executable settings come from the operator environment. Existing values, including empty values, win in both early selection and full loading. Absent selectors retain dotenv routing.
 - Legacy embedded database migration validates identifiers and real child directories before any rename or metadata write.
 - Malformed metadata.json blocks backend-selecting diagnostics, ordinary init and data commands. Preserve the selector and restore a known-valid project backup before retrying; never infer a fallback database from a parse failure. Store-free version remains available.

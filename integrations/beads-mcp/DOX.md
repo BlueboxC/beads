@@ -12,6 +12,8 @@ Python package exposing Beads operations to MCP clients.
 
 Root DOX.md and the parent chain remain binding.
 
+- MCP issue updates forward labels through `--set-labels`: omitted/null preserves existing labels, an empty list clears them, and a nonempty list replaces them. Preserve the existing literal-argument safeguards.
+
 - Comment/note IDs and bodies are literal positional arguments after `--`; configured CLI options precede that boundary.
 - Published runtime requirements include PyJWT >=2.15.0; the dev group requires urllib3 >=2.8.0. Preserve these security minima and the locked dependency graph.
 

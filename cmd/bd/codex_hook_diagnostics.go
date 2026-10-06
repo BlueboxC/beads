@@ -35,6 +35,7 @@ type codexHookDiagnostic struct {
 	RefreshPending  bool       `json:"refresh_pending"`
 	HookFailed      bool       `json:"hook_failed"`
 
+	cwd    string
 	path   string
 	marker string
 }
@@ -42,7 +43,7 @@ type codexHookDiagnostic struct {
 func beginCodexHookDiagnostic(event string, input codexHookInput) *codexHookDiagnostic {
 	marker := codexHookRefreshMarkerPath(input)
 	d := &codexHookDiagnostic{
-		Version: 1, Event: event, StartedAt: time.Now().UTC(), Phase: "running",
+		cwd: input.CWD, Version: 1, Event: event, StartedAt: time.Now().UTC(), Phase: "running",
 		PrimeResult: "not_requested", OutputResult: "none", marker: marker,
 		path: strings.TrimSuffix(marker, ".refresh") + "." + event + ".json",
 	}
@@ -68,7 +69,7 @@ func beginCodexHookDiagnostic(event string, input codexHookInput) *codexHookDiag
 }
 
 func (d *codexHookDiagnostic) prime(ctx context.Context, memoriesOnly bool) (string, error) {
-	out, err := codexHookExecPrime(ctx, memoriesOnly)
+	out, err := codexHookExecPrime(ctx, d.cwd, memoriesOnly)
 	switch {
 	case errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded):
 		d.PrimeResult = "timed_out"

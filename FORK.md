@@ -49,6 +49,20 @@ project execution, deployment or reopening completed work.
 
 ## Included corrections
 
+The following native fixes adapt upstream contributors' proposed patches while
+preserving this fork's existing corrections:
+
+| Report | Included behavior | Source proposal |
+| --- | --- | --- |
+| [#7300](https://github.com/gastownhall/beads/issues/7300) | Ready readers and counts hide children of an indefinitely deferred parent. `IncludeDeferred` and unrelated relationships retain their behavior. | [#7304](https://github.com/gastownhall/beads/pull/7304), adapted to the baseline storage API |
+| [#7275](https://github.com/gastownhall/beads/issues/7275) | Long or dotted lowercase read-shaped memory keys cannot overwrite a neighboring memory. Explicit keyed writes keep their semantics. | [#7278](https://github.com/gastownhall/beads/pull/7278) |
+| [#7214](https://github.com/gastownhall/beads/issues/7214) | Failed process inspection preserves a live Dolt pid/port; EPERM means alive; stop does not signal an unverifiable or recycled PID. | [#7229](https://github.com/gastownhall/beads/pull/7229) |
+| [#7098](https://github.com/gastownhall/beads/issues/7098), [#5972](https://github.com/gastownhall/beads/issues/5972) | Local restore rejects empty/non-backup directories before calling Dolt. Nonempty regular manifest required; full content integrity and atomic restore remain outside this preflight. | [#7192](https://github.com/gastownhall/beads/pull/7192) |
+| [#6873](https://github.com/gastownhall/beads/issues/6873) | Python MCP forwards label replacement and explicit clearing without changing omitted-label behavior. | [#6877](https://github.com/gastownhall/beads/pull/6877) |
+| [#7095](https://github.com/gastownhall/beads/issues/7095) | Codex hooks prime the payload workspace and scope Git authority there, including protection against selectors inherited from caller startup. | [#7119](https://github.com/gastownhall/beads/pull/7119), extended after its blocking review |
+
+These adaptations do not merge, approve or reopen the upstream pull requests.
+
 - Project `.env` imports only documented selector/passive connection keys. Operator
   values, including explicitly empty selectors, win during early and full loading.
   Executable overrides and credential commands remain operator-controlled.
