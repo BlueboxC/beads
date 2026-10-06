@@ -188,7 +188,7 @@ func runFormulaList(cmd *cobra.Command, args []string) error {
 			if e.Vars > 0 {
 				varInfo = fmt.Sprintf(" (%d vars)", e.Vars)
 			}
-			fmt.Printf("  %-25s %s%s\n", e.Name, e.Description, varInfo)
+			fmt.Printf("  %-25s %s%s\n", e.Name, ui.SanitizeForTerminal(e.Description), varInfo)
 		}
 		fmt.Println()
 	}
@@ -225,7 +225,7 @@ func runFormulaShow(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n%s %s\n", typeIcon, f.Formula)
 	fmt.Printf("   Type: %s\n", f.Type)
 	if f.Description != "" {
-		fmt.Printf("   Description: %s\n", f.Description)
+		fmt.Printf("   Description: %s\n", ui.SanitizeForTerminal(f.Description))
 	}
 	fmt.Printf("   Source: %s\n", f.Source)
 
@@ -467,7 +467,7 @@ func printFormulaStepsTree(steps []*formula.Step, indent string) {
 			typeStr = fmt.Sprintf(" (%s)", step.Type)
 		}
 
-		fmt.Printf("%s%s %s: %s%s%s\n", indent, connector, step.ID, step.Title, typeStr, depStr)
+		fmt.Printf("%s%s %s: %s%s%s\n", indent, connector, step.ID, ui.SanitizeForTerminal(step.Title), typeStr, depStr)
 
 		if len(step.Children) > 0 {
 			childIndent := indent

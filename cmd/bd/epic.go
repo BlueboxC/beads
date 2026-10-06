@@ -75,7 +75,7 @@ func renderEpicStatus(epics []*types.EpicStatus, eligibleOnly bool) error {
 		} else {
 			statusIcon = "○"
 		}
-		fmt.Printf("%s %s %s\n", statusIcon, ui.RenderAccent(epic.ID), ui.RenderBold(epic.Title))
+		fmt.Printf("%s %s %s\n", statusIcon, ui.RenderAccent(epic.ID), ui.RenderBold(ui.SanitizeForTerminal(epic.Title)))
 		fmt.Printf("   Progress: %d/%d children closed (%d%%)\n",
 			epicStatus.ClosedChildren, epicStatus.TotalChildren, percentage)
 		if epicStatus.EligibleForClose {
@@ -176,7 +176,7 @@ func outputCloseEligibleDryRun(eligibleEpics []*types.EpicStatus, reason string)
 	}
 	fmt.Printf("Would close %d epic(s) with reason %q:\n", len(eligibleEpics), reason)
 	for _, epicStatus := range eligibleEpics {
-		fmt.Printf("  - %s: %s\n", epicStatus.Epic.ID, epicStatus.Epic.Title)
+		fmt.Printf("  - %s: %s\n", epicStatus.Epic.ID, ui.SanitizeForTerminal(epicStatus.Epic.Title))
 	}
 	return nil
 }

@@ -64,10 +64,10 @@ func formatPrettyIssue(issue *types.Issue) string {
 			ui.RenderMuted(issue.ID),
 			ui.RenderMuted(fmt.Sprintf("P%d", issue.Priority)),
 			ui.RenderMuted(string(issue.IssueType)),
-			ui.RenderMuted(" "+issue.Title))
+			ui.RenderMuted(" "+ui.SanitizeForTerminal(issue.Title)))
 	}
 
-	return fmt.Sprintf("%s %s %s %s%s", statusIcon, issue.ID, priorityTag, typeBadge, issue.Title)
+	return fmt.Sprintf("%s %s %s %s%s", statusIcon, issue.ID, priorityTag, typeBadge, ui.SanitizeForTerminal(issue.Title))
 }
 
 // formatPrettyIssueWithContext formats an issue with optional parent epic annotation
@@ -76,7 +76,7 @@ func formatPrettyIssueWithContext(issue *types.Issue, parentEpic string) string 
 	if parentEpic == "" {
 		return base
 	}
-	return base + " " + ui.RenderMuted("← "+parentEpic)
+	return base + " " + ui.RenderMuted("← "+ui.SanitizeForTerminal(parentEpic))
 }
 
 // formatIssueLong formats a single issue in long format to a buffer.
@@ -87,7 +87,7 @@ func formatIssueLong(buf *strings.Builder, issue *types.Issue, labels []string, 
 	if status == "closed" {
 		line := fmt.Sprintf("%s%s [P%d] [%s] %s\n  %s",
 			pinIndicator(issue), issue.ID, issue.Priority,
-			issue.IssueType, status, issue.Title)
+			issue.IssueType, status, ui.SanitizeForTerminal(issue.Title))
 		buf.WriteString(ui.RenderClosedLine(line))
 		buf.WriteString("\n")
 	} else {
@@ -97,10 +97,10 @@ func formatIssueLong(buf *strings.Builder, issue *types.Issue, labels []string, 
 			ui.RenderPriority(issue.Priority),
 			ui.RenderType(string(issue.IssueType)),
 			ui.RenderStatus(status)))
-		buf.WriteString(fmt.Sprintf("  %s\n", issue.Title))
+		buf.WriteString(fmt.Sprintf("  %s\n", ui.SanitizeForTerminal(issue.Title)))
 	}
 	if issue.Assignee != "" {
-		buf.WriteString(fmt.Sprintf("  Assignee: %s\n", issue.Assignee))
+		buf.WriteString(fmt.Sprintf("  Assignee: %s\n", ui.SanitizeForTerminal(issue.Assignee)))
 	}
 	// This is the one text rendering in the tree that prints a field --brief
 	// drops, so it is the one that has to say so. Keyed off the ROW, not off
@@ -110,7 +110,7 @@ func formatIssueLong(buf *strings.Builder, issue *types.Issue, labels []string, 
 	// which is the ambiguity the flag is otherwise careful to avoid.
 	if issue.IsLitePartial {
 		buf.WriteString("  Description: (omitted by --brief)\n")
-	} else if desc := strings.TrimSpace(issue.Description); desc != "" {
+	} else if desc := strings.TrimSpace(ui.SanitizeForTerminal(issue.Description)); desc != "" {
 		buf.WriteString("  Description:\n")
 		for _, line := range strings.Split(desc, "\n") {
 			buf.WriteString(fmt.Sprintf("    %s\n", line))
@@ -136,9 +136,9 @@ func formatIssueLong(buf *strings.Builder, issue *types.Issue, labels []string, 
 func formatAgentIssue(buf *strings.Builder, issue *types.Issue, blockedBy, blocks []string, parent string) {
 	depInfo := formatDependencyInfo(blockedBy, blocks, parent)
 	if depInfo != "" {
-		buf.WriteString(fmt.Sprintf("%s: %s %s\n", issue.ID, issue.Title, depInfo))
+		buf.WriteString(fmt.Sprintf("%s: %s %s\n", issue.ID, ui.SanitizeForTerminal(issue.Title), depInfo))
 	} else {
-		buf.WriteString(fmt.Sprintf("%s: %s\n", issue.ID, issue.Title))
+		buf.WriteString(fmt.Sprintf("%s: %s\n", issue.ID, ui.SanitizeForTerminal(issue.Title)))
 	}
 }
 
@@ -242,7 +242,7 @@ func formatIssueCompact(buf *strings.Builder, issue *types.Issue, labels []strin
 	}
 	assigneeStr := ""
 	if issue.Assignee != "" {
-		assigneeStr = fmt.Sprintf(" @%s", issue.Assignee)
+		assigneeStr = fmt.Sprintf(" @%s", ui.SanitizeForTerminal(issue.Assignee))
 	}
 
 	// Format dependency info
@@ -261,7 +261,7 @@ func formatIssueCompact(buf *strings.Builder, issue *types.Issue, labels []strin
 		// Closed issues: entire line muted (fades visually)
 		line := fmt.Sprintf("%s %s%s [P%d] [%s]%s%s - %s%s",
 			statusIcon, pinIndicator(issue), issue.ID, issue.Priority,
-			issue.IssueType, assigneeStr, labelsStr, issue.Title, depInfo)
+			issue.IssueType, assigneeStr, labelsStr, ui.SanitizeForTerminal(issue.Title), depInfo)
 		buf.WriteString(ui.RenderClosedLine(line))
 		buf.WriteString("\n")
 	} else {
@@ -272,7 +272,7 @@ func formatIssueCompact(buf *strings.Builder, issue *types.Issue, labels []strin
 			ui.RenderID(issue.ID),
 			ui.RenderPriority(issue.Priority),
 			ui.RenderType(string(issue.IssueType)),
-			assigneeStr, labelsStr, issue.Title, depInfo))
+			assigneeStr, labelsStr, ui.SanitizeForTerminal(issue.Title), depInfo))
 	}
 }
 

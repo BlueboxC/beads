@@ -12,6 +12,10 @@ Commands, flags, help, output and CLI fixtures.
 
 Root DOX.md and the parent chain remain binding.
 
+- Project `.env` loads only explicit selector and passive Dolt connection keys; executable settings come from the operator environment. Existing values, including empty values, win in both early selection and full loading. Absent selectors retain dotenv routing.
+- Legacy embedded database migration validates identifiers and real child directories before any rename or metadata write.
+- Malformed metadata.json blocks backend-selecting diagnostics, ordinary init and data commands. Preserve the selector and restore a known-valid project backup before retrying; never infer a fallback database from a parse failure. Store-free version remains available.
+- Sanitize stored issue text before terminal measurement, styling or truncation. The default DAG also displays title newlines/tabs as spaces within one row; preserve original values in storage, JSON and exports.
 - `knowledge` uses the existing memory role for document provenance and explicit assertions. Prime projects bounded knowledge alongside plain memories; the four context hooks remain read-only and use the same recovery path. Workspace-relative sources follow the selected Beads root, including nested invocations. Task, knowledge and code HTML graphs use the shared native viewer with typed colors, drag/zoom and readable node evidence. `code scan` explicitly updates derived Python/Go/JS/TS AST through the same memory role; query/status detect staleness. Prime/hooks only project a bounded snapshot summary and do not run parsers or refresh code. Knowledge symbol links require a current named symbol and bind its file/DOX.
 
 - `graph --project` composes a read-only overview of local tasks (all states), explicit knowledge and all indexed code directories. It preserves file/symbol locations, hashes, validity and typed aggregate syntax counts in the same offline snapshot. It never follows foreign workspace routes, scans code, renews assertions or infers task blockers. Direct workspace connection only; `--max-rows` applies to the complete task selection.

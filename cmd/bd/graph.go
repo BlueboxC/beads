@@ -953,7 +953,7 @@ func renderGraph(layout *GraphLayout, subgraph *TemplateSubgraph) {
 	// Calculate box width based on longest title
 	maxTitleLen := 0
 	for _, node := range layout.Nodes {
-		titleLen := len(truncateTitle(node.Issue.Title, 30))
+		titleLen := len(truncateTitle(ui.SanitizeForTerminal(node.Issue.Title), 30))
 		if titleLen > maxTitleLen {
 			maxTitleLen = titleLen
 		}
@@ -1147,7 +1147,7 @@ func formatCompactNode(node *GraphNode) string {
 	priorityTag := ui.RenderPriority(node.Issue.Priority)
 
 	// Title - truncate if too long
-	title := truncateTitle(node.Issue.Title, 50)
+	title := truncateTitle(ui.SanitizeForTerminal(node.Issue.Title), 50)
 
 	// Build line - apply status style to entire line for closed issues
 	style := ui.GetStatusStyle(status)
@@ -1165,7 +1165,7 @@ func formatCompactNode(node *GraphNode) string {
 // renderNodeBox renders a single node as an ASCII box
 // Uses semantic status styles from ui package for consistency
 func renderNodeBox(node *GraphNode, width int) string {
-	title := truncateTitle(node.Issue.Title, width-4)
+	title := truncateTitle(ui.SanitizeForTerminal(node.Issue.Title), width-4)
 	paddedTitle := padRight(title, width-4)
 	status := string(node.Issue.Status)
 
@@ -1251,7 +1251,7 @@ func computeDependencyCounts(subgraph *TemplateSubgraph) (blocks map[string]int,
 // Uses semantic status styles from ui package for consistency across commands
 // Design principle: only actionable states get color, closed items fade
 func renderNodeBoxWithDeps(node *GraphNode, width int, blocksCount int, blockedByCount int) string {
-	title := truncateTitle(node.Issue.Title, width-4)
+	title := truncateTitle(ui.SanitizeForTerminal(node.Issue.Title), width-4)
 	paddedTitle := padRight(title, width-4)
 	status := string(node.Issue.Status)
 

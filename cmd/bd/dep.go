@@ -1080,7 +1080,7 @@ Examples:
 				idStr = iss.ID
 			}
 			fmt.Printf("  %s: %s [P%d] (%s) via %s\n",
-				idStr, iss.Title, iss.Priority, iss.Status, iss.DependencyType)
+				idStr, ui.SanitizeForTerminal(iss.Title), iss.Priority, iss.Status, iss.DependencyType)
 		}
 		fmt.Println()
 		return nil
@@ -1438,11 +1438,11 @@ func formatTreeNode(node *types.TreeNode, isBlocked bool) string {
 		var idStr string
 		switch node.Status {
 		case types.StatusClosed:
-			idStr = ui.StatusClosedStyle.Render(node.Title)
+			idStr = ui.StatusClosedStyle.Render(ui.SanitizeForTerminal(node.Title))
 		case types.StatusBlocked:
-			idStr = ui.StatusBlockedStyle.Render(node.Title)
+			idStr = ui.StatusBlockedStyle.Render(ui.SanitizeForTerminal(node.Title))
 		default:
-			idStr = node.Title
+			idStr = ui.SanitizeForTerminal(node.Title)
 		}
 		return fmt.Sprintf("%s (external)", idStr)
 	}
@@ -1464,7 +1464,7 @@ func formatTreeNode(node *types.TreeNode, isBlocked bool) string {
 
 	// Build the line
 	line := fmt.Sprintf("%s: %s [P%d] (%s)",
-		idStr, node.Title, node.Priority, node.Status)
+		idStr, ui.SanitizeForTerminal(node.Title), node.Priority, node.Status)
 
 	// Show edge type for non-root nodes (GH#3565)
 	if node.Depth > 0 && node.EdgeFromParent != "" {

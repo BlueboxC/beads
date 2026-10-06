@@ -460,18 +460,42 @@ func applyNoColorFlag() {
 }
 
 // loadBeadsEnvFile loads .beads/.env into process environment for per-project
-// Dolt credentials (GH#2520). Uses gotenv.Load which is non-overriding —
-// existing shell env vars always take precedence.
+// Dolt credentials (GH#2520). Only passive connection and selector settings
+// are imported; executable settings must come from the operator's environment.
+// Existing shell env vars, including explicit empty values, take precedence.
 // Safe to call with an empty beadsDir (no-op).
 func loadBeadsEnvFile(beadsDir string) {
 	if beadsDir == "" {
 		return
 	}
 	envFile := filepath.Join(beadsDir, ".env")
-	if _, err := os.Stat(envFile); err != nil {
+	pairs, err := gotenv.Read(envFile)
+	if err != nil {
 		return
 	}
-	_ = gotenv.Load(envFile)
+	keys := make([]string, 0, len(pairs))
+	for key := range pairs {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
+		allowedKey := key
+		if runtime.GOOS == "windows" {
+			allowedKey = strings.ToUpper(key)
+		}
+		switch allowedKey {
+		case "BEADS_DIR", "BEADS_DB", "BD_DB",
+			"BEADS_DOLT_PASSWORD", "BEADS_DOLT_SERVER_MODE", "BEADS_DOLT_SHARED_SERVER",
+			"BEADS_DOLT_SERVER_HOST", "BEADS_DOLT_SERVER_PORT", "BEADS_DOLT_PORT",
+			"BEADS_DOLT_SERVER_SOCKET", "BEADS_DOLT_SERVER_USER", "BEADS_DOLT_SERVER_DATABASE",
+			"BEADS_DOLT_SERVER_TLS":
+			if _, present := os.LookupEnv(key); !present {
+				_ = os.Setenv(key, pairs[key])
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "bd: ignored unsupported project .env key %q; set it in the operator environment if needed\n", key)
+		}
+	}
 }
 
 func logConfigDiscovery(beadsDir, reason string) {
@@ -501,7 +525,7 @@ func loadBeadsSelectionEnvFile(beadsDir string) {
 		return
 	}
 	for _, key := range []string{"BEADS_DIR", "BEADS_DB", "BD_DB"} {
-		if os.Getenv(key) != "" {
+		if _, present := os.LookupEnv(key); present {
 			continue
 		}
 		if value, ok := pairs[key]; ok && strings.TrimSpace(value) != "" {
@@ -723,10 +747,9 @@ func prepareSelectedCommandContext(beadsDir string, loadEnv bool) {
 	}
 	config.CheckBeadsDirPermissions(beadsDir)
 	if err := loadServerModeFromBeadsDir(beadsDir); err != nil {
-		// Warn, don't fatal: this context also serves no-DB commands —
-		// doctor, init, bootstrap, config — which are exactly the repair
-		// paths for a corrupt metadata.json. Data commands stay protected
-		// by the hard error at store init and in the store factories.
+		// Context preparation also serves store-free commands. Backend-
+		// selecting commands (including doctor/init/bootstrap) enforce their
+		// own metadata guard; data store factories reject the load failure.
 		fmt.Fprintf(os.Stderr, "warning: %v\n", err)
 	}
 }

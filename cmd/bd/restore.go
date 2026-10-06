@@ -186,22 +186,22 @@ func init() {
 // or "Dolt commit abc12345").
 func displayRestoredIssue(issue *types.Issue, provenance string) {
 	fmt.Printf("\n%s %s (restored from %s)\n", ui.RenderAccent("📜"), ui.RenderBold(issue.ID), ui.RenderWarn(provenance))
-	fmt.Printf("%s\n\n", ui.RenderBold(issue.Title))
+	fmt.Printf("%s\n\n", ui.RenderBold(ui.SanitizeForTerminal(issue.Title)))
 
 	if issue.Description != "" {
-		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Description:"), issue.Description)
+		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Description:"), ui.SanitizeForTerminal(issue.Description))
 	}
 
 	if issue.Design != "" {
-		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Design:"), issue.Design)
+		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Design:"), ui.SanitizeForTerminal(issue.Design))
 	}
 
 	if issue.AcceptanceCriteria != "" {
-		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Acceptance Criteria:"), issue.AcceptanceCriteria)
+		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Acceptance Criteria:"), ui.SanitizeForTerminal(issue.AcceptanceCriteria))
 	}
 
 	if issue.Notes != "" {
-		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Notes:"), issue.Notes)
+		fmt.Printf("%s\n%s\n\n", ui.RenderBold("Notes:"), ui.SanitizeForTerminal(issue.Notes))
 	}
 
 	fmt.Printf("%s %s | %s %d | %s %s\n",
@@ -211,7 +211,7 @@ func displayRestoredIssue(issue *types.Issue, provenance string) {
 	)
 
 	if issue.Assignee != "" {
-		fmt.Printf("%s %s\n", ui.RenderBold("Assignee:"), issue.Assignee)
+		fmt.Printf("%s %s\n", ui.RenderBold("Assignee:"), ui.SanitizeForTerminal(issue.Assignee))
 	}
 
 	if len(issue.Labels) > 0 {

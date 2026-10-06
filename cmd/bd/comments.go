@@ -9,6 +9,7 @@ import (
 	"github.com/steveyegge/beads/internal/metrics"
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/uimd"
 	"github.com/steveyegge/beads/issueops"
 )
@@ -136,8 +137,8 @@ Examples:
 			if localTime {
 				ts = ts.Local()
 			}
-			fmt.Printf("[%s] at %s\n", comment.Author, ts.Format("2006-01-02 15:04"))
-			rendered := uimd.RenderMarkdown(comment.Text)
+			fmt.Printf("[%s] at %s\n", ui.SanitizeForTerminal(comment.Author), ts.Format("2006-01-02 15:04"))
+			rendered := uimd.RenderMarkdown(ui.SanitizeForTerminal(comment.Text))
 			for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
 				fmt.Printf("  %s\n", line)
 			}

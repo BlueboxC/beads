@@ -168,7 +168,7 @@ func runWispGCProxiedServer(ctx context.Context, dryRun bool, ageThreshold time.
 		fmt.Printf("Dry run: would clean %d abandoned wisp(s):\n\n", len(abandoned))
 		for _, issue := range abandoned {
 			age := formatTimeAgo(issue.UpdatedAt)
-			fmt.Printf("  %s: %s (last updated: %s)\n", issue.ID, issue.Title, age)
+			fmt.Printf("  %s: %s (last updated: %s)\n", issue.ID, ui.SanitizeForTerminal(issue.Title), age)
 		}
 		fmt.Printf("\nRun without --dry-run to delete these wisps.\n")
 		return nil

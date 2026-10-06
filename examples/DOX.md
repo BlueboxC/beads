@@ -18,6 +18,6 @@ Examples must state prerequisites and use disposable data for demonstrations.
 
 ## Verification
 
-
+Run `scripts/build-examples.sh` after dependency changes to type-check both example modules against their recorded dependency graphs.
 
 ## Child DOX Index

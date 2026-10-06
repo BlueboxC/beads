@@ -265,7 +265,7 @@ func burnWispMolecule(ctx context.Context, resolvedID string, dryRun, force bool
 
 	if dryRun {
 		fmt.Printf("\nDry run: would burn wisp %s\n\n", resolvedID)
-		fmt.Printf("Root: %s\n", subgraph.Root.Title)
+		fmt.Printf("Root: %s\n", ui.SanitizeForTerminal(subgraph.Root.Title))
 		fmt.Printf("\nWisp issues to delete (%d total):\n", len(wispIDs))
 		for _, issue := range subgraph.Issues {
 			if !issue.Ephemeral {
@@ -273,9 +273,9 @@ func burnWispMolecule(ctx context.Context, resolvedID string, dryRun, force bool
 			}
 			status := string(issue.Status)
 			if issue.ID == subgraph.Root.ID {
-				fmt.Printf("  - [%s] %s (%s) [ROOT]\n", status, issue.Title, issue.ID)
+				fmt.Printf("  - [%s] %s (%s) [ROOT]\n", status, ui.SanitizeForTerminal(issue.Title), issue.ID)
 			} else {
-				fmt.Printf("  - [%s] %s (%s)\n", status, issue.Title, issue.ID)
+				fmt.Printf("  - [%s] %s (%s)\n", status, ui.SanitizeForTerminal(issue.Title), issue.ID)
 			}
 		}
 		fmt.Printf("\nNo digest will be created (use 'bd mol squash' to create one).\n")
@@ -336,14 +336,14 @@ func burnPersistentMolecule(ctx context.Context, resolvedID string, dryRun, forc
 
 	if dryRun {
 		fmt.Printf("\nDry run: would burn mol %s\n\n", resolvedID)
-		fmt.Printf("Root: %s\n", subgraph.Root.Title)
+		fmt.Printf("Root: %s\n", ui.SanitizeForTerminal(subgraph.Root.Title))
 		fmt.Printf("\nIssues to delete (%d total):\n", len(issueIDs))
 		for _, issue := range subgraph.Issues {
 			status := string(issue.Status)
 			if issue.ID == subgraph.Root.ID {
-				fmt.Printf("  - [%s] %s (%s) [ROOT]\n", status, issue.Title, issue.ID)
+				fmt.Printf("  - [%s] %s (%s) [ROOT]\n", status, ui.SanitizeForTerminal(issue.Title), issue.ID)
 			} else {
-				fmt.Printf("  - [%s] %s (%s)\n", status, issue.Title, issue.ID)
+				fmt.Printf("  - [%s] %s (%s)\n", status, ui.SanitizeForTerminal(issue.Title), issue.ID)
 			}
 		}
 		fmt.Printf("\nNote: Persistent mol - deletions sync to remotes.\n")

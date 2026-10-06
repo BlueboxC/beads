@@ -59,8 +59,8 @@ func runCommentsProxiedServer(cmd *cobra.Command, ctx context.Context, args []st
 		if localTime {
 			ts = ts.Local()
 		}
-		fmt.Printf("[%s] at %s\n", comment.Author, ts.Format("2006-01-02 15:04"))
-		rendered := uimd.RenderMarkdown(comment.Text)
+		fmt.Printf("[%s] at %s\n", ui.SanitizeForTerminal(comment.Author), ts.Format("2006-01-02 15:04"))
+		rendered := uimd.RenderMarkdown(ui.SanitizeForTerminal(comment.Text))
 		for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
 			fmt.Printf("  %s\n", line)
 		}

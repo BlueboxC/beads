@@ -75,7 +75,7 @@ func runShip(cmd *cobra.Command, args []string) error {
 	if len(issues) > 1 {
 		fmt.Fprintf(os.Stderr, "Error: multiple issues found with label '%s':\n", exportLabel)
 		for _, issue := range issues {
-			fmt.Fprintf(os.Stderr, "  %s: %s (%s)\n", issue.ID, issue.Title, issue.Status)
+			fmt.Fprintf(os.Stderr, "  %s: %s (%s)\n", issue.ID, ui.SanitizeForTerminal(issue.Title), issue.Status)
 		}
 		return HandleErrorRespectJSON("only one issue should have this label")
 	}

@@ -93,7 +93,7 @@ func runMigratePersonal(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n%s personal issues created by %s found in project database:\n\n",
 		ui.RenderBold(fmt.Sprintf("%d", len(personal))), ui.RenderAccent(identity))
 	for _, issue := range personal {
-		fmt.Printf("  %s  %s\n", ui.RenderAccent(issue.ID), issue.Title)
+		fmt.Printf("  %s  %s\n", ui.RenderAccent(issue.ID), ui.SanitizeForTerminal(issue.Title))
 	}
 	fmt.Println()
 

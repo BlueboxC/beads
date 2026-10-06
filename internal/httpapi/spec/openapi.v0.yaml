@@ -5942,7 +5942,8 @@ paths:
         '200':
           description: >-
             An open event stream. It ends when the client disconnects, when the
-            server shuts down, or with the `truncated` event below; there is no
+            server shuts down, when its bearer credential is revoked after a
+            successful token-file reload, or with the `truncated` event below; there is no
             end-of-stream marker otherwise, and a client is expected to
             reconnect.
 

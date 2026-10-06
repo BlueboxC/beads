@@ -275,7 +275,7 @@ func outputCookDryRun(resolved *formula.Formula, protoID string, runtimeMode boo
 			if len(attrs) > 0 {
 				attrStr = fmt.Sprintf(" (%s)", strings.Join(attrs, ", "))
 			}
-			fmt.Printf("  {{%s}}: %s%s\n", name, def.Description, attrStr)
+			fmt.Printf("  {{%s}}: %s%s\n", name, ui.SanitizeForTerminal(def.Description), attrStr)
 		}
 	}
 }
@@ -1094,7 +1094,7 @@ func printFormulaSteps(steps []*formula.Step, indent string) {
 			sourceStr = fmt.Sprintf(" [from: %s@%s]", step.SourceFormula, step.SourceLocation)
 		}
 
-		fmt.Printf("%s%s %s: %s%s%s%s\n", indent, connector, step.ID, step.Title, typeStr, depStr, sourceStr)
+		fmt.Printf("%s%s %s: %s%s%s%s\n", indent, connector, step.ID, ui.SanitizeForTerminal(step.Title), typeStr, depStr, sourceStr)
 
 		if len(step.Children) > 0 {
 			childIndent := indent

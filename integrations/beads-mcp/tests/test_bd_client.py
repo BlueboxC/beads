@@ -914,3 +914,32 @@ async def test_list_comments_invalid_response(bd_client, mock_process):
         comments = await bd_client.list_comments(params)
 
     assert comments == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("command", ["comment", "note"])
+@pytest.mark.parametrize(
+    "text", ["--file=/tmp/decoy with spaces", "--actor=spoof", "--", "-", "Línea uno\n🛠 Línea dos"]
+)
+async def test_text_commands_keep_untrusted_arguments_positional(bd_client, mock_process, command, text):
+    """Text and IDs cannot become flags; configured globals remain active."""
+    bd_client.actor = "reviewer"
+    bd_client.no_auto_flush = True
+    bd_client.no_auto_import = True
+    mock_process.communicate = AsyncMock(return_value=(b"Added\n", b""))
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
+        if command == "comment":
+            await bd_client.add_comment(AddCommentParams(issue_id="--file=/tmp/id", text=text))
+        else:
+            await bd_client.add_note(AddNoteParams(issue_id="--file=/tmp/id", text=text))
+    assert mock_exec.call_args.args == (
+        bd_client.bd_path,
+        command,
+        "--actor",
+        "reviewer",
+        "--no-auto-flush",
+        "--no-auto-import",
+        "--",
+        "--file=/tmp/id",
+        text,
+    )

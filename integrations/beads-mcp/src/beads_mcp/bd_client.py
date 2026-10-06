@@ -694,13 +694,14 @@ class BdCliClient(BdClientBase):
                 returncode=process.returncode or 1,
             )
 
-    async def _run_text_command(self, *args: str) -> str:
+    async def _run_text_command(self, command: str, *positional: str) -> str:
         """Run a bd command that returns plain text (not JSON) and return stdout.
 
         Used for subcommands like `comment`/`note` that print a confirmation
         line rather than JSON. Mirrors _run_command's env and error handling.
         """
-        cmd = [self.bd_path, *args, *self._global_flags()]
+        # Text and issue IDs are data, even when they resemble CLI options.
+        cmd = [self.bd_path, command, *self._global_flags(), "--", *positional]
 
         env = os.environ.copy()
         if self.beads_dir:
@@ -723,7 +724,7 @@ class BdCliClient(BdClientBase):
 
         if process.returncode != 0:
             raise BdCommandError(
-                f"bd {args[0]} failed: {stderr.decode()}",
+                f"bd {command} failed: {stderr.decode()}",
                 stderr=stderr.decode(),
                 returncode=process.returncode or 1,
             )

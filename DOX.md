@@ -6,7 +6,7 @@ Own the BlueboxC Beads fork and its development contracts for persistent project
 
 ## Ownership
 
-Root owns fork policy, public API packages, license, build/version files, small packaging assets and the Child DOX Index. Indexed children own their subtrees. FORK.md describes the public baseline and implemented extensions; docs/core-concepts/fork-continuity.md owns fork onboarding and capability limits.
+Root owns fork policy, public API packages, license, build/version files, small packaging assets and the Child DOX Index. Indexed children own their subtrees. FORK.md describes the public baseline, implemented extensions and verified corrections; docs/core-concepts/fork-continuity.md owns fork onboarding and capability limits.
 
 ## Local Contracts
 
@@ -19,8 +19,11 @@ Root owns fork policy, public API packages, license, build/version files, small 
 ## Work Guidance
 
 - Prefer the simplest complete implementation and existing extension points. Avoid speculative configuration and dependencies.
+- The owner authorizes publishing the verified fork corrections and extensions to BlueboxC/beads. Pull request creation/reopening remains suspended until separately authorized; keep project data, installation records and private evidence out of public commits.
+- Include every verified correction in this fork and its local installed build without waiting for upstream review. Keep private disclosure and publication approval separate from local fixes.
 - The fork objective is continuity: recover project direction, existing modules, verified fixes and their evidence. Use one Beads product and its existing Dolt storage boundary.
-- Public baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c, plus the published bootstrap. Continuity extensions reuse the existing Dolt memory boundary. Keep operator configuration, project databases and undisclosed vulnerability patches outside public commits.
+- Native baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c. Verified corrections preserve its baseline API; continuity extensions reuse the existing Dolt memory boundary. Keep main available for upstream synchronization and publish fork work on codex/project-continuity.
+- Root and example Go modules require gRPC >=1.83.2 and golang.org/x/crypto >=0.56.0; keep the root Dolt pin unchanged and align example locks with the root effective dependency graph.
 - Follow AGENTS.md, AGENT_INSTRUCTIONS.md and engdocs/TESTING.md. Keep manual experiments in disposable directories.
 
 ## Verification

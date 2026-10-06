@@ -35,8 +35,8 @@ Detailed references: [knowledge](docs/core-concepts/knowledge.md),
 
 ## Public source and private operation
 
-This public branch starts from already-published history. Operator-only
-vulnerability patches are not included. Project databases, learned project
+This branch includes the verified fork corrections independently of upstream
+review. Upstream pull requests remain subject to separate owner authorization. Project databases, learned project
 records, chat/session exports, machine configuration, credentials, backups and
 installation evidence remain outside this repository. Source publication does
 not authorize publishing `refs/dolt/data`.
@@ -46,6 +46,31 @@ projects. Activity capture, derived maintenance and the live viewer have
 separate opt-in steps. Use the normal Codex hook trust flow; setup never grants
 trust. Neither indexing, source currency nor an accepted learning authorizes
 project execution, deployment or reopening completed work.
+
+## Included corrections
+
+- Project `.env` imports only documented selector/passive connection keys. Operator
+  values, including explicitly empty selectors, win during early and full loading.
+  Executable overrides and credential commands remain operator-controlled.
+- Database migration validates identifiers and real child directories before
+  changing paths. Corrupt authoritative metadata is refused without replacement;
+  recovery requires an explicit known-valid project backup.
+- Terminal issue rendering removes controls before styling; default DAG titles
+  stay on one row. Storage, JSON and exports retain original values.
+- Established event streams recheck authorization before delivery and around
+  journal reads. Successful revocation closes the stream; failed file reloads
+  retain the last-good token set within the documented deadline limits.
+- Python MCP comments/notes preserve literal positional text and configured actor
+  identity. Option-shaped text cannot become another CLI option.
+- Root/example dependencies retain the reviewed gRPC and cryptography minima;
+  Python package requirements retain PyJWT >=2.15.0 and dev urllib3 >=2.8.0.
+
+The verified local source cut passed the canonical Go baseline (102 packages),
+targeted regressions, native/Windows cross-lint, documentation checks and real
+Python-client round trips. Embedded Dolt has separate complete batch inventories.
+These results do not qualify server/Docker, native Windows, production or every
+native compact cycle, and do not claim all advisory inventory warnings vanished.
+Private reproduction reports, installation evidence and backups stay local.
 
 ## Remaining limits
 

@@ -10,31 +10,31 @@ func TestLoadBeadsEnvFile(t *testing.T) {
 	t.Run("loads env vars from .env file", func(t *testing.T) {
 		dir := t.TempDir()
 		envFile := filepath.Join(dir, ".env")
-		if err := os.WriteFile(envFile, []byte("BEADS_TEST_LOAD_VAR=hello_from_env\n"), 0600); err != nil {
+		if err := os.WriteFile(envFile, []byte("BEADS_DOLT_PASSWORD=hello_from_env\n"), 0600); err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("BEADS_TEST_LOAD_VAR", "") // clear
-		os.Unsetenv("BEADS_TEST_LOAD_VAR")
+		t.Setenv("BEADS_DOLT_PASSWORD", "") // clear
+		os.Unsetenv("BEADS_DOLT_PASSWORD")
 
 		loadBeadsEnvFile(dir)
 
-		if got := os.Getenv("BEADS_TEST_LOAD_VAR"); got != "hello_from_env" {
-			t.Errorf("expected BEADS_TEST_LOAD_VAR=hello_from_env, got %q", got)
+		if got := os.Getenv("BEADS_DOLT_PASSWORD"); got != "hello_from_env" {
+			t.Errorf("expected BEADS_DOLT_PASSWORD=hello_from_env, got %q", got)
 		}
-		os.Unsetenv("BEADS_TEST_LOAD_VAR")
+		os.Unsetenv("BEADS_DOLT_PASSWORD")
 	})
 
 	t.Run("shell env takes precedence over .env", func(t *testing.T) {
 		dir := t.TempDir()
 		envFile := filepath.Join(dir, ".env")
-		if err := os.WriteFile(envFile, []byte("BEADS_TEST_PRECEDENCE=from_file\n"), 0600); err != nil {
+		if err := os.WriteFile(envFile, []byte("BEADS_DOLT_PASSWORD=from_file\n"), 0600); err != nil {
 			t.Fatal(err)
 		}
-		t.Setenv("BEADS_TEST_PRECEDENCE", "from_shell")
+		t.Setenv("BEADS_DOLT_PASSWORD", "from_shell")
 
 		loadBeadsEnvFile(dir)
 
-		if got := os.Getenv("BEADS_TEST_PRECEDENCE"); got != "from_shell" {
+		if got := os.Getenv("BEADS_DOLT_PASSWORD"); got != "from_shell" {
 			t.Errorf("expected shell env to win, got %q", got)
 		}
 	})

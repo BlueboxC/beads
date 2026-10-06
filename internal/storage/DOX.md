@@ -20,8 +20,6 @@ Embedded Memories also offers optional guarded atomic batches. Expected values, 
 
 Keep Dolt engine behavior behind the existing storage boundary. Do not bypass it from CLI or other internal packages.
 
-Proxy transport fixtures bind TCP to explicit loopback endpoints; they never use operator-managed servers.
-
 ## Verification
 
 Use the affected existing checks selected in engdocs/TESTING.md; verify indexed child contracts.

@@ -14,7 +14,8 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
-Run the affected contract package according to ../engdocs/TESTING.md. Documentation-site checks exclude DOX.md contracts; verify their exact relative paths through the complete DOX Child Index.
+Run the affected contract package according to ../engdocs/TESTING.md.
+DOX.md contracts are not Mintlify pages; docsync validates their exact relative links without requiring navigation entries.
 
 ## Verification
 

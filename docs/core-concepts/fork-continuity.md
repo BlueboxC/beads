@@ -217,3 +217,18 @@ Context-hook diagnostics retain bounded private metadata beside the refresh
 marker. A failed cold stdout delivery keeps the next-prompt fallback; successful
 local delivery alone does not establish native context admission. See
 [hook diagnostics](/integrations/codex#local-hook-diagnostics).
+
+## Corrections and upgrade boundaries
+
+The fork branch includes the reviewed environment-selection, migration,
+terminal rendering, event-stream authorization, MCP argument and dependency
+corrections described in [the fork scope](https://github.com/BlueboxC/beads/blob/codex/project-continuity/FORK.md#included-corrections).
+Upstream review is independent of their inclusion here.
+
+Present operator environment values, including empty selectors, override project
+`.env` during startup and full loading; absent selectors retain their routing.
+A corrupt authoritative metadata file is rejected rather than replaced. Restore
+only an explicitly selected, known-valid project backup; do not reinitialize to
+bypass a refusal. Keep source/binary provenance and private backups before an
+upgrade. Passing local tests does not qualify every native compact cycle or a
+production runtime, and source publication never publishes project Dolt data.

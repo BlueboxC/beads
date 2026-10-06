@@ -26,6 +26,13 @@ func TestFormatFeedbackID(t *testing.T) {
 			t.Errorf("got %q, want %q", got, want)
 		}
 	})
+	t.Run("sanitize before truncating", func(t *testing.T) {
+		config.Set("output.title-length", 5)
+		t.Cleanup(func() { config.Set("output.title-length", defaultTitleLength) })
+		if got := formatFeedbackID("bd-abc", "Hi\x1b]52;c;payload\x07!"); got != "bd-abc — Hi!" {
+			t.Errorf("unsafe or prematurely truncated title: %q", got)
+		}
+	})
 
 	t.Run("empty title returns ID only", func(t *testing.T) {
 		got := formatFeedbackID("bd-abc", "")

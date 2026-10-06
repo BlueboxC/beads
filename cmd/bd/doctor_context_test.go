@@ -181,9 +181,13 @@ func TestLoadSelectionEnvironmentUsesAmbientEnvFileForBEADSDB(t *testing.T) {
 	}
 
 	t.Chdir(callerRepo)
-	t.Setenv("BEADS_DIR", "")
-	t.Setenv("BEADS_DB", "")
-	t.Setenv("BD_DB", "")
+	// Only absent selectors allow dotenv routing; explicit empties block it.
+	for _, key := range []string{"BEADS_DIR", "BEADS_DB", "BD_DB"} {
+		t.Setenv(key, "")
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	loadSelectionEnvironment()
 

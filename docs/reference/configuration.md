@@ -456,6 +456,8 @@ See [bd github](/cli-reference/github).
 
 Connection keys (`ado.pat`, `ado.org`, `ado.project`, `ado.projects`, `ado.url`) each have an `AZURE_DEVOPS_*` environment variable equivalent; config keys take priority over env vars. When `ado.projects` is set, `bd ado sync` fetches work items from all listed projects in a single query. State maps default to the Agile process template (override with `ado.state_map.*` / `ado.type_map.*` for Scrum or CMMI), and priority mapping (ADO 1–4 ↔ beads 0–4, with backlog collapsing to low) is automatic and not configurable. Full setup, mapping tables, and sync commands: [Azure DevOps integration](/integrations/azure-devops) and [bd ado](/cli-reference/ado).
 
+Project `.beads/.env` files import only `BEADS_DIR`, `BEADS_DB`, `BD_DB`, `BEADS_DOLT_PASSWORD`, `BEADS_DOLT_SERVER_MODE`, `BEADS_DOLT_SHARED_SERVER`, `BEADS_DOLT_SERVER_HOST`, `BEADS_DOLT_SERVER_PORT`, `BEADS_DOLT_PORT`, `BEADS_DOLT_SERVER_SOCKET`, `BEADS_DOLT_SERVER_USER`, `BEADS_DOLT_SERVER_DATABASE`, and `BEADS_DOLT_SERVER_TLS`. Existing environment values, including empty values, take precedence. Unsupported keys are ignored with a names-only warning. Set credential commands, executable overrides and pager settings in the operator environment.
+
 ## Environment Variables
 
 The Viper env prefix is `BD_`. Config keys map to env vars by upper-casing and replacing `.` and `-` with `_` (e.g. `dolt.auto-commit` → `BD_DOLT_AUTO_COMMIT`, `validation.on-create` → `BD_VALIDATION_ON_CREATE`).

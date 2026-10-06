@@ -15,6 +15,7 @@ import (
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/storage/issueops"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/utils"
 )
 
@@ -304,7 +305,7 @@ func resolveProtoIDOrTitle(ctx context.Context, s molReader, input string) (stri
 	// Multiple matches - show them all for disambiguation
 	var matchNames []string
 	for _, m := range matches {
-		matchNames = append(matchNames, fmt.Sprintf("%s: %s", m.ID, m.Title))
+		matchNames = append(matchNames, fmt.Sprintf("%s: %s", m.ID, ui.SanitizeForTerminal(m.Title)))
 	}
 	return "", fmt.Errorf("ambiguous: %q matches %d protos:\n  %s\nUse the ID or a more specific title", input, len(matches), strings.Join(matchNames, "\n  "))
 }
@@ -776,7 +777,7 @@ func printTemplateTreeVisited(subgraph *TemplateSubgraph, parentID string, depth
 
 	// Print root
 	if isRoot {
-		fmt.Printf("%s   %s (root)\n", indent, subgraph.Root.Title)
+		fmt.Printf("%s   %s (root)\n", indent, ui.SanitizeForTerminal(subgraph.Root.Title))
 		visited[parentID] = true
 	}
 
@@ -804,10 +805,10 @@ func printTemplateTreeVisited(subgraph *TemplateSubgraph, parentID string, depth
 
 		// Cycle detection (GH#2719)
 		if visited[child.ID] {
-			fmt.Printf("%s   %s %s%s (cycle detected, skipping)\n", indent, connector, child.Title, varStr)
+			fmt.Printf("%s   %s %s%s (cycle detected, skipping)\n", indent, connector, ui.SanitizeForTerminal(child.Title), varStr)
 			continue
 		}
-		fmt.Printf("%s   %s %s%s\n", indent, connector, child.Title, varStr)
+		fmt.Printf("%s   %s %s%s\n", indent, connector, ui.SanitizeForTerminal(child.Title), varStr)
 		visited[child.ID] = true
 		printTemplateTreeVisited(subgraph, child.ID, depth+1, false, visited)
 	}

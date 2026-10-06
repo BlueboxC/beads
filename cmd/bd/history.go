@@ -115,7 +115,7 @@ func runHistory(ctx context.Context, backend historyBackend, issueID string, lim
 			fmt.Printf("  %s %s: %s [P%d - %s]\n",
 				statusIcon,
 				entry.Issue.ID,
-				entry.Issue.Title,
+				ui.SanitizeForTerminal(entry.Issue.Title),
 				entry.Issue.Priority,
 				entry.Issue.Status)
 		}

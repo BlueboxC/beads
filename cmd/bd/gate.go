@@ -441,7 +441,7 @@ func buildGateIssue(in gateCreateInput, targetID string) *types.Issue {
 // routes must print it identically.
 func renderGateCreated(gate, targetIssue *types.Issue, in gateCreateInput) {
 	fmt.Printf("%s Created gate %s (type: %s)\n", ui.RenderPass("✓"), ui.RenderID(gate.ID), in.gateType)
-	fmt.Printf("  Blocks: %s (%s)\n", targetIssue.ID, targetIssue.Title)
+	fmt.Printf("  Blocks: %s (%s)\n", targetIssue.ID, ui.SanitizeForTerminal(targetIssue.Title))
 	if in.reason != "" {
 		fmt.Printf("  Reason: %s\n", in.reason)
 	}
@@ -505,7 +505,7 @@ func renderGateShow(issue *types.Issue) {
 		statusSym = "●"
 	}
 
-	fmt.Printf("%s %s - %s\n", statusSym, ui.RenderID(issue.ID), issue.Title)
+	fmt.Printf("%s %s - %s\n", statusSym, ui.RenderID(issue.ID), ui.SanitizeForTerminal(issue.Title))
 	fmt.Printf("  Status: %s\n", issue.Status)
 	fmt.Printf("  Await Type: %s\n", issue.AwaitType)
 	if issue.AwaitID != "" {
@@ -521,7 +521,7 @@ func renderGateShow(issue *types.Issue) {
 		}
 	}
 	if issue.Description != "" {
-		fmt.Printf("  Description: %s\n", issue.Description)
+		fmt.Printf("  Description: %s\n", ui.SanitizeForTerminal(issue.Description))
 	}
 }
 

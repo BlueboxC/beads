@@ -1628,6 +1628,19 @@ func (s *Server) route(rt route) http.Handler {
 // the log gets instead is the reason — which of the three client mistakes it
 // was — and the request id that ties it to the response.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rec *reqInfo) bool {
+	if s.credentialValid(r, rec) {
+		return true
+	}
+	s.fail(w, r, newResult(CodeUnauthenticated, ""))
+	return false
+}
+
+// credentialValid also serves established streams, whose headers are already
+// sent and which must terminate rather than append a second HTTP response.
+func (s *Server) credentialValid(r *http.Request, rec *reqInfo) bool {
+	if s.auth == nil {
+		return true
+	}
 	token, reason := bearerCredential(r.Header.Get("Authorization"))
 	if reason == "" {
 		ok, reloadErr := s.auth.Verify(token)
@@ -1645,7 +1658,6 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rec *reqInfo)
 
 	s.event("auth_refused", "request_id", rec.id, "op", rec.op,
 		"reason", reason, "remote_addr", r.RemoteAddr)
-	s.fail(w, r, newResult(CodeUnauthenticated, ""))
 	return false
 }
 

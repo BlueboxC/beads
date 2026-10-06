@@ -241,13 +241,16 @@ func (s *Server) handleWatchEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !s.authorize(w, r, rec) {
+		return
+	}
 	s.streamEvents(w, r, journal, cursor, page)
 }
 
 // streamEvents writes the stream and owns its life.
 //
 // It returns when the client goes away, when the server begins shutting down,
-// when a write fails, or when the journal is pruned out from under the cursor —
+// when a write fails, when its credential is revoked, or when the journal is pruned out from under the cursor —
 // and on every one of those paths the caller's deferred release gives the
 // stream slot back. There is no other exit.
 func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, journal storage.EventsJournalCursor, since int64, page storage.EventsJournalPage) {
@@ -281,7 +284,13 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, journal st
 	quiet := time.Now()
 
 	for {
+		if !s.credentialValid(r, rec) {
+			return
+		}
 		for _, row := range page.Rows {
+			if !s.credentialValid(r, rec) {
+				return
+			}
 			if !stream.record(row) {
 				return
 			}
@@ -339,8 +348,14 @@ func (s *Server) streamEvents(w http.ResponseWriter, r *http.Request, journal st
 			}
 		}
 
+		if !s.credentialValid(r, rec) {
+			return
+		}
 		var err error
 		page, err = s.readWatchBatch(ctx, passes, journal, since)
+		if !s.credentialValid(r, rec) {
+			return
+		}
 		if err == nil {
 			continue
 		}

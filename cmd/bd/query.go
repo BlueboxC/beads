@@ -239,9 +239,9 @@ func outputQueryResults(issues []*types.Issue, queryStr string, longFormat bool)
 		fmt.Printf("\nFound %d issues:\n\n", len(issues))
 		for _, issue := range issues {
 			fmt.Printf("%s [P%d] [%s] %s\n", issue.ID, issue.Priority, issue.IssueType, issue.Status)
-			fmt.Printf("  %s\n", issue.Title)
+			fmt.Printf("  %s\n", ui.SanitizeForTerminal(issue.Title))
 			if issue.Assignee != "" {
-				fmt.Printf("  Assignee: %s\n", issue.Assignee)
+				fmt.Printf("  Assignee: %s\n", ui.SanitizeForTerminal(issue.Assignee))
 			}
 			if len(issue.Labels) > 0 {
 				fmt.Printf("  Labels: %v\n", issue.Labels)
@@ -267,7 +267,7 @@ func formatQueryIssue(buf *strings.Builder, issue *types.Issue) {
 	}
 	assigneeStr := ""
 	if issue.Assignee != "" {
-		assigneeStr = fmt.Sprintf(" @%s", issue.Assignee)
+		assigneeStr = fmt.Sprintf(" @%s", ui.SanitizeForTerminal(issue.Assignee))
 	}
 
 	// Get styled status icon
@@ -276,7 +276,7 @@ func formatQueryIssue(buf *strings.Builder, issue *types.Issue) {
 	if issue.Status == types.StatusClosed {
 		line := fmt.Sprintf("%s %s [P%d] [%s]%s%s - %s",
 			statusIcon, issue.ID, issue.Priority,
-			issue.IssueType, assigneeStr, labelsStr, issue.Title)
+			issue.IssueType, assigneeStr, labelsStr, ui.SanitizeForTerminal(issue.Title))
 		buf.WriteString(ui.RenderClosedLine(line))
 		buf.WriteString("\n")
 	} else {
@@ -285,7 +285,7 @@ func formatQueryIssue(buf *strings.Builder, issue *types.Issue) {
 			ui.RenderID(issue.ID),
 			ui.RenderPriority(issue.Priority),
 			ui.RenderType(string(issue.IssueType)),
-			assigneeStr, labelsStr, issue.Title))
+			assigneeStr, labelsStr, ui.SanitizeForTerminal(issue.Title)))
 	}
 }
 

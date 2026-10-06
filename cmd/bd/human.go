@@ -218,13 +218,13 @@ func printHumanList(issues []*types.Issue) {
 			// Closed items fade to muted gray, matching bd list/query. They
 			// only appear under an explicit --status, so the fade is what
 			// distinguishes them from the work still waiting on a person.
-			fmt.Printf("  %s\n", ui.RenderClosedLine(fmt.Sprintf("%s %s", issue.ID, issue.Title)))
+			fmt.Printf("  %s\n", ui.RenderClosedLine(fmt.Sprintf("%s %s", issue.ID, ui.SanitizeForTerminal(issue.Title))))
 			fmt.Printf("    %s\n", ui.RenderClosedLine(fmt.Sprintf("Status: %s", issue.Status)))
 			fmt.Printf("    %s\n", ui.RenderClosedLine(fmt.Sprintf("Priority: P%d", issue.Priority)))
 			fmt.Println()
 			continue
 		}
-		fmt.Printf("  %s %s\n", ui.RenderCommand(issue.ID), issue.Title)
+		fmt.Printf("  %s %s\n", ui.RenderCommand(issue.ID), ui.SanitizeForTerminal(issue.Title))
 		if issue.Status != "open" {
 			fmt.Printf("    Status: %s\n", issue.Status)
 		}

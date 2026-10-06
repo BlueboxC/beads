@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/steveyegge/beads/internal/configfile"
 	"github.com/steveyegge/beads/internal/doltserver"
@@ -15,6 +16,7 @@ import (
 	"github.com/steveyegge/beads/internal/storage/backends"
 	"github.com/steveyegge/beads/internal/storage/dbproxy/util"
 	"github.com/steveyegge/beads/internal/storage/dolt"
+	dbidentifier "github.com/steveyegge/beads/internal/storage/domain/db"
 	"github.com/steveyegge/beads/internal/storage/embeddeddolt"
 )
 
@@ -179,6 +181,9 @@ func newDoltStoreFromConfig(ctx context.Context, beadsDir string) (s storage.Dol
 	if cfg != nil {
 		database = cfg.GetDoltDatabase()
 	}
+	if err := dbidentifier.ValidateIdentifier(sanitizeDBName(database)); err != nil {
+		return nil, err
+	}
 	if sanitized := sanitizeDBName(database); sanitized != database {
 		if err := migrateHyphenatedDB(beadsDir, cfg, database, sanitized); err != nil {
 			return nil, fmt.Errorf("auto-sanitize database name %q → %q: %w", database, sanitized, err)
@@ -193,17 +198,41 @@ func newDoltStoreFromConfig(ctx context.Context, beadsDir string) (s storage.Dol
 // This handles projects initialized before GH#2142 that upgrade to
 // embedded-mode-default builds (GH#3231).
 func migrateHyphenatedDB(beadsDir string, cfg *configfile.Config, oldName, newName string) error {
+	if oldName == "" || oldName == "." || oldName == ".." || strings.ContainsAny(oldName, `/\:`) {
+		return fmt.Errorf("invalid legacy database directory name: %q", oldName)
+	}
+	if err := dbidentifier.ValidateIdentifier(newName); err != nil {
+		return err
+	}
 	dataDir := filepath.Join(beadsDir, "embeddeddolt")
 	oldDir := filepath.Join(dataDir, oldName)
 	newDir := filepath.Join(dataDir, newName)
-
-	oldExists := false
-	if info, err := os.Stat(oldDir); err == nil && info.IsDir() {
-		oldExists = true
+	if info, err := os.Lstat(dataDir); err == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("database data directory must be a real directory: %q", dataDir)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking database data directory: %w", err)
 	}
 
+	oldExists := false
+	if info, err := os.Lstat(oldDir); err == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("legacy database must be a real directory: %q", oldDir)
+		}
+		oldExists = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking legacy database directory: %w", err)
+	}
+
+	newInfo, newErr := os.Lstat(newDir)
+	if newErr == nil && (!newInfo.IsDir() || newInfo.Mode()&os.ModeSymlink != 0) {
+		return fmt.Errorf("target database must be a real directory: %q", newDir)
+	}
+	if newErr != nil && !os.IsNotExist(newErr) {
+		return fmt.Errorf("checking target directory %q: %w", newDir, newErr)
+	}
 	if oldExists {
-		_, newErr := os.Stat(newDir)
 		switch {
 		case newErr == nil:
 			return fmt.Errorf("cannot auto-migrate database: both %q and %q exist under %s; remove one manually and retry",

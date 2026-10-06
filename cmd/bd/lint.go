@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/steveyegge/beads/internal/metrics"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/validation"
 )
 
@@ -181,7 +182,7 @@ func runLint(issues []*types.Issue) error {
 
 	fmt.Printf("Template warnings (%d issues, %d warnings):\n\n", len(results), totalWarnings)
 	for _, r := range results {
-		fmt.Printf("%s [%s]: %s\n", r.ID, r.Type, r.Title)
+		fmt.Printf("%s [%s]: %s\n", r.ID, r.Type, ui.SanitizeForTerminal(r.Title))
 		for _, m := range r.Missing {
 			fmt.Printf("  ⚠ Missing: %s\n", m)
 		}

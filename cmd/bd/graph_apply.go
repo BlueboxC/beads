@@ -14,6 +14,7 @@ import (
 
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/validation"
 	"github.com/steveyegge/beads/internal/workapi"
 )
@@ -452,7 +453,7 @@ func emitGraphApplyDryRun(plan *GraphApplyPlan, opts GraphApplyOptions) error {
 		case row.ParentID != "":
 			extras += fmt.Sprintf(" parent_id=%s", row.ParentID)
 		}
-		fmt.Printf("  %s [%s] P%d %q%s\n", row.Key, row.Type, row.Priority, row.Title, extras)
+		fmt.Printf("  %s [%s] P%d %q%s\n", row.Key, row.Type, row.Priority, ui.SanitizeForTerminal(row.Title), extras)
 	}
 	return nil
 }

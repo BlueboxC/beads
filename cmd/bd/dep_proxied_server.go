@@ -461,7 +461,7 @@ func runDepListProxiedServer(cmd *cobra.Command, ctx context.Context, args []str
 			idStr = iss.ID
 		}
 		fmt.Printf("  %s: %s [P%d] (%s) via %s\n",
-			idStr, iss.Title, iss.Priority, iss.Status, iss.DependencyType)
+			idStr, ui.SanitizeForTerminal(iss.Title), iss.Priority, iss.Status, iss.DependencyType)
 	}
 	fmt.Println()
 	return nil
