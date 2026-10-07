@@ -39,9 +39,9 @@ func openCodeIndex() (memoryops.Memories, *codeindex.Reader, map[string]string, 
 
 var codeCmd = &cobra.Command{
 	Use: "code", GroupID: "advanced", Short: "Code structure and references in the existing Dolt (fork extension)",
-	Long: `Maintain a regenerable Python/Go/JavaScript/TypeScript index beside human knowledge in the
+	Long: `Maintain a regenerable Python/Go/JavaScript/TypeScript/Java/C#/Rust/C++ index beside human knowledge in the
 same Beads Dolt memory plane. Scan parses supplied text through Python's stdlib, Go's parser or a pinned
-TypeScript parser in an isolated Node process; it never imports or executes project code. Query by path,
+TypeScript or Tree-sitter WASM parser in an isolated Node process; it never imports or executes project code. Query by path,
 symbol or linked knowledge. Static references do not prove runtime reachability.
 No model, daemon, embeddings, schema migration or second database.`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -125,8 +125,8 @@ func init() {
 	}
 	scan.Flags().StringSlice("exclude", nil, "Workspace-relative subtrees excluded from selection")
 	scan.Flags().Bool("rebuild", false, "Reparse all selected code; never rebind human assertions")
-	scan.Flags().StringSlice("languages", nil, "Explicit languages: python, go, javascript, typescript; reuse previous selection, default Python")
-	scan.Flags().String("node", "node", "Operator-owned Node.js for the bundled JS/TS parser")
+	scan.Flags().StringSlice("languages", nil, "Explicit languages: python, go, javascript, typescript, java, csharp, rust, cpp or all; reuse previous selection, default Python")
+	scan.Flags().String("node", "node", "Operator-owned Node.js for bundled TypeScript and Tree-sitter WASM parsers")
 	scan.Flags().String("python", "python3", "Operator-owned Python 3 interpreter for isolated AST parsing")
 	status := &cobra.Command{Use: "status", Short: "Check persisted index against current code and DOX", Args: cobra.NoArgs, RunE: func(_ *cobra.Command, _ []string) error {
 		_, reader, _, index, err := openCodeIndex()

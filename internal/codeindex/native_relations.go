@@ -54,7 +54,7 @@ func nativeRelations(index Index) []Relation {
 	exports := map[string]string{}
 	for _, file := range index.Files {
 		language := fileLanguage(file)
-		if language == "python" {
+		if language == "python" || treeLanguage(language) {
 			continue
 		}
 		files[file.Path] = file
@@ -100,7 +100,7 @@ func nativeRelations(index Index) []Relation {
 	result := []Relation{}
 	for _, file := range index.Files {
 		language := fileLanguage(file)
-		if language == "python" {
+		if language == "python" || treeLanguage(language) {
 			continue
 		}
 		bindings := map[string]map[string]Import{}

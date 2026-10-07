@@ -25,7 +25,7 @@ var typescriptLicense string
 var typescriptNotice string
 
 func ParserLicenses() string {
-	return "TypeScript 5.9.3 (Apache-2.0)\n" + typescriptLicense + "\n" + typescriptNotice
+	return "TypeScript 5.9.3 (Apache-2.0)\n" + typescriptLicense + "\n" + typescriptNotice + "\n" + treeLicenses
 }
 
 //go:embed go_ast.go
@@ -46,9 +46,20 @@ type ScanOptions struct {
 }
 
 func languageOf(path string) string {
+	if filepath.Ext(path) == ".C" {
+		return "cpp"
+	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".py":
 		return "python"
+	case ".java":
+		return "java"
+	case ".cs":
+		return "csharp"
+	case ".rs":
+		return "rust"
+	case ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx", ".h++":
+		return "cpp"
 	case ".go":
 		return "go"
 	case ".ts", ".tsx", ".mts", ".cts":
@@ -73,7 +84,20 @@ func languagesFor(index Index) []string {
 func normalizeLanguages(values []string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, v := range values {
-		if v != "python" && v != "go" && v != "typescript" && v != "javascript" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "all":
+			for _, name := range []string{"python", "go", "javascript", "typescript", "java", "csharp", "rust", "cpp"} {
+				seen[name] = true
+			}
+			continue
+		case "c#", "cs", "c-sharp":
+			v = "csharp"
+		case "c++", "cxx":
+			v = "cpp"
+		default:
+			v = strings.ToLower(strings.TrimSpace(v))
+		}
+		if !treeLanguage(v) && v != "python" && v != "go" && v != "typescript" && v != "javascript" {
 			return nil, fmt.Errorf("unsupported language %q", v)
 		}
 		seen[v] = true
@@ -92,6 +116,8 @@ func parserHash(language string) string {
 	switch language {
 	case "python":
 		return digest([]byte(parserScript))
+	case "java", "csharp", "rust", "cpp":
+		return treeParserHash(language)
 	case "go":
 		return digest([]byte(goParserSource + runtime.Version()))
 	default:

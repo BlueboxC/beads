@@ -30,7 +30,8 @@ existing source-install target that skips only that branch-equality check.
 
 Follow [build dependencies](https://github.com/BlueboxC/beads/blob/codex/project-continuity/docs/getting-started/installation.md#build-dependencies-contributors-only)
 for your platform. Python indexing uses an operator-owned Python 3 interpreter;
-JS/TS uses operator-owned Node.js and bundled TypeScript 5.9.3. Go parsing needs
+JS/TS uses operator-owned Node.js and bundled TypeScript 5.9.3; Java/C#/Rust/C++
+reuse Node with bundled MIT Tree-sitter WASM parsers. Go parsing needs
 no project Go executable. The parsers do not execute project code, load project
 packages or `tsconfig`, or install dependencies. Use `bd code --licenses` for
 bundled parser notices. Keep a backup of an existing binary and project database
@@ -46,7 +47,7 @@ cd /path/to/project
 bd init --skip-hooks
 bd setup codex --check
 bd knowledge scan DOX.md docs
-bd code scan src tests --languages python,go,javascript,typescript
+bd code scan src tests --languages all
 bd code status --json
 ```
 
@@ -58,7 +59,9 @@ agent integration, not project enrollment. Avoid installing both global and
 plugin hook definitions for the same lifecycle.
 
 `knowledge scan` with paths replaces its saved document selection; supply the
-complete desired roots. `code scan` saves code roots/languages/exclusions.
+complete desired roots. `code scan` saves code roots/languages/exclusions. `all` selects Python, Go,
+JavaScript, TypeScript, Java, C#, Rust and C++; omitted languages reuse the saved
+selection, with Python as the first-index default.
 Directories discover new children when maintained; an exact file selection
 tracks only that file. Inspect selection/status before changing either.
 

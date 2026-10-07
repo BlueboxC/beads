@@ -146,7 +146,8 @@ func Relations(index Index) []Relation {
 			result = append(result, Relation{Source: call.Owner, Target: target, Kind: "calls", Name: call.Name, Path: file.Path, Line: call.Line, Resolution: resolution})
 		}
 	}
-	return append(result, nativeRelations(index)...)
+	result = append(result, nativeRelations(index)...)
+	return append(result, treeRelations(index)...)
 }
 
 type Query struct {

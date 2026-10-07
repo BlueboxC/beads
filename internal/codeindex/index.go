@@ -42,13 +42,14 @@ const (
 var parserScript string
 
 type Symbol struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Kind    string `json:"kind"`
-	Line    int    `json:"line"`
-	EndLine int    `json:"end_line"`
-	Parent  string `json:"parent"`
-	Static  bool   `json:"static,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Line      int    `json:"line"`
+	EndLine   int    `json:"end_line"`
+	Parent    string `json:"parent"`
+	Static    bool   `json:"static,omitempty"`
+	Uncertain bool   `json:"uncertain,omitempty"`
 }
 
 type Import struct {
@@ -577,7 +578,11 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 		language := languageOf(path)
 		file := File{Path: path, SHA256: digest(data), Bytes: len(data), Module: strings.TrimSuffix(strings.ReplaceAll(path, "/", "."), ".py")}
 		if language != "python" {
-			file.Module = "js:" + strings.TrimSuffix(path, filepath.Ext(path))
+			prefix := "js:"
+			if treeLanguage(language) {
+				prefix = language + ":"
+			}
+			file.Module = prefix + strings.TrimSuffix(path, filepath.Ext(path))
 		}
 		if version >= 3 {
 			file.Language = language
@@ -640,6 +645,8 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 				for _, input := range batch {
 					parsed.Files = append(parsed.Files, parseGo(input))
 				}
+			case "java", "csharp", "rust", "cpp":
+				parsed, err = parseTrees(ctx, options.Node, language, batch)
 			default:
 				parsed, err = parseScripts(ctx, options.Node, batch)
 			}
@@ -651,7 +658,9 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 			}
 			if parsed.Node != "" {
 				result.Node = parsed.Node
-				result.TypeScript = parsed.TypeScript
+				if parsed.TypeScript != "" {
+					result.TypeScript = parsed.TypeScript
+				}
 			}
 			for i, position := range positions[language][start:end] {
 				file := &result.Files[position]

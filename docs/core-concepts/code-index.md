@@ -1,6 +1,6 @@
 ---
 title: Code index (BlueboxC fork)
-description: Query existing Python, Go, JavaScript and TypeScript symbols and static references in the same Dolt as project knowledge
+description: Query existing symbols in eight languages and static references in the same Dolt as project knowledge
 ---
 
 `bd code` is a local fork extension. It stores a regenerable code AST index
@@ -11,11 +11,18 @@ no Go executable, package loading or build is needed. JavaScript and TypeScript
 use bundled TypeScript 5.9.3 (Apache-2.0) under an operator-owned Node.js with
 native addons/global search disabled and a sanitized environment. Its compiler
 VM has no filesystem host. No project code, tsconfig or install scripts run.
-`bd code --licenses` prints compiler attribution. No npm setup is required.
+Java, C#, Rust and C++ use pinned Tree-sitter WASM grammars from
+Microsoft's MIT-licensed `@vscode/tree-sitter-wasm` 0.3.1 in isolated Node. Embedded bytes
+provide the runtime and selected grammar; its VM has no filesystem/network host,
+and WASM memory is bounded to 512 MiB separately from the Node heap. No Java,
+.NET, Rust or C++ compiler, npm setup or project build is required.
+`bd code --licenses` prints all bundled attribution;
+`internal/codeindex/tree-sitter-provenance.json` records revisions and hashes.
 
 ```bash
 bd code scan src tests --exclude src/generated --json
-bd code scan src tests --languages python,go,javascript,typescript --json
+bd code scan src tests --languages all --json
+bd code scan --languages java,csharp,rust,cpp --json  # replace saved languages, retain roots
 bd code status --json
 bd code query context_pack --json
 bd code graph src/context_pack.py --html > /private/tmp/code-graph.html
@@ -25,8 +32,23 @@ bd code scan --rebuild       # reparse, retaining all human assertions/tasks
 
 Default selection is Python on a new index; absent `--languages` reuses saved
 languages. `--python` and `--node` select operator interpreters only for changed
-files. Go, JS/JSX/MJS/CJS and TS/TSX/MTS/CTS extensions are supported. An unchanged
-scan needs neither interpreter.
+files. An unchanged scan needs neither interpreter. Saved selections are never
+broadened automatically: choose the complete language list, or `all` for all eight.
+`c#`/`cs`/`c-sharp` and `c++`/`cxx` are aliases for `csharp` and `cpp`.
+
+| Language | Source extensions | Parser |
+| --- | --- | --- |
+| Python | `.py` | Python stdlib AST |
+| Go | `.go` | Go stdlib parser |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs` | TypeScript 5.9.3 |
+| TypeScript | `.ts`, `.tsx`, `.mts`, `.cts` | TypeScript 5.9.3 |
+| Java | `.java` | Tree-sitter Java |
+| C# | `.cs` | Tree-sitter C# |
+| Rust | `.rs` | Tree-sitter Rust |
+| C++ | `.cpp`, `.cc`, `.cxx`, `.c++`, `.C`, `.h`, `.hh`, `.hpp`, `.hxx`, `.h++` | Tree-sitter C++ |
+
+C++ headers use C++ syntax; lowercase `.c` is outside this language selection.
+Grammar support is syntax-based, not a guarantee of every compiler extension.
 
 Roots and exclusions are workspace-relative, including nested CLI invocations.
 Explicit roots replace the index selection, independently of the document
@@ -54,6 +76,19 @@ Go top-level initializer calls and interface method headers are outside extracti
 Known static class methods can resolve; unknown instance receiver types cannot. A static reference does not prove
 a function runs, a test passes or a module is installed.
 
+Java package/type imports resolve only unique selected declarations. New-language
+calls resolve unique local functions and known static methods; Java imported
+static methods can link selected files. C++ quoted includes and ordinary Rust
+`mod` declarations link unique selected paths. No include search path or crate
+root is guessed. Rust `use`/crate aliases and C# `using` directives are recorded
+but their bindings remain unresolved. Instance dispatch, overload selection,
+traits, macro expansion, conditional compilation and build configuration are
+outside resolution. Ambiguous C++ casts/declarators withhold local resolution.
+Anonymous bodies are omitted; constructors and macros remain
+unresolved call sites. Overloaded declarations retain distinct location-suffixed
+IDs; their line suffix can change when code moves. Syntax errors retain no partial
+symbols. These limits apply to impact results too.
+
 An explicit knowledge record can add up to 16 symbol IDs, for example
 `"symbols": ["src/context_pack.py::select_evidence"]`. `bd knowledge record`
 checks those IDs against a current index and binds their source files/DOX.
@@ -78,7 +113,9 @@ not treated as authority from a commit identifier.
 AST parsing and reference storage use blocks of at most 128 files/entries,
 so large catalogs keep the same per-row bound. Versions 1/2 remain readable. Version 3 adds language selection and per-file
 parser fingerprints, so expanding a Python index reuses its unchanged files.
-Older clients refuse version 3 explicitly: back up the previous derived manifest
+Clients predating version 3 refuse it explicitly; four-language clients also
+refuse manifests containing the new languages. Keep an old-compatible manifest
+when downgrading: back up the previous derived manifest
 before migration and restore it before reverting the binary. Human records and
 immutable blobs remain separate.
 Each scan prepares bounded immutable blob rows through memoryops. Embedded

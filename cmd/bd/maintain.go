@@ -96,7 +96,7 @@ func init() {
 		},
 	}
 	once.Flags().String("python", "python3", "Operator Python for changed selected Python only")
-	once.Flags().String("node", "node", "Operator Node for changed selected JS/TS only")
+	once.Flags().String("node", "node", "Operator Node for changed selected JS/TS/Java/C#/Rust/C++ files")
 	watch := &cobra.Command{Use: "watch", Short: "Maintain saved selections until interrupted; release Dolt between passes", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			CheckReadonly("maintain watch")
@@ -150,7 +150,7 @@ func init() {
 	}
 	watch.Flags().Duration("interval", 30*time.Second, "Delay after each pass; errors back off to at least 5m")
 	watch.Flags().String("python", "python3", "Operator Python for changed selected Python only")
-	watch.Flags().String("node", "node", "Operator Node for changed selected JS/TS only")
+	watch.Flags().String("node", "node", "Operator Node for changed selected JS/TS/Java/C#/Rust/C++ files")
 	maintainCmd.AddCommand(once, watch)
 	rootCmd.AddCommand(maintainCmd)
 }
