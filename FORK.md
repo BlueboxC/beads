@@ -66,6 +66,9 @@ preserving this fork's existing corrections:
 | [#7098](https://github.com/gastownhall/beads/issues/7098), [#5972](https://github.com/gastownhall/beads/issues/5972) | Local restore rejects empty/non-backup directories before calling Dolt. Nonempty regular manifest required; full content integrity and atomic restore remain outside this preflight. | [#7192](https://github.com/gastownhall/beads/pull/7192) |
 | [#6873](https://github.com/gastownhall/beads/issues/6873) | Python MCP forwards label replacement and explicit clearing without changing omitted-label behavior. | [#6877](https://github.com/gastownhall/beads/pull/6877) |
 | [#7095](https://github.com/gastownhall/beads/issues/7095) | Codex hooks prime the payload workspace and scope Git authority there, including protection against selectors inherited from caller startup. | [#7119](https://github.com/gastownhall/beads/pull/7119), extended after its blocking review |
+| [#7334](https://github.com/gastownhall/beads/issues/7334) | Proxy fixtures that do not dial a chosen port bind port zero directly, preserving backend-error counters and explicit occupied-port refusal. | Reporter’s port-zero proposal, verified with a forced port collision |
+| [#7349](https://github.com/gastownhall/beads/issues/7349) | Worktree fixture commits and shared runners suppress detached Git maintenance with command-line options, including callers that scrub Git environment configuration. | Reporter’s audit proposal; real Git trace regression |
+| [#7327](https://github.com/gastownhall/beads/issues/7327) | Dolt server fixtures disable asynchronous event flushing before creating a temporary HOME, preventing detached metrics processes from racing configuration cleanup. Backend shutdown waiting remains unchanged. | Fork investigation with Dolt 2.2.0; the reported cleanup race reproduced locally |
 
 These adaptations do not merge, approve or reopen the upstream pull requests.
 
@@ -93,6 +96,11 @@ blockers and verify their repairs; embedded and UOW tests verify memory presence
 and parent-update parity. These results do not qualify all server/Docker paths,
 native Windows, production or every
 native compact cycle, and do not claim all advisory inventory warnings vanished.
+The fixture-only repairs for #7334, #7349 and #7327 do not change the shipped
+CLI or operator configuration. Dolt cleanup was reproduced without
+`DOLT_ROOT_PATH`: one failure in 80 cycles before the repair, then 200 cycles
+with the race detector and no failures or skips. This is local macOS arm64
+evidence, not a rerun of upstream Bazel or macOS CI.
 Private reproduction reports, installation evidence and backups stay local.
 
 ## Remaining limits

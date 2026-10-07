@@ -23,7 +23,7 @@ func TestGetCreateDatabaseProxyServerEndpoint_RejectsUpstreamMismatch(t *testing
 	ts.ID_ = server.ExternalDoltServerID(existingCfg)
 	h := runProxy(t, proxy.ProxyOpts{
 		RootDir: root,
-		Port:    freeTCPPort(t),
+		Port:    0,
 		Server:  ts,
 	})
 	waitListening(t, root, listenWait)

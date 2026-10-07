@@ -106,7 +106,7 @@ func TestResolveWorktreePathByName(t *testing.T) {
 	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = mainDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainDir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("Failed to create initial commit: %v\n%s", err, output)

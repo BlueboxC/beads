@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,16 +25,13 @@ func TestBootstrap_WorktreeFallbackDir(t *testing.T) {
 	}
 
 	run := func(dir string, args ...string) {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, out)
-		}
+		runGitForBootstrapTest(t, dir, args...)
 	}
 
 	run(mainRepoDir, "init")
 	run(mainRepoDir, "config", "user.email", "test@example.com")
 	run(mainRepoDir, "config", "user.name", "Test User")
+	run(mainRepoDir, "config", "core.hooksPath", ".git/hooks")
 
 	if err := os.WriteFile(filepath.Join(mainRepoDir, "README.md"), []byte("# Test\n"), 0644); err != nil {
 		t.Fatal(err)
@@ -111,15 +109,12 @@ func TestBootstrap_WorktreeLocalBeadsPreferLocal(t *testing.T) {
 	}
 
 	run := func(dir string, args ...string) {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, out)
-		}
+		runGitForBootstrapTest(t, dir, args...)
 	}
 	run(mainRepoDir, "init")
 	run(mainRepoDir, "config", "user.email", "test@example.com")
 	run(mainRepoDir, "config", "user.name", "Test User")
+	run(mainRepoDir, "config", "core.hooksPath", ".git/hooks")
 	if err := os.WriteFile(filepath.Join(mainRepoDir, "README.md"), []byte("# Test\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -181,15 +176,12 @@ func TestBootstrap_WorktreeNoBeadsAnywhereStillPointsToMainRepo(t *testing.T) {
 	}
 
 	run := func(dir string, args ...string) {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("git %v failed: %v\n%s", args, err, out)
-		}
+		runGitForBootstrapTest(t, dir, args...)
 	}
 	run(mainRepoDir, "init")
 	run(mainRepoDir, "config", "user.email", "test@example.com")
 	run(mainRepoDir, "config", "user.name", "Test User")
+	run(mainRepoDir, "config", "core.hooksPath", ".git/hooks")
 	if err := os.WriteFile(filepath.Join(mainRepoDir, "README.md"), []byte("# Test\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -223,5 +215,42 @@ func TestBootstrap_WorktreeNoBeadsAnywhereStillPointsToMainRepo(t *testing.T) {
 	mainResolved, _ := filepath.EvalSymlinks(filepath.Clean(mainBeadsDir))
 	if fallbackResolved != mainResolved {
 		t.Errorf("GetWorktreeFallbackBeadsDir() = %q, want %q (should resolve to main repo even without .beads)", fallbackResolved, mainResolved)
+	}
+}
+
+// A real Git trace detects detached maintenance even when the worktree race
+// does not happen on this run. Repository settings deliberately enable it.
+func TestBootstrapGitFixture_DoesNotStartAutomaticMaintenance(t *testing.T) {
+	repo := t.TempDir()
+	initGitRepoAt(t, repo)
+	runGitForBootstrapTest(t, repo, "config", "maintenance.auto", "true")
+	runGitForBootstrapTest(t, repo, "config", "gc.auto", "1")
+	trace := filepath.Join(t.TempDir(), "git-trace.json")
+	t.Setenv("GIT_TRACE2_EVENT", trace)
+	runGitForBootstrapTest(t, repo, "commit", "--allow-empty", "-m", "initial")
+	worktree := filepath.Join(t.TempDir(), "linked")
+	runGitForBootstrapTest(t, repo, "worktree", "add", "--detach", worktree, "HEAD")
+	if _, err := os.Stat(filepath.Join(repo, ".git", "worktrees", "linked", "gitdir")); err != nil {
+		t.Fatalf("worktree administration missing: %v", err)
+	}
+	body, err := os.ReadFile(trace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(body)), "\n") {
+		var event struct {
+			Event string   `json:"event"`
+			Argv  []string `json:"argv"`
+		}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Fatal(err)
+		}
+		if event.Event == "child_start" {
+			for _, arg := range event.Argv {
+				if arg == "maintenance" || arg == "gc" {
+					t.Fatalf("fixture launched detached maintenance: %v", event.Argv)
+				}
+			}
+		}
 	}
 }

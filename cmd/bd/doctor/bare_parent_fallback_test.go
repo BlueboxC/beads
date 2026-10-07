@@ -146,7 +146,7 @@ func setupBareParentWorktreeForDoctorTest(t *testing.T) (string, string) {
 func runGitInDirForDoctorTest(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {

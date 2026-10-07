@@ -21,6 +21,10 @@ Memory namespace selectors preserve exact prefix semantics across adapters. All 
 
 Embedded Memories also offers optional guarded atomic batches. Expected values, equal-value skips and all writes/deletes share one existing transaction; a mismatch or failed write rolls back the batch. Other adapters do not advertise this optional capability or qualify pruning.
 
+Dolt server fixtures suppress asynchronous usage-event flushing before spawning the backend; shutdown waits retain their process contract and temporary configuration homes must not have detached writers.
+
+Proxy fixtures that do not require a chosen data port bind port zero directly; retain the explicit occupied-port refusal check and use the published actual endpoint when dialing.
+
 Keep Dolt engine behavior behind the existing storage boundary. Do not bypass it from CLI or other internal packages.
 
 ## Verification

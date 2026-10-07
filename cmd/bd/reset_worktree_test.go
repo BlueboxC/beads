@@ -24,7 +24,7 @@ func TestReset_WorktreeFindsBeadsDir(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)
@@ -113,7 +113,7 @@ func TestReset_WorktreeNoBeadsReturnsEmpty(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)
@@ -162,7 +162,7 @@ func TestReset_WorktreeSubdirFindsBeadsDir(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)

@@ -392,7 +392,7 @@ func commitTestFile(t *testing.T, repoRoot, relPath, content, message string) {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git add %s failed: %v\n%s", relPath, err, output)
 	}
-	cmd = exec.Command("git", "commit", "-m", message)
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", message)
 	cmd.Dir = repoRoot
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git commit failed: %v\n%s", err, output)

@@ -75,7 +75,7 @@ func setupGitRepo(t *testing.T) (repoPath string, cleanup func()) {
 		t.Fatalf("failed to write test file: %v", err)
 	}
 	_ = exec.Command("git", "add", ".").Run()
-	if err := exec.Command("git", "commit", "-m", "initial").Run(); err != nil {
+	if err := exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "initial").Run(); err != nil {
 		_ = os.Chdir(originalWd)
 		t.Fatalf("failed to create initial commit: %v", err)
 	}
@@ -145,7 +145,7 @@ func setupGitRepoWithBranch(t *testing.T, branch string) (repoPath string, clean
 		t.Fatalf("failed to write test file: %v", err)
 	}
 	_ = exec.Command("git", "add", ".").Run()
-	if err := exec.Command("git", "commit", "-m", "initial").Run(); err != nil {
+	if err := exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "initial").Run(); err != nil {
 		_ = os.Chdir(originalWd)
 		t.Fatalf("failed to create initial commit: %v", err)
 	}

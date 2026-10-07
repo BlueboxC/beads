@@ -83,6 +83,10 @@ BEADS_TEST_SKIP=dolt ./scripts/test.sh ./...
 Tests that need a temporary repository or store should use `t.TempDir()` and
 `t.Cleanup()`. Temporary repositories must set a repository-local hooks path;
 do not inherit the developer's global hooks configuration.
+Git fixture commits that precede worktree creation must pass
+`-c maintenance.auto=false -c gc.auto=0` on the command line. This prevents
+detached maintenance from pruning worktree administration files during setup,
+even when routing helpers scrub Git configuration environment variables.
 
 For manual CLI experiments, run both initialization and subsequent commands
 from a disposable working directory:

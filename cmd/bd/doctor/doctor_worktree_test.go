@@ -22,7 +22,7 @@ func setupWorktreeRepo(t *testing.T) (mainRepoDir, worktreeDir string) {
 	}
 
 	run := func(dir string, args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = dir
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v failed: %v\n%s", args, err, out)

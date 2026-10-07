@@ -23,7 +23,7 @@ func TestConfigureBeadsHooksPath_WorktreeUsesMainRepo(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if err := cmd.Run(); err != nil {
 			t.Skipf("git %v failed: %v", args, err)
@@ -93,7 +93,7 @@ func TestConfigureSharedHooksPath_WorktreeUsesMainRepo(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if err := cmd.Run(); err != nil {
 			t.Skipf("git %v failed: %v", args, err)
@@ -163,7 +163,7 @@ func TestResetHooksPathIfBeadsManaged_Worktree(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if err := cmd.Run(); err != nil {
 			t.Skipf("git %v failed: %v", args, err)
@@ -237,7 +237,7 @@ func TestConfigureBeadsHooksPath_NormalRepoUnchanged(t *testing.T) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = repoDir
 		if err := cmd.Run(); err != nil {
 			t.Skipf("git %v failed: %v", args, err)

@@ -53,7 +53,7 @@ func TestGitAddFile_InWorktreeHook_StagesCorrectPath(t *testing.T) {
 	}
 	runGit := func(dir string, args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = dir
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v in %s failed: %v\n%s", args, dir, err, out)
@@ -692,7 +692,7 @@ func TestGitAddFile_NonHookContext_GuardDoesNotFire(t *testing.T) {
 	}
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = repo
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -756,7 +756,7 @@ func TestGitAddFile_RelativePathDoesNotDoubleRoot(t *testing.T) {
 	}
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = repo
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -825,7 +825,7 @@ func TestGitAddFile_CapturesStderrOnFailure(t *testing.T) {
 	}
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = repo
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -890,7 +890,7 @@ func TestGitAddFile_CapturesLockedIndexFailure(t *testing.T) {
 	}
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = repo
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -948,7 +948,7 @@ func TestAutoExportGitAddFailureExitsNonZero(t *testing.T) {
 
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = dir
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -1026,7 +1026,7 @@ func TestGitAddFile_RedirectCase_DoesNotStageInMainRepo(t *testing.T) {
 	}
 	runGit := func(dir string, args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = dir
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v in %s failed: %v\n%s", args, dir, err, out)
@@ -1134,7 +1134,7 @@ func TestPreCommitHasStagedBeadsFiles(t *testing.T) {
 	}
 	runGit := func(args ...string) {
 		t.Helper()
-		c := exec.Command("git", args...)
+		c := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		c.Dir = repo
 		if out, err := c.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v\n%s", args, err, out)

@@ -239,7 +239,7 @@ func TestProxy_PublishesVerifiableIdentity(t *testing.T) {
 	ts := server.New()
 	h := runProxy(t, proxy.ProxyOpts{
 		RootDir: root,
-		Port:    freeTCPPort(t),
+		Port:    0,
 		Server:  ts,
 	})
 	waitListening(t, root, listenWait)
@@ -308,11 +308,10 @@ func TestProxy_BackendStartError(t *testing.T) {
 	ts := server.New()
 	ts.StartErr = errors.New("boom")
 	stats := &proxy.Stats{}
-	port := freeTCPPort(t)
 	root := t.TempDir()
 
 	h := runProxy(t, proxy.ProxyOpts{
-		RootDir: root, Port: port, Server: ts, Stats: stats,
+		RootDir: root, Port: 0, Server: ts, Stats: stats,
 	})
 	err := h.waitErr(t, shutdownWait)
 	require.Error(t, err)
@@ -333,11 +332,10 @@ func TestProxy_BackendNotReady_CtxCancel(t *testing.T) {
 	ts := server.New()
 	ts.DialErr = errors.New("not ready")
 	stats := &proxy.Stats{}
-	port := freeTCPPort(t)
 	root := t.TempDir()
 
 	h := runProxy(t, proxy.ProxyOpts{
-		RootDir: root, Port: port, Server: ts, Stats: stats,
+		RootDir: root, Port: 0, Server: ts, Stats: stats,
 	})
 	// The pidfile is written only after readiness succeeds, but DialErr
 	// keeps readiness failing — so waitListening would hang. Wait until
@@ -458,11 +456,10 @@ func TestProxy_IdleTimeout_Fires(t *testing.T) {
 
 	ts := server.New()
 	stats := &proxy.Stats{}
-	port := freeTCPPort(t)
 	root := t.TempDir()
 
 	h := runProxy(t, proxy.ProxyOpts{
-		RootDir: root, Port: port,
+		RootDir: root, Port: 0,
 		IdleTimeout: 2 * time.Second,
 		Server:      ts, Stats: stats,
 	})
@@ -705,7 +702,6 @@ func TestProxy_ConcurrentInstantiation_OnlyOneWinsLock(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	port := freeTCPPort(t)
 
 	const N = 5
 	const settle = 500 * time.Millisecond
@@ -723,7 +719,7 @@ func TestProxy_ConcurrentInstantiation_OnlyOneWinsLock(t *testing.T) {
 			ts := server.New()
 			stats := &proxy.Stats{}
 			p := proxy.NewProxyServer(proxy.ProxyOpts{
-				RootDir: root, Port: port,
+				RootDir: root, Port: 0,
 				Server: ts, Stats: stats,
 			})
 			ctx, cancel := context.WithCancel(context.Background())
@@ -773,7 +769,6 @@ func TestProxy_LockHeld_ReturnsSentinel(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	port := freeTCPPort(t)
 
 	held, err := util.TryLock(filepath.Join(root, proxy.LockFileName))
 	require.NoError(t, err)
@@ -782,7 +777,7 @@ func TestProxy_LockHeld_ReturnsSentinel(t *testing.T) {
 	ts := server.New()
 	stats := &proxy.Stats{}
 	p := proxy.NewProxyServer(proxy.ProxyOpts{
-		RootDir: root, Port: port,
+		RootDir: root, Port: 0,
 		Server: ts, Stats: stats,
 	})
 	err = p.ListenAndServe(context.Background())
