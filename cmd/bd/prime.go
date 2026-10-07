@@ -144,7 +144,7 @@ Memory injection caps:
 		}
 		emit := func(content string) error {
 			if primeRequireMemoryLoad && primeMemoryLoadError != nil {
-				return fmt.Errorf("Beads memory context unavailable: %s", primeErrorSummary(primeMemoryLoadError))
+				return fmt.Errorf("Beads memory context unavailable: %w", primeMemoryLoadError)
 			}
 			if primeHookJSONMode {
 				_ = outputHookJSON(os.Stdout, content)
@@ -486,19 +486,19 @@ func formatMemoriesForPrime(compact bool) string {
 			if errors.Is(err, ErrNoBeadsDatabase) {
 				return "" // No workspace here — genuinely nothing to inject.
 			}
-			return formatPrimeMemoryUnavailable(compact, err)
+			return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("store_open", err))
 		}
 	}
 	if store == nil {
-		return formatPrimeMemoryUnavailable(compact, errors.New("storage reported ready but no store is active"))
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("store_open", errors.New("storage reported ready but no store is active")))
 	}
 	memories, err := store.Memories()
 	if err != nil {
-		return formatPrimeMemoryUnavailable(compact, err)
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("memory_accessor", err))
 	}
 	result, err := memories.List(context.Background(), memoryops.ListRequest{})
 	if err != nil {
-		return formatPrimeMemoryUnavailable(compact, err)
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("memory_list", err))
 	}
 	return renderPrimeMemoryPlane(result.Memories, compact)
 }
@@ -636,8 +636,12 @@ func primeMemoryCapNote(maxCount, maxChars int) string {
 }
 
 func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
+	return formatPrimeMemoryTimeoutAt(compact, timeout, "store_open")
+}
+
+func formatPrimeMemoryTimeoutAt(compact bool, timeout time.Duration, stage string) string {
 	if primeRequireMemoryLoad {
-		primeMemoryLoadError = context.DeadlineExceeded
+		primeMemoryLoadError = newPrimeMemoryFailure(stage, context.DeadlineExceeded)
 	}
 	if timeout <= 0 {
 		timeout = primeStoreTimeoutDefault
@@ -662,7 +666,7 @@ func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
 // zero recall (gh#5877).
 func formatPrimeMemoryUnavailable(compact bool, err error) string {
 	if primeRequireMemoryLoad {
-		primeMemoryLoadError = errors.New(primeErrorSummary(err))
+		primeMemoryLoadError = err
 	}
 	msg := fmt.Sprintf("Skipped: beads storage unavailable (%s) — persistent memories were NOT injected this session. Run `bd doctor`; if the store is a Dolt server, check it is running and reachable.", primeErrorSummary(err))
 	if compact {

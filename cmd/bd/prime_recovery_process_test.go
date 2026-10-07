@@ -93,6 +93,21 @@ func TestPrimeHookUnavailableStoreRetainsRefreshUntilMemoryDelivery(t *testing.T
 		if strings.Contains(out, "additionalContext") {
 			t.Fatalf("%s injected an incomplete memory projection: %s", event, out)
 		}
+		diagnosticPath := strings.TrimSuffix(marker, ".refresh") + "." + event + ".json"
+		diagnostic, err := os.ReadFile(diagnosticPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(diagnostic, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got["prime_failure_stage"] != "store_open" || got["prime_failure_reason"] != "unavailable" {
+			t.Fatalf("%s lost the child read failure: %s", event, diagnostic)
+		}
+		if len(diagnostic) > 2048 || strings.Contains(string(diagnostic), "invalid/database") || strings.Contains(string(diagnostic), dir) || strings.Contains(string(diagnostic), solved) {
+			t.Fatalf("diagnostic retained private details: %s", diagnostic)
+		}
 	}
 	if out := mustRun(string(data), "codex-hook", codexHookPreCompact); !strings.Contains(out, "context check failed") {
 		t.Fatalf("PreCompact accepted the diagnostic: %s", out)
@@ -106,6 +121,10 @@ func TestPrimeHookUnavailableStoreRetainsRefreshUntilMemoryDelivery(t *testing.T
 	}
 	if _, err := os.Stat(marker); !os.IsNotExist(err) {
 		t.Fatalf("successful retry retained marker: %v", err)
+	}
+	delivered, err := os.ReadFile(strings.TrimSuffix(marker, ".refresh") + "." + codexHookUserPromptSubmit + ".json")
+	if err != nil || strings.Contains(string(delivered), "prime_failure_") {
+		t.Fatalf("healthy retry retained stale failure categories: %v %s", err, delivered)
 	}
 	if out := mustRun(string(data), "codex-hook", codexHookUserPromptSubmit); strings.TrimSpace(out) != "" {
 		t.Fatalf("successful projection repeated: %s", out)

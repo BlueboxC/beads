@@ -44,6 +44,8 @@ func TestCodexHookDiagnosticsDescribeAttemptWithoutContext(t *testing.T) {
 		{"delivered", "loaded", "context_written", nil, "PRIVATE SOLUTION\n", false},
 		{"read_failed", "failed", "warning_written", errors.New("PRIVATE DATABASE ERROR"), "", false},
 		{"timeout", "timed_out", "warning_written", context.DeadlineExceeded, "", false},
+		{"typed_read_timeout", "timed_out", "warning_written", newPrimeMemoryFailure("memory_list", context.DeadlineExceeded), "", false},
+		{"permission", "failed", "warning_written", newPrimeMemoryFailure("store_open", os.ErrPermission), "", false},
 		{"empty", "empty", "none", nil, " \n", false},
 		{"output_failed", "loaded", "failed", nil, "PRIVATE SOLUTION\n", true},
 	} {
@@ -80,6 +82,13 @@ func TestCodexHookDiagnosticsDescribeAttemptWithoutContext(t *testing.T) {
 				if got["context_sha256"] != hex.EncodeToString(sum[:]) || got["context_bytes"] != float64(len(tc.context)) {
 					t.Fatalf("context metadata=%#v", got)
 				}
+			}
+			if tc.primeError != nil {
+				if got["prime_failure_stage"] != primeMemoryFailureStage(tc.primeError, "unknown") || got["prime_failure_reason"] != primeMemoryFailureReason(tc.primeError) {
+					t.Fatalf("failure classification=%#v", got)
+				}
+			} else if got["prime_failure_stage"] != nil || got["prime_failure_reason"] != nil {
+				t.Fatalf("healthy/no-op attempt retained a failure: %#v", got)
 			}
 			data, _ := json.Marshal(got)
 			for _, secret := range []string{"PRIVATE", cwd} {
@@ -141,5 +150,25 @@ func TestCodexHookDiagnosticsFailureDoesNotPreventDelivery(t *testing.T) {
 	var got codexHookResponse
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil || got.HookSpecificOutput.AdditionalContext != "RECOVERED SOLUTION\n" {
 		t.Fatalf("cache failure affected context: %v %s", err, out.String())
+	}
+}
+
+func TestCodexHookDiagnosticsBuildLabelExcludesPrivateText(t *testing.T) {
+	oldBuild := Build
+	codexHookMarkerDirOverride = t.TempDir()
+	t.Cleanup(func() { Build = oldBuild; codexHookMarkerDirOverride = "" })
+	input := codexHookInput{SessionID: "s1", CWD: "/repo"}
+	for _, tc := range []struct{ build, want string }{{"1bda5cc9d", "1bda5cc9d"}, {"PRIVATE BRANCH OR PATH", ""}, {strings.Repeat("a", 100), ""}, {"dev", ""}} {
+		Build = tc.build
+		d := beginCodexHookDiagnostic(codexHookPostCompact, input)
+		d.finish(nil)
+		got := readHookDiagnostic(t, input, codexHookPostCompact)
+		if tc.want == "" {
+			if got["binary_build"] != nil {
+				t.Fatal("non-commit build label retained")
+			}
+		} else if got["binary_build"] != tc.want {
+			t.Fatal("commit build label lost")
+		}
 	}
 }

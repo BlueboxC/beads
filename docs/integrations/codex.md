@@ -51,6 +51,16 @@ produce a mismatch. Context metadata contains only byte count and SHA-256.
 Raw context, prompts, transcript contents, paths, session text, environment,
 model and error messages are excluded.
 
+Failures add `prime_failure_stage`: `store_open`, `memory_accessor`,
+`memory_list`, `workspace_validation`, `prime_process` or `unknown`.
+`prime_failure_reason` is `deadline_exceeded`, `canceled`, `permission_denied`,
+`connection_refused` or `unavailable`, based on typed errors. Required child
+reads transport these categories by internal exit status; stderr is not parsed.
+Untyped failures remain `unavailable`; duration alone does not identify a lock
+or another engine cause. Missing fields in older records cannot be reconstructed.
+`binary_build`, when present, is a bounded commit build label; verifying the exact
+installed binary still requires its installation hash.
+
 `prime_result` distinguishes `loaded`, `empty`, `failed`, `timed_out`, `canceled`
 and `not_requested`. `output_result` distinguishes `context_written`,
 `warning_written`, `failed` and `none`. A successful write proves local stdout

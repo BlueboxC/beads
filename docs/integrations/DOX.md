@@ -16,7 +16,7 @@ Root DOX.md and the parent chain remain binding.
 
 Explain actual configuration paths and effects; preserve global versus project setup distinctions.
 
-Codex lifecycle guidance distinguishes immediate source=compact recovery from the retained next-prompt fallback; hook trust, local stdout production and actual native context admission remain separate. Missing diagnostics alone cannot establish omitted dispatch.
+Codex lifecycle guidance distinguishes immediate source=compact recovery from the retained next-prompt fallback; hook trust, local stdout production and actual native context admission remain separate. Missing diagnostics alone cannot establish omitted dispatch. Read-failure categories use typed errors and an internal child status protocol, never stderr text or timing heuristics; commit build labels do not establish exact binary identity.
 
 ## Verification
 

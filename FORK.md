@@ -28,7 +28,7 @@ contain them. See [installation and workflow](docs/core-concepts/fork-continuity
 | Live viewer | Read-only graph/history queries, Actualizar grafo, Manual/Automático selection, visible disconnects and preserved layout | Refresh reads saved data; it does not parse code or renew evidence. |
 | Derived maintenance | Explicit `maintain once` and `maintain watch` over saved document/code selections | Only approved directory roots discover new files. Human records and task state are not rewritten. |
 | Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
-| Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata | Local stdout success does not prove native context admission or universal reliability. |
+| Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata with typed read-phase/reason and commit build label | Local stdout success does not prove native context admission or universal reliability. |
 | Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
 
 Detailed references: [knowledge](docs/core-concepts/knowledge.md),

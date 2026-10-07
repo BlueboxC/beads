@@ -2440,6 +2440,12 @@ func main() {
 	metrics.CloseAndFlush()
 
 	if err != nil {
+		if executedCmd == primeCmd && primeRequireMemoryLoad {
+			if code, ok := primeMemoryFailureExitCode(err); ok {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+				os.Exit(code)
+			}
+		}
 		if code, ok := exitCodeFromError(err); ok {
 			os.Exit(code)
 		}

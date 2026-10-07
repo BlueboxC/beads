@@ -31,14 +31,14 @@ func runBdPrime(ctx context.Context, args ...string) (string, error) {
 func runBdPrimeInDir(ctx context.Context, cwd string, args ...string) (string, error) {
 	if cwd != "" {
 		if !filepath.IsAbs(cwd) {
-			return "", fmt.Errorf("hook cwd must be absolute")
+			return "", newPrimeMemoryFailure("workspace_validation", fmt.Errorf("hook cwd must be absolute"))
 		}
 		info, err := os.Stat(cwd)
 		if err != nil {
-			return "", fmt.Errorf("hook cwd: %w", err)
+			return "", newPrimeMemoryFailure("workspace_validation", fmt.Errorf("hook cwd: %w", err))
 		}
 		if !info.IsDir() {
-			return "", fmt.Errorf("hook cwd is not a directory")
+			return "", newPrimeMemoryFailure("workspace_validation", fmt.Errorf("hook cwd is not a directory"))
 		}
 	}
 	cmdArgs := append([]string{"prime", "--" + primeRequireMemoryLoadFlag}, args...)
@@ -60,7 +60,7 @@ func runBdPrimeInDir(ctx context.Context, cwd string, args ...string) (string, e
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("bd %s: %w: %s", strings.Join(cmdArgs, " "), err, strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("bd %s: %w: %s", strings.Join(cmdArgs, " "), primeMemorySubprocessFailure(ctx, err), strings.TrimSpace(string(out)))
 	}
 	return string(out), nil
 }

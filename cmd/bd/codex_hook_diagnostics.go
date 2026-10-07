@@ -18,22 +18,25 @@ import (
 // Diagnostics describe local hook execution, not Codex's subsequent admission
 // of stdout into model context. Keep only the latest attempt for each event.
 type codexHookDiagnostic struct {
-	Version         int        `json:"version"`
-	Event           string     `json:"event"`
-	TurnID          string     `json:"turn_id,omitempty"`
-	Source          string     `json:"source,omitempty"`
-	Trigger         string     `json:"trigger,omitempty"`
-	CWDMatchesInput *bool      `json:"cwd_matches_input,omitempty"`
-	StartedAt       time.Time  `json:"started_at"`
-	CompletedAt     *time.Time `json:"completed_at,omitempty"`
-	DurationMS      int64      `json:"duration_ms"`
-	Phase           string     `json:"phase"`
-	PrimeResult     string     `json:"prime_result"`
-	OutputResult    string     `json:"output_result"`
-	ContextBytes    int        `json:"context_bytes,omitempty"`
-	ContextSHA256   string     `json:"context_sha256,omitempty"`
-	RefreshPending  bool       `json:"refresh_pending"`
-	HookFailed      bool       `json:"hook_failed"`
+	Version            int        `json:"version"`
+	Event              string     `json:"event"`
+	TurnID             string     `json:"turn_id,omitempty"`
+	Source             string     `json:"source,omitempty"`
+	Trigger            string     `json:"trigger,omitempty"`
+	CWDMatchesInput    *bool      `json:"cwd_matches_input,omitempty"`
+	StartedAt          time.Time  `json:"started_at"`
+	CompletedAt        *time.Time `json:"completed_at,omitempty"`
+	DurationMS         int64      `json:"duration_ms"`
+	Phase              string     `json:"phase"`
+	PrimeResult        string     `json:"prime_result"`
+	PrimeFailureStage  string     `json:"prime_failure_stage,omitempty"`
+	PrimeFailureReason string     `json:"prime_failure_reason,omitempty"`
+	BinaryBuild        string     `json:"binary_build,omitempty"`
+	OutputResult       string     `json:"output_result"`
+	ContextBytes       int        `json:"context_bytes,omitempty"`
+	ContextSHA256      string     `json:"context_sha256,omitempty"`
+	RefreshPending     bool       `json:"refresh_pending"`
+	HookFailed         bool       `json:"hook_failed"`
 
 	cwd    string
 	path   string
@@ -46,6 +49,9 @@ func beginCodexHookDiagnostic(event string, input codexHookInput) *codexHookDiag
 		cwd: input.CWD, Version: 1, Event: event, StartedAt: time.Now().UTC(), Phase: "running",
 		PrimeResult: "not_requested", OutputResult: "none", marker: marker,
 		path: strings.TrimSuffix(marker, ".refresh") + "." + event + ".json",
+	}
+	if len(Build) >= 7 && len(Build) <= 40 && strings.Trim(Build, "0123456789abcdef") == "" {
+		d.BinaryBuild = Build
 	}
 	if id, err := uuid.Parse(input.TurnID); err == nil {
 		d.TurnID = id.String()
@@ -70,6 +76,10 @@ func beginCodexHookDiagnostic(event string, input codexHookInput) *codexHookDiag
 
 func (d *codexHookDiagnostic) prime(ctx context.Context, memoriesOnly bool) (string, error) {
 	out, err := codexHookExecPrime(ctx, d.cwd, memoriesOnly)
+	if err != nil {
+		d.PrimeFailureStage = primeMemoryFailureStage(err, "unknown")
+		d.PrimeFailureReason = primeMemoryFailureReason(err)
+	}
 	switch {
 	case errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded):
 		d.PrimeResult = "timed_out"
