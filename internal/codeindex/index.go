@@ -139,6 +139,14 @@ func IsKey(key string) bool     { return strings.HasPrefix(key, Prefix) }
 func digest(data []byte) string { value := sha256.Sum256(data); return hex.EncodeToString(value[:]) }
 
 func pack(value any) (string, error) {
+	encoded, err := encode(value)
+	if err == nil && len(encoded) > maxRowBytes {
+		return "", errors.New("code index row exceeds 60 KiB; narrow roots or split a large module")
+	}
+	return encoded, err
+}
+
+func encode(value any) (string, error) {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return "", err
@@ -154,15 +162,15 @@ func pack(value any) (string, error) {
 	if err := writer.Close(); err != nil {
 		return "", err
 	}
-	encoded := "code-v1:" + base64.StdEncoding.EncodeToString(buf.Bytes())
-	if len(encoded) > maxRowBytes {
-		return "", errors.New("code index row exceeds 60 KiB; narrow roots or split a large module")
-	}
-	return encoded, nil
+	return "code-v1:" + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 func unpack(value string, target any) error {
-	if !strings.HasPrefix(value, "code-v1:") || len(value) > maxRowBytes {
+	return unpackBounded(value, target, maxRowBytes)
+}
+
+func unpackBounded(value string, target any, maxEncoded int) error {
+	if !strings.HasPrefix(value, "code-v1:") || len(value) > maxEncoded {
 		return errors.New("invalid code index encoding")
 	}
 	data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, "code-v1:"))
@@ -269,15 +277,15 @@ func loadIndex(read func(string) (string, bool, error), selected map[string]bool
 		if !exists || digest([]byte(value)) != ref.Blob {
 			return Index{}, errors.New("missing or corrupt code index blob: " + ref.Path)
 		}
-		var file File
-		if err := unpack(value, &file); err != nil {
+		file, fileBytes, err := readFile(value, read)
+		if err != nil {
 			return Index{}, err
 		}
 		if file.Path != ref.Path || (entry.Version == 3 && (file.Language != languageOf(file.Path) || !slices.Contains(entry.Languages, file.Language))) {
 			return Index{}, errors.New("code index path mismatch")
 		}
 		entry.Files = append(entry.Files, file)
-		entry.Stats.StoredBytes += len(value)
+		entry.Stats.StoredBytes += fileBytes
 	}
 	return entry.Index, nil
 }
@@ -292,14 +300,14 @@ func Save(ctx context.Context, memories memoryops.Memories, plane map[string]str
 	stored := 0
 	for _, file := range index.Files {
 		file.Validity = ""
-		encoded, err := pack(file)
+		encoded, fileBytes, err := packFile(file, blobs)
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", file.Path, err)
 		}
 		blob := digest([]byte(encoded))
 		entry.References = append(entry.References, reference{Path: file.Path, Blob: blob})
 		blobs[Prefix+"blob/"+blob] = encoded
-		stored += len(encoded)
+		stored += fileBytes
 	}
 	// References are bounded parts too; the final manifest stays within TEXT.
 	if index.Version >= 2 {

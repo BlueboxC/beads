@@ -39,14 +39,22 @@ func PlanPrune(plane map[string]string) (PrunePlan, error) {
 		entry.References = append(entry.References, refs...)
 	}
 	for _, ref := range entry.References {
-		retained[Prefix+"blob/"+ref.Blob] = true
+		key := Prefix + "blob/" + ref.Blob
+		retained[key] = true
+		var file fileFragments
+		if err := unpack(plane[key], &file); err != nil {
+			return plan, err
+		}
+		for _, part := range file.Parts {
+			retained[Prefix+"blob/"+part] = true
+		}
 	}
 	plan.CurrentBytes = len(plane[manifestKey])
 	for key, value := range plane {
 		if !strings.HasPrefix(key, Prefix+"blob/") {
 			continue
 		}
-		if strings.TrimPrefix(key, Prefix+"blob/") != digest([]byte(value)) || !strings.HasPrefix(value, "code-v1:") {
+		if strings.TrimPrefix(key, Prefix+"blob/") != digest([]byte(value)) || (!strings.HasPrefix(value, "code-v1:") && !strings.HasPrefix(value, fragmentPrefix)) {
 			return plan, errors.New("unrecognized or corrupt derived blob; prune refused")
 		}
 		if retained[key] {

@@ -134,10 +134,14 @@ checks those IDs against a current index and binds their source files/DOX.
 Adding a symbol link is an explicit review; scan/rebuild never renews a stale
 assertion. Closing a task does not create a learned solution automatically.
 
-Limits are 4096 files, 1 MiB per UTF-8 file, 32 MiB total input, 8 MiB decoded
-JSON and 60 KiB per compressed stored row. A row/manifest exceeding its bound
-fails before publication; narrow the roots instead of assuming a partial scan
-completed. Queries default to 50 matching files and report omitted matches;
+Limits are 4096 files, the shared UTF-8 reader's 16 MiB per-file bound,
+32 MiB total input, 8 MiB decoded JSON per structure and 60 KiB per stored row.
+A large single-file structure is stored in content-addressed 48 KiB fragments
+with a bounded descriptor; reads verify every fragment and the complete length,
+order and hash. The decoded limit still applies. Dense XML/SVG exceeding its bounded symbol
+budget is retained with source/DOX hashes and an explicit `ASTLimit` parse error,
+without partial symbols. Other selected files can still be indexed. A structure or manifest
+exceeding a bound fails before publication; no partial scan is accepted. Queries default to 50 matching files and report omitted matches;
 `--limit` accepts 1–1024. Graph export refuses more than 3000 nodes and shares
 the native offline viewer; select a module to keep it usable.
 
@@ -155,7 +159,9 @@ Clients predating version 3 refuse it explicitly; four- and eight-language clien
 refuse manifests containing languages outside their supported selection. Keep an old-compatible manifest
 when downgrading: back up the previous derived manifest
 before migration and restore it before reverting the binary. Human records and
-immutable blobs remain separate.
+immutable blobs remain separate. A binary predating fragmented file storage also
+requires restoring its previous complete derived generation before downgrade.
+Prune recognizes fragments and retains those referenced by the current files.
 Each scan prepares bounded immutable blob rows through memoryops. Embedded
 atomic publication commits all needed rows and the manifest together; other
 adapters publish blobs before one atomic manifest. Failure leaves the prior

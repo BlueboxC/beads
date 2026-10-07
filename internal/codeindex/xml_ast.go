@@ -1,6 +1,7 @@
 package codeindex
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -14,6 +15,17 @@ func parseXML(input parserInput) File {
 	decoder := xml.NewDecoder(strings.NewReader(input.Content))
 	stack := []int{}
 	steps, roots := 0, 0
+	symbolBytes := 0
+	addSymbol := func(symbol Symbol) bool {
+		encoded, err := json.Marshal(symbol)
+		// Leave room for file provenance and serialization separators.
+		if err != nil || len(encoded)+1 > maxJSONBytes-64*1024-symbolBytes {
+			return false
+		}
+		symbolBytes += len(encoded) + 1
+		out.Symbols = append(out.Symbols, symbol)
+		return true
+	}
 	fail := func(kind string) File {
 		return File{Path: input.Path, Blocked: map[string][]string{}, ParseError: kind}
 	}
@@ -47,11 +59,15 @@ func parseXML(input parserInput) File {
 			}
 			id := fmt.Sprintf("%s::%s@L%d_%d", input.Path, name, startLine, len(out.Symbols))
 			position := len(out.Symbols)
-			out.Symbols = append(out.Symbols, Symbol{ID: id, Name: name, Kind: "element", Line: startLine, EndLine: startLine, Parent: parent})
+			if !addSymbol(Symbol{ID: id, Name: name, Kind: "element", Line: startLine, EndLine: startLine, Parent: parent}) {
+				return fail("ASTLimit")
+			}
 			stack = append(stack, position)
 			for _, a := range node.Attr {
 				label := name + ".@" + a.Name.Local
-				out.Symbols = append(out.Symbols, Symbol{ID: fmt.Sprintf("%s::%s@L%d_%d", input.Path, label, startLine, len(out.Symbols)), Name: label, Kind: "attribute", Line: startLine, EndLine: startLine, Parent: id})
+				if !addSymbol(Symbol{ID: fmt.Sprintf("%s::%s@L%d_%d", input.Path, label, startLine, len(out.Symbols)), Name: label, Kind: "attribute", Line: startLine, EndLine: startLine, Parent: id}) {
+					return fail("ASTLimit")
+				}
 			}
 		case xml.EndElement:
 			if len(stack) == 0 {
