@@ -18,6 +18,8 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
+- Language coverage prioritizes common project technologies: PHP, HTML/CSS, C, Bash/sh and PowerShell, GraphQL/XML, mobile Kotlin/Swift/Dart and SQL/JSON/YAML/TOML alongside the existing eight languages. Avoid niche-only expansion and preserve saved project selections; new coverage requires explicit scan selection.
+
 Keep runtime databases, operator state and backups out of Git. Use bd for project tasks and durable facts; publishing Dolt data needs an explicitly configured remote.
 
 Initialize an operator clone of this fork with --role=maintainer so tasks stay in its own database. Keep contributor auto-routing disabled for this single-database setup.

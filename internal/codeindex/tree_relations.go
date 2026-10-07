@@ -15,10 +15,10 @@ func treeRelations(index Index) []Relation {
 	counts := map[string]int{}
 	typeCounts := map[string]int{}
 	for _, file := range index.Files {
+		files[file.Path] = file
 		if !treeLanguage(fileLanguage(file)) {
 			continue
 		}
-		files[file.Path] = file
 		for _, symbol := range file.Symbols {
 			key := file.Path + "::" + symbol.Name
 			counts[key]++
@@ -61,6 +61,13 @@ func treeRelations(index Index) []Relation {
 				switch fileLanguage(file) {
 				case "java":
 					target = qualified[item.Name]
+				case "c", "php", "bash", "powershell", "html", "css", "dart":
+					if item.Member == "path" && !strings.ContainsAny(item.Name, "\\:*?#$`") && !path.IsAbs(item.Name) {
+						candidate := path.Join(path.Dir(file.Path), item.Name)
+						if _, ok := files[candidate]; ok && candidate != ".." && !strings.HasPrefix(candidate, "../") {
+							target = moduleID(candidate)
+						}
+					}
 				case "cpp":
 					candidate := path.Join(path.Dir(file.Path), item.Name)
 					if f, ok := files[candidate]; ok && fileLanguage(f) == "cpp" && !path.IsAbs(item.Name) && candidate != ".." && !strings.HasPrefix(candidate, "../") {
@@ -107,7 +114,7 @@ func treeRelations(index Index) []Relation {
 		for _, call := range file.Calls {
 			target := ""
 			first := strings.Split(call.Name, ".")[0]
-			for scope := call.Owner; scope != ""; scope = parentScope(scope) {
+			for scope := call.Owner; scope != "" && (originalTreeLanguage(fileLanguage(file)) || fileLanguage(file) == "c"); scope = parentScope(scope) {
 				blocked := false
 				for _, name := range file.Blocked[scope] {
 					if name == "*" || name == first {

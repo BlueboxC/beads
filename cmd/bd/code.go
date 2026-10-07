@@ -125,7 +125,7 @@ func init() {
 	}
 	scan.Flags().StringSlice("exclude", nil, "Workspace-relative subtrees excluded from selection")
 	scan.Flags().Bool("rebuild", false, "Reparse all selected code; never rebind human assertions")
-	scan.Flags().StringSlice("languages", nil, "Explicit languages: python, go, javascript, typescript, java, csharp, rust, cpp or all; reuse previous selection, default Python")
+	scan.Flags().StringSlice("languages", nil, "Explicit languages: python, go, javascript, typescript, java, csharp, rust, cpp, php, c, bash, powershell, html, css, graphql, xml, kotlin, swift, dart, sql, json, yaml, toml or all; reuse previous selection, default Python")
 	scan.Flags().String("node", "node", "Operator-owned Node.js for bundled TypeScript and Tree-sitter WASM parsers")
 	scan.Flags().String("python", "python3", "Operator-owned Python 3 interpreter for isolated AST parsing")
 	status := &cobra.Command{Use: "status", Short: "Check persisted index against current code and DOX", Args: cobra.NoArgs, RunE: func(_ *cobra.Command, _ []string) error {

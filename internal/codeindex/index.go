@@ -645,10 +645,16 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 				for _, input := range batch {
 					parsed.Files = append(parsed.Files, parseGo(input))
 				}
-			case "java", "csharp", "rust", "cpp":
-				parsed, err = parseTrees(ctx, options.Node, language, batch)
+			case "xml":
+				for _, input := range batch {
+					parsed.Files = append(parsed.Files, parseXML(input))
+				}
 			default:
-				parsed, err = parseScripts(ctx, options.Node, batch)
+				if treeLanguage(language) {
+					parsed, err = parseTrees(ctx, options.Node, language, batch)
+				} else {
+					parsed, err = parseScripts(ctx, options.Node, batch)
+				}
 			}
 			if err != nil {
 				return Index{}, err

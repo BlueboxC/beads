@@ -18,6 +18,12 @@ import (
 //go:embed tree_ast.js
 var treeParser string
 
+//go:embed common_ast.js
+var commonParser string
+
+//go:embed COMMON-PARSER-LICENSES
+var commonLicenses string
+
 //go:embed tree-sitter*.gz
 var treeBundles embed.FS
 
@@ -25,7 +31,20 @@ var treeBundles embed.FS
 var treeLicenses string
 
 func treeLanguage(language string) bool {
+	switch language {
+	case "java", "csharp", "rust", "cpp", "php", "c", "bash", "powershell", "html", "css", "graphql", "kotlin", "swift", "dart", "sql", "json", "yaml", "toml":
+		return true
+	}
+	return false
+}
+func originalTreeLanguage(language string) bool {
 	return language == "java" || language == "csharp" || language == "rust" || language == "cpp"
+}
+func treeParserScript(language string) string {
+	if originalTreeLanguage(language) {
+		return treeParser
+	}
+	return commonParser
 }
 func grammarName(language string) string {
 	if language == "csharp" {
@@ -35,7 +54,7 @@ func grammarName(language string) string {
 }
 func treeParserHash(language string) string {
 	var data bytes.Buffer
-	data.WriteString(treeParser)
+	data.WriteString(treeParserScript(language))
 	for _, name := range []string{"tree-sitter.js.gz", "tree-sitter.wasm.gz", "tree-sitter-" + grammarName(language) + ".wasm.gz"} {
 		asset, _ := treeBundles.ReadFile(name) // Embedded names are fixed and covered by asset tests.
 		data.Write(asset)
@@ -67,7 +86,7 @@ func parseTrees(ctx context.Context, executable, language string, inputs []parse
 	}
 	path, err := exec.LookPath(executable)
 	if err != nil {
-		return parserOutput{}, errors.New("operator-owned Node.js is required for Java/C#/Rust/C++ AST; select --node")
+		return parserOutput{}, errors.New("operator-owned Node.js is required for the selected Tree-sitter grammar; select --node")
 	}
 	runtime, err := treeAsset("tree-sitter.js")
 	if err != nil {
@@ -93,7 +112,7 @@ func parseTrees(ctx context.Context, executable, language string, inputs []parse
 	}
 	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", treeParser)
+	cmd := exec.CommandContext(ctx, path, "--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", treeParserScript(language))
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
 	cmd.Stdin = bytes.NewReader(data)
 	var stdout, stderr boundedBuffer

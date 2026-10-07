@@ -165,10 +165,7 @@ func Validate(record Record) error {
 		}
 		switch strings.ToLower(filepath.Ext(parts[0])) {
 		case ".py", ".go", ".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".java", ".cs", ".rs", ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx", ".h++":
-		case ".c":
-			if filepath.Ext(parts[0]) != ".C" {
-				return errors.New("symbol references require a supported code file")
-			}
+		case ".php", ".phtml", ".c", ".sh", ".bash", ".ps1", ".psm1", ".psd1", ".html", ".htm", ".css", ".graphql", ".gql", ".xml", ".xsd", ".xsl", ".xslt", ".svg", ".plist", ".storyboard", ".xib", ".kt", ".kts", ".swift", ".dart", ".sql", ".json", ".yaml", ".yml", ".toml":
 		default:
 			return errors.New("symbol references require a supported code file")
 		}

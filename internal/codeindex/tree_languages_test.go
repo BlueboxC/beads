@@ -138,7 +138,7 @@ func TestEightLanguageIncrementalPersistence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := r.ScanWithOptions(ctx, old.Roots, nil, old, ScanOptions{Languages: []string{"all"}})
+	got, err := r.ScanWithOptions(ctx, old.Roots, nil, old, ScanOptions{Languages: []string{"python", "go", "javascript", "typescript", "java", "csharp", "rust", "cpp"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestTreeAssetsAndLanguageSelection(t *testing.T) {
 		}
 	}
 	langs, err := normalizeLanguages([]string{"all", "C#", "c++"})
-	if err != nil || len(langs) != 8 {
+	if err != nil || len(langs) != 23 {
 		t.Fatalf("selection %v %v", langs, err)
 	}
 	if !strings.Contains(ParserLicenses(), "Java grammar") || !strings.Contains(ParserLicenses(), "Ayman Nadeem") || !strings.Contains(ParserLicenses(), "TypeScript") {

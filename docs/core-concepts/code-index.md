@@ -1,6 +1,6 @@
 ---
 title: Code index (BlueboxC fork)
-description: Query existing symbols in eight languages and static references in the same Dolt as project knowledge
+description: Query existing structure in 23 languages and formats and static references in the same Dolt as project knowledge
 ---
 
 `bd code` is a local fork extension. It stores a regenerable code AST index
@@ -17,7 +17,7 @@ provide the runtime and selected grammar; its VM has no filesystem/network host,
 and WASM memory is bounded to 512 MiB separately from the Node heap. No Java,
 .NET, Rust or C++ compiler, npm setup or project build is required.
 `bd code --licenses` prints all bundled attribution;
-`internal/codeindex/tree-sitter-provenance.json` records revisions and hashes.
+`internal/codeindex/tree-sitter-provenance.json` records the original revisions/hashes; `common-parser-provenance.json` identifies the fourteen additional MIT grammar payloads from integrity-pinned `tree-sitter-wasm` 2.0.4. They reuse the original fixed runtime. XML uses Go encoding/xml on text, without a project executable, DTD loading, external entity resolution or XSD validation. No PHP, shell, mobile compiler or SQL server is needed or invoked. The archive hashes identify distributed bytes; they do not establish a reproducible upstream build.
 
 ```bash
 bd code scan src tests --exclude src/generated --json
@@ -33,8 +33,8 @@ bd code scan --rebuild       # reparse, retaining all human assertions/tasks
 Default selection is Python on a new index; absent `--languages` reuses saved
 languages. `--python` and `--node` select operator interpreters only for changed
 files. An unchanged scan needs neither interpreter. Saved selections are never
-broadened automatically: choose the complete language list, or `all` for all eight.
-`c#`/`cs`/`c-sharp` and `c++`/`cxx` are aliases for `csharp` and `cpp`.
+broadened automatically: choose the complete language list, or `all` for all 23 languages/formats.
+`c#`/`cs`/`c-sharp` and `c++`/`cxx` are aliases for `csharp` and `cpp`; `sh`/`shell`, `ps1` and `yml` select `bash`, `powershell` and `yaml`.
 
 | Language | Source extensions | Parser |
 | --- | --- | --- |
@@ -46,8 +46,23 @@ broadened automatically: choose the complete language list, or `all` for all eig
 | C# | `.cs` | Tree-sitter C# |
 | Rust | `.rs` | Tree-sitter Rust |
 | C++ | `.cpp`, `.cc`, `.cxx`, `.c++`, `.C`, `.h`, `.hh`, `.hpp`, `.hxx`, `.h++` | Tree-sitter C++ |
+| PHP | `.php`, `.phtml` | Tree-sitter PHP |
+| C | `.c` | Tree-sitter C |
+| Bash/sh | `.sh`, `.bash` | Tree-sitter Bash; no POSIX conformance checking |
+| PowerShell | `.ps1`, `.psm1`, `.psd1` | Tree-sitter PowerShell |
+| HTML5 | `.html`, `.htm` | Tree-sitter HTML |
+| CSS | `.css` | Tree-sitter CSS |
+| GraphQL | `.graphql`, `.gql` | Tree-sitter GraphQL |
+| XML | `.xml`, `.xsd`, `.xsl`, `.xslt`, `.svg`, `.plist`, `.storyboard`, `.xib` | Go standard XML decoder |
+| Kotlin | `.kt`, `.kts` | Tree-sitter Kotlin |
+| Swift | `.swift` | Tree-sitter Swift |
+| Dart | `.dart` | Tree-sitter Dart |
+| SQL | `.sql` | Tree-sitter SQL; dialect-dependent syntax |
+| JSON | `.json` | Tree-sitter JSON |
+| YAML | `.yaml`, `.yml` | Tree-sitter YAML |
+| TOML | `.toml` | Tree-sitter TOML |
 
-C++ headers use C++ syntax; lowercase `.c` is outside this language selection.
+C++ headers, including shared `.h`, retain the C++ convention; lowercase `.c` selects C and uppercase `.C` selects C++. Selecting C alone does not select `.h`.
 Grammar support is syntax-based, not a guarantee of every compiler extension.
 
 Roots and exclusions are workspace-relative, including nested CLI invocations.
@@ -76,7 +91,7 @@ Go top-level initializer calls and interface method headers are outside extracti
 Known static class methods can resolve; unknown instance receiver types cannot. A static reference does not prove
 a function runs, a test passes or a module is installed.
 
-Java package/type imports resolve only unique selected declarations. New-language
+Java package/type imports resolve only unique selected declarations. Java/C#/Rust/C++
 calls resolve unique local functions and known static methods; Java imported
 static methods can link selected files. C++ quoted includes and ordinary Rust
 `mod` declarations link unique selected paths. No include search path or crate
@@ -88,6 +103,29 @@ Anonymous bodies are omitted; constructors and macros remain
 unresolved call sites. Overloaded declarations retain distinct location-suffixed
 IDs; their line suffix can change when code moves. Syntax errors retain no partial
 symbols. These limits apply to impact results too.
+
+
+The additional code languages extract named types/functions/methods and explicit
+imports/call sites. C resolves unique local functions unless parameters,
+declarations or preprocessor syntax make that name uncertain. PHP, Bash,
+PowerShell, Kotlin, Swift and Dart calls remain unresolved: command lookup,
+namespace aliases, conditional definitions, overloads and receiver/extension
+dispatch are not inferred. Literal confined PHP includes, shell sources,
+PowerShell dot-sources, Dart imports, C includes and HTML/CSS resources can link
+selected files. No include search path, package resolver or interpolation runs.
+
+HTML/XML record element/attribute names and hierarchy, omitting attribute values,
+text and inline script/style bodies. XML repeated elements have location-suffixed
+IDs. CSS records rule scopes, selector atoms and property names; attribute-selector
+values and declarations are omitted. No DOM/CSS matching is inferred. GraphQL
+records schema types/fields, operations/fragments and unresolved type/fragment
+references; SQL records named DDL objects/columns and unresolved table references.
+Neither queries a service or database. JSON/YAML/TOML record keys, tables and array
+item scopes, omitting scalar values; complex YAML keys/aliases/tags are not expanded.
+Duplicate names remain distinct location-suffixed nodes. Identifier/key names and
+explicit resource paths are visible data, so keep sensitive runtime files outside
+the selected source roots. These formats share the existing graph, queries, impact
+and reviewed symbol links; structural presence never certifies a solution.
 
 An explicit knowledge record can add up to 16 symbol IDs, for example
 `"symbols": ["src/context_pack.py::select_evidence"]`. `bd knowledge record`
@@ -113,8 +151,8 @@ not treated as authority from a commit identifier.
 AST parsing and reference storage use blocks of at most 128 files/entries,
 so large catalogs keep the same per-row bound. Versions 1/2 remain readable. Version 3 adds language selection and per-file
 parser fingerprints, so expanding a Python index reuses its unchanged files.
-Clients predating version 3 refuse it explicitly; four-language clients also
-refuse manifests containing the new languages. Keep an old-compatible manifest
+Clients predating version 3 refuse it explicitly; four- and eight-language clients also
+refuse manifests containing languages outside their supported selection. Keep an old-compatible manifest
 when downgrading: back up the previous derived manifest
 before migration and restore it before reverting the binary. Human records and
 immutable blobs remain separate.
