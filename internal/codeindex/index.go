@@ -472,16 +472,54 @@ type parserOutput struct {
 	TypeScript string `json:"typescript"`
 	Files      []File `json:"files"`
 }
+
+// A named buffer avoids promoting ReaderFrom, which would bypass the write bound.
 type boundedBuffer struct {
-	bytes.Buffer
-	limit int
+	buffer bytes.Buffer
+	limit  int
 }
 
 func (b *boundedBuffer) Write(data []byte) (int, error) {
-	if b.Len()+len(data) > b.limit {
+	if b.buffer.Len()+len(data) > b.limit {
 		return 0, errors.New("AST parser output exceeds bound")
 	}
-	return b.Buffer.Write(data)
+	return b.buffer.Write(data)
+}
+
+func (b *boundedBuffer) Bytes() []byte { return b.buffer.Bytes() }
+
+func runParser(ctx context.Context, path string, args []string, input []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.WaitDelay = time.Second
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
+	cmd.Stdin = bytes.NewReader(input)
+	var stdout, stderr boundedBuffer
+	stdout.limit, stderr.limit = maxJSONBytes, 4096
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return stdout.Bytes(), nil
+}
+func decodeParser(raw []byte, inputs []parserInput, name string) (parserOutput, error) {
+	var output parserOutput
+	if err := json.Unmarshal(raw, &output); err != nil {
+		if name == "AST" {
+			return output, err
+		}
+		return output, fmt.Errorf("invalid %s parser output", name)
+	}
+	if len(output.Files) != len(inputs) {
+		return output, fmt.Errorf("%s parser returned incomplete files", name)
+	}
+	for i, file := range output.Files {
+		if file.Path != inputs[i].Path {
+			return output, fmt.Errorf("%s parser path mismatch", name)
+		}
+	}
+	return output, nil
 }
 
 func parse(ctx context.Context, executable string, inputs []parserInput) (parserOutput, error) {
@@ -496,30 +534,11 @@ func parse(ctx context.Context, executable string, inputs []parserInput) (parser
 	if err != nil {
 		return parserOutput{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "-I", "-S", "-c", parserScript)
-	cmd.Stdin = bytes.NewReader(data)
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	var stdout, stderr boundedBuffer
-	stdout.limit, stderr.limit = maxJSONBytes, 4096
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	output, err := runParser(ctx, path, []string{"-I", "-S", "-c", parserScript}, data)
+	if err != nil {
 		return parserOutput{}, fmt.Errorf("isolated AST parser failed: %w", err)
 	}
-	var result parserOutput
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return result, err
-	}
-	if len(result.Files) != len(inputs) {
-		return result, errors.New("AST parser returned incomplete files")
-	}
-	for i, file := range result.Files {
-		if file.Path != inputs[i].Path {
-			return result, errors.New("AST parser path mismatch")
-		}
-	}
-	return result, nil
+	return decodeParser(output, inputs, "AST")
 }
 
 func (r *Reader) Scan(ctx context.Context, roots, exclusions []string, previous Index, rebuild bool, python string) (Index, error) {
@@ -802,18 +821,18 @@ func (r *Reader) refresh(index Index, discovery bool) Index {
 	if parserChanged && (discovery || index.Version < 3) {
 		index.Warnings = append(index.Warnings, "AST parser changed; run bd code scan")
 	}
-	cache := make(map[string]string)
-	current := func(path string) string {
-		if value, found := cache[path]; found {
-			return value
+	type snapshotResult struct {
+		source knowledge.Source
+		err    error
+	}
+	cache := make(map[string]snapshotResult)
+	snapshot := func(path string) (knowledge.Source, error) {
+		value, found := cache[path]
+		if !found {
+			value.source, value.err = r.sources.Snapshot(path)
+			cache[path] = value
 		}
-		source, err := r.sources.Snapshot(path)
-		if err == nil {
-			cache[path] = source.SHA256
-		} else {
-			cache[path] = ""
-		}
-		return cache[path]
+		return value.source, value.err
 	}
 	known := make(map[string]bool)
 	for i := range index.Files {
@@ -823,17 +842,19 @@ func (r *Reader) refresh(index Index, discovery bool) Index {
 			file.Validity = "needs_review"
 		}
 		known[file.Path] = true
-		if current(file.Path) != file.SHA256 {
+		source, sourceErr := snapshot(file.Path)
+		if sourceErr != nil || source.SHA256 != file.SHA256 {
 			file.Validity = "needs_review"
 		}
 		contracts := make(map[string]bool)
 		for _, source := range file.Contracts {
 			contracts[source.Path] = true
-			if current(source.Path) != source.SHA256 {
+			current, err := snapshot(source.Path)
+			if err != nil || current.SHA256 != source.SHA256 {
 				file.Validity = "needs_review"
 			}
 		}
-		if source, err := r.sources.Snapshot(file.Path); err == nil {
+		if sourceErr == nil {
 			for _, contract := range source.Contracts {
 				if !contracts[contract] {
 					file.Validity = "needs_review"

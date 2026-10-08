@@ -2,7 +2,9 @@ package tracker
 
 import (
 	"context"
+	"os"
 
+	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/types"
 )
 
@@ -103,4 +105,32 @@ type FieldMapper interface {
 	// IssueToTracker builds update fields from a beads issue for the external tracker.
 	// Returns a map of field names to values in the tracker's format.
 	IssueToTracker(issue *types.Issue) map[string]interface{}
+}
+
+// ReadConfig preserves YAML-only secrets and falls back to env on missing/error store reads.
+func ReadConfig(ctx context.Context, store Store, key, envVar string) (string, error) {
+	// Secret keys are stored in config.yaml, not the Dolt database,
+	// to avoid leaking secrets when pushing to remotes.
+	if config.IsYamlOnlyKey(key) {
+		if val := config.GetString(key); val != "" {
+			return val, nil
+		}
+		if envVar != "" {
+			if envVal := os.Getenv(envVar); envVal != "" {
+				return envVal, nil
+			}
+		}
+		return "", nil
+	}
+
+	val, err := store.GetConfig(ctx, key)
+	if err == nil && val != "" {
+		return val, nil
+	}
+	if envVar != "" {
+		if envVal := os.Getenv(envVar); envVal != "" {
+			return envVal, nil
+		}
+	}
+	return "", nil
 }

@@ -10,9 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
-	"time"
 )
 
 //go:embed tree_ast.js
@@ -110,28 +108,9 @@ func parseTrees(ctx context.Context, executable, language string, inputs []parse
 	if err != nil {
 		return parserOutput{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", treeParserScript(language))
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	cmd.Stdin = bytes.NewReader(data)
-	var stdout, stderr boundedBuffer
-	stdout.limit, stderr.limit = maxJSONBytes, 4096
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	output, err := runParser(ctx, path, []string{"--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", treeParserScript(language)}, data)
+	if err != nil {
 		return parserOutput{}, fmt.Errorf("isolated %s AST parser failed: %w", language, err)
 	}
-	var output parserOutput
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		return output, errors.New("invalid tree AST parser output")
-	}
-	if len(output.Files) != len(inputs) {
-		return output, errors.New("tree AST parser returned incomplete files")
-	}
-	for i, file := range output.Files {
-		if file.Path != inputs[i].Path {
-			return output, errors.New("tree AST parser path mismatch")
-		}
-	}
-	return output, nil
+	return decodeParser(output, inputs, "tree AST")
 }

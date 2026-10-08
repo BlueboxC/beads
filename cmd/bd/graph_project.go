@@ -68,13 +68,17 @@ func runProjectGraph(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+	ids := make([]string, len(issues))
+	for i, issue := range issues {
+		ids[i] = issue.ID
+	}
+	records, err := store.GetDependencyRecordsForIssues(rootCtx, ids)
+	if err != nil {
+		return fmt.Errorf("reading project dependencies: %w", err)
+	}
 	var deps []*types.Dependency
-	for _, issue := range issues {
-		records, err := store.GetDependencyRecords(rootCtx, issue.ID)
-		if err != nil {
-			return fmt.Errorf("reading dependencies for %s: %w", issue.ID, err)
-		}
-		deps = append(deps, records...)
+	for _, id := range ids {
+		deps = append(deps, records[id]...)
 	}
 	page := buildProjectGraph(workspace, state, index, issues, deps)
 	journal := activity.Read(plane.Memories, "", "", 1000)

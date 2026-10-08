@@ -9,13 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
-	"time"
+	"sync"
 )
 
 //go:embed TYPESCRIPT-LICENSE
@@ -152,7 +151,22 @@ func normalizeLanguages(values []string) ([]string, error) {
 //go:embed xml_ast.go
 var xmlParserSource string
 
+// Embedded parser assets and the Go runtime version cannot change within a binary.
+var parserHashes sync.Map
+
 func parserHash(language string) string {
+	key := language
+	if !treeLanguage(language) && language != "python" && language != "go" && language != "xml" {
+		key = "script"
+	}
+	if cached, ok := parserHashes.Load(key); ok {
+		return cached.(func() string)()
+	}
+	cached, _ := parserHashes.LoadOrStore(key, sync.OnceValue(func() string { return computeParserHash(language) }))
+	return cached.(func() string)()
+}
+
+func computeParserHash(language string) string {
 	if treeLanguage(language) {
 		return treeParserHash(language)
 	}
@@ -204,28 +218,9 @@ func parseScripts(ctx context.Context, executable string, inputs []parserInput) 
 	if err != nil {
 		return parserOutput{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", scriptParser)
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	cmd.Stdin = bytes.NewReader(input)
-	var stdout, stderr boundedBuffer
-	stdout.limit, stderr.limit = maxJSONBytes, 4096
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	output, err := runParser(ctx, path, []string{"--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", scriptParser}, input)
+	if err != nil {
 		return parserOutput{}, fmt.Errorf("isolated JS/TS AST parser failed: %w", err)
 	}
-	var output parserOutput
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		return output, errors.New("invalid JS/TS parser output")
-	}
-	if len(output.Files) != len(inputs) {
-		return output, errors.New("JS/TS parser returned incomplete files")
-	}
-	for i, file := range output.Files {
-		if file.Path != inputs[i].Path {
-			return output, errors.New("JS/TS parser path mismatch")
-		}
-	}
-	return output, nil
+	return decodeParser(output, inputs, "JS/TS")
 }

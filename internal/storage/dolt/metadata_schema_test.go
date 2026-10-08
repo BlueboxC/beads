@@ -77,7 +77,7 @@ func TestParseFieldSchema(t *testing.T) {
 	})
 }
 
-func TestToFloat64(t *testing.T) {
+func TestFieldSchemaNumericBounds(t *testing.T) {
 	tests := []struct {
 		name   string
 		input  interface{}
@@ -92,7 +92,11 @@ func TestToFloat64(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := toFloat64(tt.input)
+			schema := parseFieldSchema(map[string]interface{}{"min": tt.input})
+			got, ok := float64(0), schema.Min != nil
+			if ok {
+				got = *schema.Min
+			}
 			if ok != tt.wantOK {
 				t.Errorf("toFloat64(%v) ok = %v, want %v", tt.input, ok, tt.wantOK)
 			}

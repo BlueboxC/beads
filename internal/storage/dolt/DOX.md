@@ -16,6 +16,8 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
+Metadata field conversion delegates to shared issueops parsing; YAML numeric types, enum fallback and adapter-specific warning/error modes remain unchanged.
+
 Use shared storage contracts; verify actual durability and transaction behavior at the real backend boundary.
 
 ## Verification

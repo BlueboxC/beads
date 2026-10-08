@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/tracker"
 	"github.com/steveyegge/beads/internal/types"
 )
@@ -701,30 +700,7 @@ func (t *Tracker) PrimaryClient() *Client {
 // For yaml-only keys (e.g. linear.api_key), reads from config.yaml first
 // to match the behavior of cmd/bd/linear.go:getLinearConfig().
 func (t *Tracker) getConfig(ctx context.Context, key, envVar string) (string, error) {
-	// Secret keys are stored in config.yaml, not the Dolt database,
-	// to avoid leaking secrets when pushing to remotes.
-	if config.IsYamlOnlyKey(key) {
-		if val := config.GetString(key); val != "" {
-			return val, nil
-		}
-		if envVar != "" {
-			if envVal := os.Getenv(envVar); envVal != "" {
-				return envVal, nil
-			}
-		}
-		return "", nil
-	}
-
-	val, err := t.store.GetConfig(ctx, key)
-	if err == nil && val != "" {
-		return val, nil
-	}
-	if envVar != "" {
-		if envVal := os.Getenv(envVar); envVal != "" {
-			return envVal, nil
-		}
-	}
-	return "", nil
+	return tracker.ReadConfig(ctx, t.store, key, envVar)
 }
 
 // linearToTrackerIssue converts a linear.Issue to a tracker.TrackerIssue.

@@ -30,6 +30,7 @@ contain them. See [installation and workflow](docs/core-concepts/fork-continuity
 | Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
 | Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata with typed read-phase/reason and commit build label | Local stdout success does not prove native context admission or universal reliability. |
 | Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
+| Efficient queries and process lifetime | Immutable parser fingerprints, per-query source snapshots, bulk graph dependencies, bounded recent-event selection and shared parser/client execution | Freshness checks, total/invalid counts and existing evidence are preserved; no automatic deletion or retry. MCP calls time out after 120 seconds and report an uncertain outcome. |
 
 Detailed references: [knowledge](docs/core-concepts/knowledge.md),
 [code index and maintenance](docs/core-concepts/code-index.md),

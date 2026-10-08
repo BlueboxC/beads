@@ -211,9 +211,7 @@ func nativeRelations(index Index) []Relation {
 					target = symbols[file.Path+"::"+qualifier+call.Name]
 					break
 				}
-				if language == "go" && scope == moduleID(file.Path) {
-					target = symbols[file.Module+"."+call.Name]
-				}
+
 			}
 			resolution := "unresolved"
 			if target != "" {

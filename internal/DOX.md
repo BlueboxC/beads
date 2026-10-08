@@ -19,6 +19,8 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
+Tracker adapters share configuration resolution: YAML-only secrets never query Dolt, while ordinary values keep storage-first/environment fallback including store errors.
+
 Keep orchestration policy outside the issue-tracking core; follow ../engdocs/PROJECT_CHARTER.md.
 
 Use line-local gosec annotations for intentional native directory handles or syscall buffer pointers only after checking descriptor identity or the bounded synchronous buffer contract; do not disable rule categories globally.

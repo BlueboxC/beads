@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/steveyegge/beads/format"
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/timeparsing"
 	"github.com/steveyegge/beads/internal/types"
@@ -146,21 +147,7 @@ func formatAgentIssue(buf *strings.Builder, issue *types.Issue, blockedBy, block
 // Parent-child deps are shown as "parent: X" (structural), separate from "blocked by" (blocking). (bd-hcxu)
 // Returns "(parent: X, blocked by: Y, blocks: Z)" or "" if no dependencies.
 func formatDependencyInfo(blockedBy, blocks []string, parent string) string {
-	if len(blockedBy) == 0 && len(blocks) == 0 && parent == "" {
-		return ""
-	}
-
-	var parts []string
-	if parent != "" {
-		parts = append(parts, fmt.Sprintf("parent: %s", parent))
-	}
-	if len(blockedBy) > 0 {
-		parts = append(parts, fmt.Sprintf("blocked by: %s", strings.Join(blockedBy, ", ")))
-	}
-	if len(blocks) > 0 {
-		parts = append(parts, fmt.Sprintf("blocks: %s", strings.Join(blocks, ", ")))
-	}
-	return "(" + strings.Join(parts, ", ") + ")"
+	return format.DependencyInfo(blockedBy, blocks, parent)
 }
 
 // buildBlockingMaps builds maps of blocking dependencies from dependency records.

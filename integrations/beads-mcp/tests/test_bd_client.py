@@ -1,6 +1,8 @@
 """Unit tests for BdClient."""
 
+import asyncio
 import json
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -971,3 +973,61 @@ async def test_text_commands_keep_untrusted_arguments_positional(bd_client, mock
         "--file=/tmp/id",
         text,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cancel", [False, True])
+async def test_execute_reaps_real_child_on_timeout_or_cancellation(tmp_path, monkeypatch, cancel):
+    from beads_mcp import bd_client as client_module
+
+    original_spawn = asyncio.create_subprocess_exec
+    started = asyncio.Event()
+    processes = []
+
+    async def capture_process(*args, **kwargs):
+        process = await original_spawn(*args, **kwargs)
+        processes.append(process)
+        started.set()
+        return process
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", capture_process)
+    monkeypatch.setattr(client_module, "_COMMAND_TIMEOUT_SECONDS", 0.1)
+    client = BdClient(bd_path=sys.executable, working_dir=str(tmp_path))
+    task = asyncio.create_task(
+        client._execute(
+            [sys.executable, "-I", "-S", "-c", "import time; time.sleep(30)"],
+            "bd test",
+        )
+    )
+    await asyncio.wait_for(started.wait(), 5)
+    if cancel:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(task, 5)
+    else:
+        with pytest.raises(BdCommandError, match="Inspect state before retrying") as exc:
+            await asyncio.wait_for(task, 5)
+        assert exc.value.returncode == 124
+    assert processes[0].returncode is not None
+    assert await asyncio.wait_for(processes[0].wait(), 1) != 0
+
+
+@pytest.mark.asyncio
+async def test_execute_stops_descendants_holding_pipes(tmp_path, monkeypatch):
+    import os
+
+    if os.name != "posix":
+        pytest.skip("POSIX process group cleanup")
+    from beads_mcp import bd_client as client_module
+
+    monkeypatch.setattr(client_module, "_COMMAND_TIMEOUT_SECONDS", 0.1)
+    client = BdClient(bd_path=sys.executable, working_dir=str(tmp_path))
+    script = "import os,time; child=os.fork(); time.sleep(30) if child==0 else None"
+    with pytest.raises(BdCommandError, match="timed out"):
+        await asyncio.wait_for(
+            client._execute(
+                [sys.executable, "-I", "-S", "-c", script],
+                "bd test",
+            ),
+            5,
+        )
