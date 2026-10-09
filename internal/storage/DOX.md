@@ -12,6 +12,8 @@ Storage interfaces, backend selection and persistence operations.
 
 Root DOX.md and the parent chain remain binding.
 
+- Context-aware proxy discovery retains authenticated adoption, upstream matching and owned-child cleanup. Cancellation stops polling/readiness and does not signal an adopted process; existing identity probes retain their 500 ms bound. The legacy API remains a background-context wrapper.
+
 - Empty-parent updates on dotted IDs fail before any patch mutation; legacy implicit ancestry remains supported. Nonempty reparenting and detachment of nondotted IDs retain their contracts. Do not silently remove the explicit edge and claim detachment.
 - History compaction dates the squashed base at the boundary and retains each replayed commit’s committer/date and separate author metadata. Snapshot metadata before mutations, restore exact caller session overrides on success/error and surface restoration failures. This preserves markers inside retained history; it does not reconstruct discarded history or repair previously re-dated stores.
 - Ready-work readers withhold children connected by `parent-child` when the parent has deferred status or a future `defer_until`. `IncludeDeferred` lifts this selection filter; non-parent relations do not inherit it. Preserve parity between shared issueops and domain/db readers without rewriting stored task state.

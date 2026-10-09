@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -183,6 +184,16 @@ func PickFreePort() (int, error) {
 }
 
 func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoint, error) {
+	return GetCreateDatabaseProxyServerEndpointContext(context.Background(), rootDir, opts)
+}
+
+// GetCreateDatabaseProxyServerEndpointContext discovers or starts the workspace
+// proxy with the existing ownership checks. Cancellation stops polling and
+// readiness waits; an in-flight identity probe remains bounded by 500ms.
+func GetCreateDatabaseProxyServerEndpointContext(ctx context.Context, rootDir string, opts OpenOpts) (Endpoint, error) {
+	if err := ctx.Err(); err != nil {
+		return Endpoint{}, err
+	}
 	if err := opts.Backend.Validate(); err != nil {
 		return Endpoint{}, fmt.Errorf("OpenOpts.Backend: %w", err)
 	}
@@ -213,8 +224,10 @@ func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoi
 		return Endpoint{}, fmt.Errorf("read proxy stop epoch: %w", err)
 	}
 	deadline := time.Now().Add(openDeadline)
-
-	timeout := time.NewTimer(openDeadline)
+	if callerDeadline, ok := ctx.Deadline(); ok && callerDeadline.Before(deadline) {
+		deadline = callerDeadline
+	}
+	timeout := time.NewTimer(time.Until(deadline))
 	defer timeout.Stop()
 	poll := time.NewTicker(openPollInterval)
 	defer poll.Stop()
@@ -223,7 +236,13 @@ func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoi
 
 	var lastSpawnErr error
 	for {
+		if err := ctx.Err(); err != nil {
+			return Endpoint{}, err
+		}
 		discovery := readAndDial(rootDir)
+		if err := ctx.Err(); err != nil {
+			return Endpoint{}, err
+		}
 		switch discovery.status {
 		case adoptionAdopted:
 			return adoptedEndpoint(rootDir, want, discovery)
@@ -237,6 +256,10 @@ func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoi
 			// Re-read under proxy.lock. Another opener may have replaced the
 			// record after our lock-free discovery.
 			discovery = readAndDial(rootDir)
+			if err := ctx.Err(); err != nil {
+				lock.Unlock()
+				return Endpoint{}, err
+			}
 			if discovery.status == adoptionAdopted {
 				lock.Unlock()
 				return adoptedEndpoint(rootDir, want, discovery)
@@ -260,7 +283,7 @@ func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoi
 			}
 
 			var ep Endpoint
-			ep, lastSpawnErr = spawnAndHandoff(rootDir, opts, deadline, stopEpoch, lock, discovery)
+			ep, lastSpawnErr = spawnAndHandoffContext(ctx, rootDir, opts, deadline, stopEpoch, lock, discovery)
 			if lastSpawnErr == nil {
 				return ep, nil
 			}
@@ -281,7 +304,15 @@ func GetCreateDatabaseProxyServerEndpoint(rootDir string, opts OpenOpts) (Endpoi
 		}
 
 		select {
+		case <-ctx.Done():
+			return Endpoint{}, ctx.Err()
 		case <-timeout.C:
+			if err := ctx.Err(); err != nil {
+				return Endpoint{}, err
+			}
+			if callerDeadline, ok := ctx.Deadline(); ok && !time.Now().Before(callerDeadline) {
+				return Endpoint{}, context.DeadlineExceeded
+			}
 			if lastSpawnErr != nil {
 				return Endpoint{}, lastSpawnErr
 			}
@@ -310,6 +341,10 @@ func spawnAndHandoff(
 	lock *util.Lock,
 	discovery adoptionResult,
 ) (Endpoint, error) {
+	return spawnAndHandoffContext(context.Background(), rootDir, opts, deadline, stopEpoch, lock, discovery)
+}
+
+func spawnAndHandoffContext(ctx context.Context, rootDir string, opts OpenOpts, deadline time.Time, stopEpoch string, lock *util.Lock, discovery adoptionResult) (Endpoint, error) {
 	handedOff := false
 	defer func() {
 		if !handedOff {
@@ -325,6 +360,9 @@ func spawnAndHandoff(
 		return Endpoint{}, fmt.Errorf("%w for %s", errStartInterrupted, rootDir)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return Endpoint{}, err
+	}
 	if err := quarantineForSpawn(rootDir, discovery); err != nil {
 		return Endpoint{}, err
 	}
@@ -332,6 +370,9 @@ func spawnAndHandoff(
 		return Endpoint{}, err
 	}
 
+	if err := ctx.Err(); err != nil {
+		return Endpoint{}, err
+	}
 	handedOff = true
 	child, err := forkExecChild(rootDir, opts, opts.Port, stopEpoch, lock)
 	if err != nil {
@@ -350,7 +391,13 @@ func spawnAndHandoff(
 	defer poll.Stop()
 
 	for {
+		if err := ctx.Err(); err != nil {
+			return Endpoint{}, errors.Join(err, killSpawnedChild(child))
+		}
 		discovered := readAndDial(rootDir)
+		if err := ctx.Err(); err != nil {
+			return Endpoint{}, errors.Join(err, killSpawnedChild(child))
+		}
 		if discovered.status == adoptionAdopted {
 			if err := sweepOldQuarantines(rootDir, time.Now()); err != nil {
 				log.Printf("dbproxy: could not sweep old quarantined records in %s: %v", rootDir, err)
@@ -361,6 +408,8 @@ func spawnAndHandoff(
 			return Endpoint{}, fmt.Errorf("discover spawned proxy: %w", discovered.err)
 		}
 		select {
+		case <-ctx.Done():
+			return Endpoint{}, errors.Join(ctx.Err(), killSpawnedChild(child))
 		case childErr := <-child.done:
 			if interrupted, ierr := stopEpochChanged(rootDir, stopEpoch); ierr != nil {
 				return Endpoint{}, ierr

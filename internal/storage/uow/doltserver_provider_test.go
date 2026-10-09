@@ -3,6 +3,7 @@ package uow
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -11,9 +12,11 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/steveyegge/beads/internal/storage/dbproxy/pidfile"
 	"github.com/steveyegge/beads/internal/storage/dbproxy/proxy"
 	"github.com/steveyegge/beads/internal/testutil"
 	"github.com/stretchr/testify/assert"
@@ -233,4 +236,63 @@ func writeServerConfig(t *testing.T, port int) string {
 	body := fmt.Sprintf("log_level: debug\nlistener:\n  host: 127.0.0.1\n  port: %d\n", port)
 	require.NoError(t, os.WriteFile(path, []byte(body), 0o600))
 	return path
+}
+
+// A long-lived pool must follow the proxy after both idle timers expire.
+func TestNewDoltServerUOWProvider_RecoversAfterIdle(t *testing.T) {
+	testutil.RequireDoltBinary(t)
+	bin, err := exec.LookPath("dolt")
+	require.NoError(t, err)
+	bdBin := buildBDBinary(t)
+	prev := proxy.ResolveExecutable
+	proxy.ResolveExecutable = func() (string, error) { return bdBin, nil }
+	t.Cleanup(func() { proxy.ResolveExecutable = prev })
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
+	port, err := proxy.PickFreePort()
+	require.NoError(t, err)
+	root := t.TempDir()
+	t.Cleanup(func() { require.NoError(t, proxy.Shutdown(root)) })
+	provider, err := NewDoltServerUOWProvider(context.Background(), root, "beads",
+		filepath.Join(root, "server.log"), writeServerConfig(t, port), proxy.BackendLocalServer,
+		"root", "", bin, 0, 2*time.Second, false, "")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, provider.Close(context.Background())) })
+	assertProviderRecoversAfterIdle(t, provider, root)
+}
+
+func assertProviderRecoversAfterIdle(t *testing.T, provider UnitOfWorkProvider, root string) {
+	t.Helper()
+	sqlProvider := provider.(*doltSQLProvider)
+	_, err := sqlProvider.db.Exec("CREATE TABLE idle_sentinel (id INT PRIMARY KEY, value VARCHAR(20))")
+	require.NoError(t, err)
+	_, err = sqlProvider.db.Exec("INSERT INTO idle_sentinel VALUES (1, 'kept')")
+	require.NoError(t, err)
+	original, err := pidfile.Read(root, proxy.PIDFileName)
+	require.NoError(t, err)
+	require.NotNil(t, original)
+	sqlProvider.db.SetConnMaxIdleTime(100 * time.Millisecond)
+	require.Eventually(t, func() bool { return sqlProvider.db.Stats().OpenConnections == 0 }, 5*time.Second, 50*time.Millisecond)
+	if !assert.Eventually(t, func() bool {
+		_, err := os.Stat(filepath.Join(root, proxy.PIDFileName))
+		return os.IsNotExist(err)
+	}, 45*time.Second, 50*time.Millisecond, "proxy must still retire when idle") {
+		log, _ := os.ReadFile(filepath.Join(root, "server.log"))
+		t.Log(string(log))
+		t.FailNow()
+	}
+	// Occupy its old port: recovery may not silently connect to a recycled endpoint.
+	oldPort, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", fmt.Sprint(original.Port)))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, oldPort.Close()) }()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	var value, database string
+	require.NoError(t, sqlProvider.db.QueryRowContext(ctx, "SELECT value, DATABASE() FROM idle_sentinel WHERE id = 1").Scan(&value, &database))
+	require.Equal(t, "kept", value)
+	require.Equal(t, "beads", database)
+	restarted, err := pidfile.Read(root, proxy.PIDFileName)
+	require.NoError(t, err)
+	require.NotNil(t, restarted)
+	require.NotEqual(t, original.Port, restarted.Port)
 }

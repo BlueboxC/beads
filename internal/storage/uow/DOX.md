@@ -12,6 +12,8 @@ Persistence transaction composition and completion.
 
 Root DOX.md and the parent chain remain binding.
 
+- Managed and external SQL providers resolve the authenticated workspace proxy for each new physical pooled connection. Preserve selected database, credentials, TLS and upstream identity; do not replay queries/transactions or disable idle limits. Schema bootstrap keeps its pinned endpoint and existing migration authority.
+
 ## Work Guidance
 
 Verify commit, rollback and failure behavior at the affected transaction boundary.

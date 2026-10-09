@@ -93,7 +93,7 @@ func TestNewExternalDoltServerUOWProvider_EndToEnd(t *testing.T) {
 		"root",
 		"",
 		0,
-		0,
+		2*time.Second,
 		false,
 		"",
 	)
@@ -124,6 +124,7 @@ func TestNewExternalDoltServerUOWProvider_EndToEnd(t *testing.T) {
 	var v string
 	require.NoError(t, sqlProv.db.QueryRowContext(ctx, "SELECT v FROM t_external_e2e WHERE id = 2").Scan(&v))
 	assert.Equal(t, "beta", v)
+	assertProviderRecoversAfterIdle(t, provider, storeRootDir)
 }
 
 func TestNewExternalDoltServerUOWProvider_ConcurrentInstantiation(t *testing.T) {

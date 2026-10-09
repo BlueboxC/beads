@@ -58,7 +58,7 @@ func NewDoltServerUOWProvider(
 		return nil, fmt.Errorf("uow: creating server root directory: %w", err)
 	}
 
-	ep, err := proxy.GetCreateDatabaseProxyServerEndpoint(absServerRootDir, proxy.OpenOpts{
+	proxyOpts := proxy.OpenOpts{
 		Backend:        backend,
 		ConfigFilePath: serverConfigFilePath,
 		LogFilePath:    serverLogFilePath,
@@ -66,10 +66,11 @@ func NewDoltServerUOWProvider(
 		Database:       database,
 		IdleTimeout:    idleTimeout,
 		Port:           proxyPort,
-	})
+	}
+	ep, err := proxy.GetCreateDatabaseProxyServerEndpointContext(ctx, absServerRootDir, proxyOpts)
 	if err != nil {
 		return nil, fmt.Errorf("uow: get proxy endpoint: %w", err)
 	}
 
-	return openAndInitSchema(ctx, ep, database, rootUser, rootPassword, "", teamServer, expectedProjectID, applyProviderOptions(opts))
+	return openAndInitSchema(ctx, ep, database, rootUser, rootPassword, "", teamServer, expectedProjectID, applyProviderOptions(opts), proxyDialContext(absServerRootDir, proxyOpts))
 }
