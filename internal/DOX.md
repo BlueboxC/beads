@@ -21,6 +21,8 @@ Root DOX.md and the parent chain remain binding.
 - HTTP event streams revalidate bearer credentials before delivery and around journal reads, including idle and backlog passes. Successful removal terminates the stream; failed token-file reloads retain the last-good token set.
 - Terminal Markdown rendering removes raw controls and numeric entities that decode into controls before Glamour parsing; renderer-generated styles and printable entities remain supported.
 
+- Recipe SharedPaths explicitly declare section-managed instruction files; other paths retain their existing whole-file ownership semantics.
+
 ## Work Guidance
 
 Tracker adapters share configuration resolution: YAML-only secrets never query Dolt, while ordinary values keep storage-first/environment fallback including store errors.

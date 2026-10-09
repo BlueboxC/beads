@@ -18,6 +18,8 @@ Explain actual configuration paths and effects; preserve global versus project s
 
 Codex lifecycle guidance distinguishes immediate source=compact recovery from the retained next-prompt fallback; hook trust, local stdout production and actual native context admission remain separate. Missing diagnostics alone cannot establish omitted dispatch. Read-failure categories use typed errors and an internal child status protocol, never stderr text or timing heuristics; commit build labels do not establish exact binary identity.
 
+Copilot guidance distinguishes the owned manifest from the shared marked instructions, exact legacy migration and refusal of ambiguous markers/links.
+
 ## Verification
 
 Use the affected existing checks selected in engdocs/TESTING.md; verify indexed child contracts.

@@ -12,6 +12,8 @@ Client configuration, skills, hooks and managed instruction sections.
 
 Root DOX.md and the parent chain remain binding.
 
+- Shared recipe paths manage only one complete marked integration section. Copilot instructions preserve outside bytes and existing permissions on install/update/remove; migrate only exact legacy templates. Refuse duplicate, nested, incomplete or inline markers and symlink/non-regular shared files; check distinguishes user-only content from installation. The plugin manifest remains owned by Beads.
+
 ## Work Guidance
 
 Preserve unrelated user configuration and make repeat setup idempotent. Global and project paths must remain distinct.

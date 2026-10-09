@@ -36,7 +36,7 @@ For **VS Code + MCP**, see [GitHub Copilot](/integrations/github-copilot).
 3. **Lower maintenance burden**
    - No Copilot-specific install/check/remove implementation in core
    - No Copilot-specific doctor checks
-   - The recipe just writes the native plugin file and the instruction file
+   - The recipe owns the native plugin file and manages a marked section in the shared instruction file
 
 ## Why Copilot CLI Over MCP for Terminal Work?
 
@@ -66,11 +66,31 @@ bd setup copilot --remove
 ```
 
 **What it installs:**
-- `.copilot-plugin/plugin.json`
+- `.copilot-plugin/plugin.json` (Beads owns this file)
   - `SessionStart` hook: Runs `bd prime` when Copilot CLI starts a session
   - `PreCompact` hook: Runs `bd prime` before context compaction
 - `.github/copilot-instructions.md`
-  - Repository workflow guidance for Copilot CLI
+  - Repository workflow guidance for Copilot CLI, written as a
+    `<!-- BEGIN BEADS INTEGRATION -->` / `<!-- END BEADS INTEGRATION -->` section
+
+Because `.github/copilot-instructions.md` is the standard place for a repository's
+own Copilot instructions, `bd setup copilot` manages only the marked section
+inside it. An existing file keeps everything outside the markers, re-running
+replaces just the section, and `bd setup copilot --remove` strips the section
+without deleting your instructions. `--check` reports the file separately when
+it exists but carries no Beads section.
+
+Upgrading: a repository set up by an earlier version holds the unmarked
+template, which Beads wrote as the whole file. `bd setup copilot` recognises that
+content and migrates it to the marked section in place, so the guidance does not
+end up in the file twice and `--remove` does not leave the old copy behind.
+Instructions you added to that file are preserved as usual.
+
+Existing shared-file permissions and all bytes outside the managed range are preserved. Symlinked or non-regular shared files are refused for install, check and removal.
+
+If a file carries duplicate, nested, inline or incomplete markers, or a `BEGIN` or `END` marker without its partner, `bd setup
+copilot` and `bd setup copilot --remove` stop with an error rather than guess
+which text belongs to the section. Fix or delete the stray marker and re-run.
 
 ## Related Files
 
