@@ -316,6 +316,9 @@ func isClosedInTx(ctx context.Context, tx DBTX, id string) (closed bool, targetC
 
 //nolint:gosec // G201: table names come from WispTableRouting (hardcoded constants)
 func closeIssueInTx(ctx context.Context, tx DBTX, id string, reason, actor, session string, recordEvent bool) (*CloseResult, error) {
+	if err := EnforceHumanGateCloseInTx(ctx, tx, id, actor); err != nil {
+		return nil, err
+	}
 	isWisp := IsActiveWispInTx(ctx, tx, id)
 	issueTable, _, eventTable, _ := WispTableRouting(isWisp)
 

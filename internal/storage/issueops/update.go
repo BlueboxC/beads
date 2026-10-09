@@ -396,6 +396,10 @@ func updateIssueInTx(ctx context.Context, tx DBTX, id string, updates map[string
 		return &UpdateResult{OldIssue: oldIssue, IsWisp: isWisp, Changed: false}, nil
 	}
 
+	if err := EnforceHumanGateUpdateInTx(ctx, tx, oldIssue, updates, actor); err != nil {
+		return nil, err
+	}
+
 	// A status update that crosses into the done category is a close by another
 	// name, so it answers to close policy. Running after the no-op filter keeps
 	// a done-to-done restatement policy-free, and running after the callers'
@@ -408,6 +412,9 @@ func updateIssueInTx(ctx context.Context, tx DBTX, id string, updates map[string
 		return nil, err
 	}
 	if crossing {
+		if err := EnforceHumanGateCloseInTx(ctx, tx, id, actor); err != nil {
+			return nil, err
+		}
 		if _, err := EnforceClosePolicyInTx(ctx, tx, id, forceClosePolicy); err != nil {
 			return nil, err
 		}

@@ -264,6 +264,9 @@ func addDependencyInTx(ctx context.Context, tx *sql.Tx, dep *types.Dependency, a
 		dep.IssueID, dep.DependsOnID).Scan(&existingType)
 	if err == nil {
 		if existingType == string(dep.Type) {
+			if err := EnforceHumanGateEdgeInTx(ctx, tx, dep.DependsOnID, dep.Type, actor); err != nil {
+				return false, err
+			}
 			// Same type — idempotent; update metadata. No event is written, so the
 			// caller must not stage the events table for this re-add.
 			//nolint:gosec // G201: writeTable from WispTableRouting; depTargetEquals has no user input.
@@ -1027,6 +1030,9 @@ func removeDependencyInTx(ctx context.Context, tx *sql.Tx, issueID, dependsOnID,
 		return false, fmt.Errorf("lookup dependency type for %s -> %s: %w", issueID, dependsOnID, err)
 	}
 
+	if err := EnforceHumanGateEdgeInTx(ctx, tx, dependsOnID, types.DependencyType(depType), actor); err != nil {
+		return false, err
+	}
 	if _, err := tx.ExecContext(ctx, fmt.Sprintf(
 		`DELETE FROM %s WHERE issue_id = ? AND %s = ?`, depTable, DepTargetExpr),
 		issueID, dependsOnID); err != nil {

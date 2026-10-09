@@ -115,6 +115,9 @@ func (r *dependencySQLRepositoryImpl) Insert(ctx context.Context, dep *types.Dep
 	switch {
 	case err == nil:
 		if existingType == string(dep.Type) {
+			if err := issueops.EnforceHumanGateEdgeInTx(ctx, r.runner, dep.DependsOnID, dep.Type, actor); err != nil {
+				return err
+			}
 			//nolint:gosec // G201: table and depTargetExpr are hardcoded constants
 			if _, err := r.runner.ExecContext(ctx,
 				fmt.Sprintf("UPDATE %s SET metadata = ? WHERE issue_id = ? AND %s = ?", table, depTargetExpr),
@@ -346,6 +349,9 @@ func (r *dependencySQLRepositoryImpl) Delete(ctx context.Context, issueID, depen
 		return domain.DepDeleteResult{}, fmt.Errorf("db: DependencySQLRepository.Delete: lookup type %s -> %s: %w", issueID, dependsOnID, err)
 	}
 
+	if err := issueops.EnforceHumanGateEdgeInTx(ctx, r.runner, dependsOnID, types.DependencyType(depType), actor); err != nil {
+		return domain.DepDeleteResult{}, err
+	}
 	//nolint:gosec // G201: table and depTargetExpr are hardcoded constants
 	if _, err := r.runner.ExecContext(ctx,
 		fmt.Sprintf("DELETE FROM %s WHERE issue_id = ? AND %s = ?", table, depTargetExpr),
@@ -734,6 +740,9 @@ func combineArgs(a, b []any) []any {
 }
 
 func (r *dependencySQLRepositoryImpl) DeleteAllForIDs(ctx context.Context, ids []string, opts domain.DepInsertOpts, actor string) (int, error) {
+	if err := issueops.EnforceHumanGateDeletionInTx(ctx, r.runner, ids, actor); err != nil {
+		return 0, err
+	}
 	if len(ids) == 0 {
 		return 0, nil
 	}

@@ -532,7 +532,9 @@ var gateResolveCmd = &cobra.Command{
 	Long: `Close a gate issue to unblock the step waiting on it.
 
 This is equivalent to 'bd close <gate-id>' but with a more explicit name.
-Use --reason to provide context for why the gate was resolved.`,
+Use --reason to provide context for why the gate was resolved.
+An optional gates.human.resolvers policy requires an explicit listed actor for
+human gates; a Git/user/config fallback and --force do not waive it.`,
 	Args:          cobra.ExactArgs(1),
 	SilenceUsage:  true,
 	SilenceErrors: true,

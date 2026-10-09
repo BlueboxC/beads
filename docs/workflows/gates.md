@@ -15,8 +15,8 @@ A gate is a bead like any other: created open, it blocks its waiters through
 a normal dependency edge, and the step becomes ready the moment the gate
 closes. Gates close in one of two ways:
 
-- **Manually** — `bd gate resolve <gate-id>` (human gates always close this
-  way).
+- **Manually** — `bd gate resolve <gate-id>` or the equivalent `bd close`.
+  Human gates are never automatically resolved by `gate check`.
 - **Via `bd gate check`** — evaluates open timer, GitHub, and bead gates
   against the real world and closes the ones whose condition is met.
 
@@ -29,11 +29,45 @@ bd gate check --dry-run      # report without closing
 bd gate resolve <gate-id>    # close a gate manually
 ```
 
+## Optional human resolver policy (BlueboxC fork)
+
+Human gates are workflow records. By default, any caller can resolve them.
+To reduce accidental self-approval, an operator can install a workspace policy:
+
+```bash
+bd config set gates.human.resolvers '["reviewer"]'
+bd --actor reviewer gate resolve <gate-id> --reason "Reviewed the evidence"
+# Remove the opt-in policy:
+bd config unset gates.human.resolvers
+```
+
+Names are exact and case-sensitive. A listed actor must be explicit: `--actor`,
+`BEADS_ACTOR`/`BD_ACTOR`, or a named API caller. Git, user and saved actor defaults
+are refused. `[]` refuses everyone; malformed, null or blank values refuse
+protected operations. An unreadable policy does not silently disable checks.
+The policy is read inside the existing mutation transaction; no schema, hook
+command or second database is needed.
+
+The rule covers human gate closure, status/type/defer/persistence edits,
+deletion including cascades, removal or metadata replacement of blocking and
+parent-child edges targeting a human gate, and forced closure/status completion
+of a directly gated task. It applies through shared storage, domain/UOW, batch
+and HTTP mutation roles. Ordinary notes and unrelated tasks remain editable.
+Atomic batches roll back on a refusal; best-effort close batches report refused
+gates while allowing independent items to close. `--force` cannot waive this rule.
+
+This is a caller-asserted allowlist, not proof that a person approved anything.
+A caller can impersonate a listed name or change the policy if given those
+permissions. The invoking system must control actor/configuration access,
+imports, SQL, sync and restoration. The policy does not authorize deployments,
+orders or other external actions, and it does not infer approval from `ready`.
+It is not enabled automatically in existing projects.
+
 ## Gate types
 
 | Type | Waits for | Closed by |
 |------|-----------|-----------|
-| `human` | a person's decision | `bd gate resolve` only |
+| `human` | a manual decision | `bd gate resolve` or `bd close`; optional resolver policy above |
 | `timer` | a duration after gate creation | `bd gate check` once the timeout elapses |
 | `gh:run` | a GitHub Actions workflow to complete successfully | `bd gate check` (uses `gh run view`) |
 | `gh:pr` | a pull request to merge | `bd gate check` (uses `gh pr view`) |

@@ -12,7 +12,7 @@
 
 **Docs:** https://beads.gascity.com/
 
-**BlueboxC continuity fork:** adds source-backed knowledge, supervised learning, a Python/Go/JS/TS code index, one native graph/history viewer and opt-in session capture in the existing Dolt. See [fork scope](FORK.md) and [fork installation/workflow](docs/core-concepts/fork-continuity.md). The upstream installation commands below install upstream Beads; build the fork branch to obtain these additions. This branch also includes the [verified fork corrections](FORK.md#included-corrections), independently of upstream review.
+**BlueboxC continuity fork:** adds source-backed knowledge, supervised learning, a Python/Go/JS/TS code index, one native graph/history viewer and opt-in session capture in the existing Dolt. See [fork scope](FORK.md) and [fork installation/workflow](docs/core-concepts/fork-continuity.md). The upstream installation commands below install upstream Beads; build the fork branch to obtain these additions. This branch also includes the [verified fork corrections](FORK.md#included-corrections), independently of upstream review, and an [opt-in human gate resolver policy](docs/workflows/gates.md#optional-human-resolver-policy-blueboxc-fork).
 
 Beads provides a persistent, structured memory for coding agents. It replaces messy markdown plans with a dependency-aware graph, allowing agents to handle long-horizon tasks without losing context.
 

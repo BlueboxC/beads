@@ -10,6 +10,16 @@ and source-backed solutions matters across sessions. [FORK.md](https://github.co
 identifies the upstream baseline, implemented additions and remaining limits.
 All project data stays in that project's existing Beads Dolt.
 
+## Manual approval records
+
+The fork adds an opt-in `gates.human.resolvers` allowlist over the existing
+mutation transactions. Explicit listed actors can resolve human gates; fallback
+identities and `--force` cannot waive the policy. Closure, status/type/defer/
+persistence changes, deletion and removal of protected relations share the rule.
+See [gates](/workflows/gates#optional-human-resolver-policy-blueboxc-fork) for setup
+and batch behavior. Names are caller-asserted; your invoking system still owns
+identity, configuration permissions and authorization of external operations.
+
 ## Install the fork
 
 The upstream Homebrew/npm packages and upstream install script install upstream

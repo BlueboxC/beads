@@ -12,6 +12,8 @@ Domain values and storage-facing semantics.
 
 Root DOX.md and the parent chain remain binding.
 
+- Domain/db mutation repositories use the shared human-gate policy before protected writes, including bulk edge deletions and expanded delete sets. UOW and direct storage must agree; no CLI-only approval guard.
+
 ## Work Guidance
 
 Keep semantic contracts explicit and shared across backends. Empty-parent reparent requests for dotted IDs are refused before writing; preserve legacy implicit ancestry and explicit nonempty reparenting.

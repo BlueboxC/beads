@@ -26,6 +26,9 @@ const maxRecursiveResults = 10000
 //
 //nolint:gosec // G201: table names come from WispTableRouting (hardcoded constants)
 func DeleteIssueInTx(ctx context.Context, tx *sql.Tx, id string, actor string) error {
+	if err := EnforceHumanGateDeletionInTx(ctx, tx, []string{id}, actor); err != nil {
+		return err
+	}
 	isWisp := IsActiveWispInTx(ctx, tx, id)
 
 	var deletedIssues, deletedWisps []string
@@ -250,6 +253,11 @@ func DeleteResolvedSetInTx(ctx context.Context, tx *sql.Tx, set DeletionSet, dry
 		return result, nil
 	}
 
+	if !dryRun {
+		if err := EnforceHumanGateDeletionInTx(ctx, tx, set.All, actor); err != nil {
+			return nil, err
+		}
+	}
 	deletedSet := make(map[string]bool, len(set.All))
 	for _, id := range set.All {
 		deletedSet[id] = true

@@ -30,6 +30,11 @@ func MoveIssuePersistenceInTx(ctx context.Context, tx DBTX, current *types.Issue
 	if sourceWisp == targetWisp && current.Ephemeral == ephemeral && current.NoHistory == noHistory && current.StorageClass.Normalize() == storageClass.Normalize() {
 		return PersistenceMoveResult{}, nil
 	}
+	if current.AwaitType == "human" {
+		if err := EnforceHumanGateMutationInTx(ctx, tx, current.ID, actor); err != nil {
+			return PersistenceMoveResult{}, err
+		}
+	}
 	result := PersistenceMoveResult{Changed: true, ChangedTables: map[string]bool{}}
 	if sourceWisp == targetWisp {
 		// THE TABLE IS THE ROW'S OWN PLANE, not `wisps`. This branch runs when

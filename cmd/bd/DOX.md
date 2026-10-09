@@ -48,6 +48,8 @@ Root DOX.md and the parent chain remain binding.
 
 - The journal records actor resolution provenance (`flag`, `env`, `config`, `git`, `user`, `unknown`, or `provided`) without changing actor names or authorization. Bind context provenance to the exact actor; system/different-actor rows cannot inherit it. CLI recovery and stdin/TTY do not authenticate a human.
 
+- Human gate resolution follows storage's optional caller-asserted resolver policy; keep CLI and proxied SQL actor provenance intact. Git/user/config defaults and force do not waive it. No new human authentication, executable hook or project activation is implied.
+
 ## Work Guidance
 
 Keep existing CLI primitives and machine-readable output stable. Follow AGENTS.md and ../../engdocs/TESTING.md.

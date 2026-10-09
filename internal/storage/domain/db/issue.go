@@ -211,6 +211,9 @@ func (r *issueSQLRepositoryImpl) Update(ctx context.Context, id string, updates 
 	if len(updates) == 0 {
 		return nil
 	}
+	if err := issueops.EnforceHumanGateUpdateInTx(ctx, r.runner, oldIssue, updates, actor); err != nil {
+		return err
+	}
 	// A status that matched the row was already dropped as a no-op, so the
 	// lifecycle side effects below only fire on a real transition.
 	_, statusChanging := updates["status"]
@@ -226,6 +229,9 @@ func (r *issueSQLRepositoryImpl) Update(ctx context.Context, id string, updates 
 			return fmt.Errorf("db: Update %s: %w", id, err)
 		}
 		if crossing {
+			if err := issueops.EnforceHumanGateCloseInTx(ctx, r.runner, id, actor); err != nil {
+				return err
+			}
 			if _, err := issueops.EnforceClosePolicyInTx(ctx, r.runner, id, forceClosePolicy); err != nil {
 				return fmt.Errorf("db: Update %s: %w", id, err)
 			}
@@ -956,6 +962,9 @@ func (r *issueSQLRepositoryImpl) GetReadyWorkWithCounts(ctx context.Context, fil
 }
 
 func (r *issueSQLRepositoryImpl) Delete(ctx context.Context, id string, opts domain.IssueTableOpts, actor string) error {
+	if err := issueops.EnforceHumanGateDeletionInTx(ctx, r.runner, []string{id}, actor); err != nil {
+		return err
+	}
 	table := "issues"
 	if opts.UseWispsTable {
 		table = "wisps"
@@ -1000,6 +1009,9 @@ func (r *issueSQLRepositoryImpl) DeleteByIDs(ctx context.Context, ids []string, 
 	actualIDs, err := issueops.ExistingIssueIDsInTableInTx(ctx, r.runner, table, ids)
 	if err != nil {
 		return 0, fmt.Errorf("db: IssueSQLRepository.DeleteByIDs resolve existing ids: %w", err)
+	}
+	if err := issueops.EnforceHumanGateDeletionInTx(ctx, r.runner, actualIDs, actor); err != nil {
+		return 0, err
 	}
 	// Edges are journaled before the rows go, while their source snapshots can
 	// still be read.
