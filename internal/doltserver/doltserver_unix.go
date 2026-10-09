@@ -165,3 +165,5 @@ func gracefulStop(pid int, timeout time.Duration) error {
 	time.Sleep(100 * time.Millisecond)
 	return nil
 }
+
+func killStartedGroup(pid int) { _ = syscall.Kill(-pid, syscall.SIGKILL) }

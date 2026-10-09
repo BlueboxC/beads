@@ -13,6 +13,8 @@ Private packages, templates, services and adapters. Storage has its own contract
 Root DOX.md and the parent chain remain binding.
 
 - Dolt server process probes distinguish failed inspection from a confirmed non-Dolt process. Preserve a live pid/port when `ps` fails; EPERM from a liveness probe means alive. Stop refuses to signal an unverifiable or recycled PID and retains state for diagnosis.
+- On macOS, a newly launched managed Dolt server is ready only after a greeting and bounded `lsof`/`ps` proof that every listed port holder is the child or its descendant. Unknown ownership waits until the configured readiness deadline and fails without publishing pid/port; a proven foreign holder retries only an ephemeral port. Failed startup kills/reaps only its launched child/group. Other platforms retain greeting-based readiness. Existing-server adoption and Stop inspection contracts remain separate.
+
 
 - Jira pull preserves supported ADF block/inline structure as Markdown through the shared description converter; v2 strings and raw fallbacks remain supported. Rendering is bounded to 1 MiB input, 2 MiB output, depth 64 and 50,000 nodes/marks; exceeding a bound retains the original JSON. Unknown containers retain descendant text. Push still emits plain paragraph ADF and is not a rich-text round trip.
 

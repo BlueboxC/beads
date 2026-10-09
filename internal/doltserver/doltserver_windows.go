@@ -126,3 +126,5 @@ func gracefulStop(pid int, timeout time.Duration) error {
 	time.Sleep(500 * time.Millisecond)
 	return nil
 }
+
+func killStartedGroup(int) {}

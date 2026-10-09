@@ -1448,6 +1448,7 @@ func Start(beadsDir string) (*State, error) {
 	// Launch dolt sql-server.
 	var (
 		pid        int
+		started    *startedServer
 		actualPort int
 		lastErr    error
 		attempts   int
@@ -1568,7 +1569,9 @@ func Start(beadsDir string) (*State, error) {
 			// restarted. os/exec does not close those; mark them first.
 			sanitizeInheritedFDs()
 
-			if startErr := cmd.Start(); startErr != nil {
+			var startErr error
+			started, startErr = launchServer(cmd)
+			if startErr != nil {
 				lastErr = startErr
 				if !explicitPort {
 					continue // retry with a new ephemeral port
@@ -1577,12 +1580,11 @@ func Start(beadsDir string) (*State, error) {
 			}
 
 			pid = cmd.Process.Pid
-			_ = cmd.Process.Release()
 
 			// Quick check: did the process exit immediately (bind failure)?
 			// Give it a moment to fail on port bind before proceeding.
 			time.Sleep(200 * time.Millisecond)
-			if !isProcessAlive(pid) {
+			if started.hasExited() {
 				lastErr = fmt.Errorf("dolt sql-server exited immediately on port %d (attempt %d/%d)", actualPort, i+1, attempts)
 				pid = 0
 				if !explicitPort {
@@ -1591,12 +1593,21 @@ func Start(beadsDir string) (*State, error) {
 				break
 			}
 
-			lastErr = nil
+			lastErr = waitForManagedReady(started, cfg.Host, actualPort, readyTimeout())
+			if lastErr != nil {
+				started.killAndWait()
+				if !explicitPort && errors.Is(lastErr, errManagedPortInUse) {
+					continue
+				}
+			}
 			break
 		}
 		_ = logFile.Close()
 
 		if lastErr != nil {
+			if corrupt, logErr := logHasCorruptJournalError(logPath(beadsDir)); logErr == nil && corrupt {
+				return nil, fmt.Errorf("managed server failed readiness: %w\n\n%s", lastErr, corruptJournalRecoveryHint(beadsDir))
+			}
 			// GH#3290 / bd-6dnrw.6: unclean-shutdown manifest corruption is
 			// detected here but never auto-repaired — reinitializing .dolt is
 			// destructive, so repair stays behind explicit bd doctor --fix.
@@ -1611,34 +1622,15 @@ func Start(beadsDir string) (*State, error) {
 		}
 	}
 
-	// Write PID and port files
+	// Publish state only after the launched server has proved ready.
 	if err := os.WriteFile(pidPath(beadsDir), []byte(strconv.Itoa(pid)), 0600); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
+		started.killAndWait()
 		return nil, fmt.Errorf("writing PID file: %w", err)
 	}
 	if err := writePortFile(beadsDir, actualPort); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
+		started.killAndWait()
 		_ = os.Remove(pidPath(beadsDir))
 		return nil, fmt.Errorf("writing port file: %w", err)
-	}
-
-	// Wait for server to accept connections
-	if err := waitForReady(cfg.Host, actualPort, readyTimeout()); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
-		_ = os.Remove(pidPath(beadsDir))
-		_ = os.Remove(portPath(beadsDir))
-		if hasJournalCorruption, logErr := logHasCorruptJournalError(logPath(beadsDir)); logErr == nil && hasJournalCorruption {
-			return nil, fmt.Errorf("server started (PID %d) but not accepting connections on port %d: %w\n\n%s",
-				pid, actualPort, err, corruptJournalRecoveryHint(beadsDir))
-		}
-		return nil, fmt.Errorf("server started (PID %d) but not accepting connections on port %d: %w\nCheck logs: %s",
-			pid, actualPort, err, logPath(beadsDir))
 	}
 
 	return &State{
