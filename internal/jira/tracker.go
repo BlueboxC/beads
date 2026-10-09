@@ -367,7 +367,7 @@ func jiraToTrackerIssue(ji *Issue, priorityMap map[string]string) tracker.Tracke
 		Raw:        ji,
 	}
 
-	// Description: convert ADF to plain text
+	// ADF imports preserve supported structure as Markdown.
 	ti.Description = DescriptionToPlainText(ji.Fields.Description)
 
 	// Priority

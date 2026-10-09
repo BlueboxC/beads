@@ -14,6 +14,8 @@ Root DOX.md and the parent chain remain binding.
 
 - Dolt server process probes distinguish failed inspection from a confirmed non-Dolt process. Preserve a live pid/port when `ps` fails; EPERM from a liveness probe means alive. Stop refuses to signal an unverifiable or recycled PID and retains state for diagnosis.
 
+- Jira pull preserves supported ADF block/inline structure as Markdown through the shared description converter; v2 strings and raw fallbacks remain supported. Rendering is bounded to 1 MiB input, 2 MiB output, depth 64 and 50,000 nodes/marks; exceeding a bound retains the original JSON. Unknown containers retain descendant text. Push still emits plain paragraph ADF and is not a rich-text round trip.
+
 - HTTP event streams revalidate bearer credentials before delivery and around journal reads, including idle and backlog passes. Successful removal terminates the stream; failed token-file reloads retain the last-good token set.
 - Terminal Markdown rendering removes raw controls and numeric entities that decode into controls before Glamour parsing; renderer-generated styles and printable entities remain supported.
 

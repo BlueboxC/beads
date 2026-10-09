@@ -449,60 +449,6 @@ func (c *Client) setAuth(req *http.Request) {
 	}
 }
 
-// DescriptionToPlainText extracts plain text from Jira's ADF (Atlassian Document Format).
-// Jira v3 API returns descriptions as ADF JSON, not plain text.
-func DescriptionToPlainText(raw json.RawMessage) string {
-	if len(raw) == 0 || string(raw) == "null" {
-		return ""
-	}
-
-	// Try to parse as ADF document
-	var doc struct {
-		Type    string `json:"type"`
-		Content []struct {
-			Type    string `json:"type"`
-			Content []struct {
-				Type string `json:"type"`
-				Text string `json:"text"`
-			} `json:"content"`
-		} `json:"content"`
-	}
-
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		// Not JSON - treat as plain text string
-		var s string
-		if err := json.Unmarshal(raw, &s); err == nil {
-			return s
-		}
-		return string(raw)
-	}
-
-	if doc.Type != "doc" {
-		// Not ADF - try plain string
-		var s string
-		if err := json.Unmarshal(raw, &s); err == nil {
-			return s
-		}
-		return string(raw)
-	}
-
-	// Extract text from ADF nodes
-	var parts []string
-	for _, block := range doc.Content {
-		var line []string
-		for _, inline := range block.Content {
-			if inline.Text != "" {
-				line = append(line, inline.Text)
-			}
-		}
-		if len(line) > 0 {
-			parts = append(parts, strings.Join(line, ""))
-		}
-	}
-
-	return strings.Join(parts, "\n")
-}
-
 // PlainTextToADF converts plain text to Jira's ADF (Atlassian Document Format).
 func PlainTextToADF(text string) json.RawMessage {
 	if text == "" {
