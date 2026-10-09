@@ -44,6 +44,7 @@ import (
 	"github.com/steveyegge/beads/internal/telemetry"
 	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/utils"
+	"github.com/steveyegge/beads/journalops"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -777,7 +778,7 @@ func refreshBoundCommandConfig(cmd *cobra.Command) {
 		readonlyMode = config.GetBool("readonly")
 	}
 	if !root.PersistentFlags().Changed("actor") {
-		actor = resolveConfiguredActor()
+		actor, actorSource = resolveConfiguredActorIdentity()
 	}
 	if !root.PersistentFlags().Changed("dolt-auto-commit") {
 		doltAutoCommit = config.GetString("dolt.auto-commit")
@@ -823,45 +824,52 @@ func resolveCommandBeadsDir(dbPath string) string {
 // BEADS_ACTOR is also set, silently letting the deprecated alias win (GH#4645).
 // Check BEADS_ACTOR explicitly first so the primary override outranks it.
 func resolveConfiguredActor() string {
-	if beadsActor := os.Getenv("BEADS_ACTOR"); beadsActor != "" {
-		return beadsActor
-	}
-	return config.GetString("actor")
+	value, _ := resolveConfiguredActorIdentity()
+	return value
 }
 
-// getActorWithGit returns the actor for audit trails with git config fallback.
-// Priority: --actor flag > BEADS_ACTOR env > BD_ACTOR env (deprecated) > git config user.name > $USER > "unknown"
-// This provides a sensible default for developers: their git identity is used unless
-// explicitly overridden
-func getActorWithGit() string {
-	// If actor is already set (from --actor flag), use it
+func resolveConfiguredActorIdentity() (string, string) {
+	if value := os.Getenv("BEADS_ACTOR"); value != "" {
+		return value, "env"
+	}
+	if value := os.Getenv("BD_ACTOR"); value != "" {
+		return value, "env"
+	}
+	if value := config.GetString("actor"); value != "" {
+		return value, "config"
+	}
+	return "", ""
+}
+
+var actorSource string
+
+// resolveActorIdentity preserves the existing name fallback and carries its source.
+// A source is provenance, not proof of a human or permission to act.
+func resolveActorIdentity() (string, string) {
 	if actor != "" {
-		return actor
+		source := actorSource
+		if source == "" {
+			source = "provided"
+		}
+		return actor, source
 	}
-
-	// Check BEADS_ACTOR env var (primary env override)
-	if beadsActor := os.Getenv("BEADS_ACTOR"); beadsActor != "" {
-		return beadsActor
+	if value, source := resolveConfiguredActorIdentity(); value != "" {
+		return value, source
 	}
-
-	// Check BD_ACTOR env var (deprecated alias, kept for backwards compatibility)
-	if bdActor := os.Getenv("BD_ACTOR"); bdActor != "" {
-		return bdActor
-	}
-
-	// Try git config user.name - the natural default for a git-native tool
 	if out, err := exec.Command("git", "config", "user.name").Output(); err == nil {
-		if gitUser := strings.TrimSpace(string(out)); gitUser != "" {
-			return gitUser
+		if value := strings.TrimSpace(string(out)); value != "" {
+			return value, "git"
 		}
 	}
-
-	// Fall back to system username
-	if user := os.Getenv("USER"); user != "" {
-		return user
+	if value := os.Getenv("USER"); value != "" {
+		return value, "user"
 	}
+	return "unknown", "unknown"
+}
 
-	return "unknown"
+func getActorWithGit() string {
+	value, _ := resolveActorIdentity()
+	return value
 }
 
 // getOwner returns the human owner for CV attribution.
@@ -1151,8 +1159,9 @@ var rootCmd = &cobra.Command{
 			}{dbPath, true}
 		}
 		if !cmd.Root().PersistentFlags().Changed("actor") && actor == "" {
-			actor = resolveConfiguredActor()
+			actor, actorSource = resolveConfiguredActorIdentity()
 		} else if cmd.Root().PersistentFlags().Changed("actor") {
+			actorSource = "flag"
 			flagOverrides["actor"] = struct {
 				Value  interface{}
 				WasSet bool
@@ -1544,7 +1553,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set actor for audit trail
-		actor = getActorWithGit()
+		actor, actorSource = resolveActorIdentity()
+		setRootContext(journalops.WithActorSource(rootCtx, actor, actorSource), rootCancel)
 		// Attach actor to the command span now that we have it.
 		if commandSpan != nil {
 			commandSpan.SetAttributes(attribute.String("bd.actor", actor))

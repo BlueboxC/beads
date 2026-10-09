@@ -5,7 +5,7 @@ description: Complete reference for bd configuration across config.yaml and data
 
 Complete configuration reference for beads.
 
-Last reviewed: 2026-08-28
+Last reviewed: 2026-10-09
 
 Freshness source: `cmd/bd/main.go`, `cmd/bd/config.go`, and `internal/configfile/`.
 
@@ -268,15 +268,18 @@ The actor name (used for `created_by` and audit trails) is resolved in this orde
 1. `--actor` flag (explicit override)
 2. `BEADS_ACTOR` environment variable
 3. `BD_ACTOR` environment variable (deprecated alias)
-4. `git config user.name`
-5. `$USER` environment variable
-6. `"unknown"` (final fallback)
+4. `actor` in the selected YAML configuration
+5. `git config user.name`
+6. `$USER` environment variable
+7. `"unknown"` (final fallback)
 
 For most developers no configuration is needed — issue authorship matches commit authorship automatically. To override, set `BEADS_ACTOR` in your shell profile:
 
 ```bash
 export BEADS_ACTOR="my-github-handle"
 ```
+
+The fork records `actor_source` in the enabled [events journal](/reference/events-journal): `flag`, `env` (including the deprecated alias), `config`, `git`, `user`, or `unknown`. Integrations should pass `--actor` or `BEADS_ACTOR` explicitly. Stdin and terminal presence do not identify who is calling. The name and its source are declared provenance; neither proves a human identity or authorizes approval.
 
 ## Project-Level Settings (Database)
 

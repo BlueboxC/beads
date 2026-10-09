@@ -21,11 +21,13 @@ import "context"
 // when the path genuinely has no actor: derived maintenance, system cleanup
 // with no request behind it, and rows written before the column existed.
 type Row struct {
-	Seq         int64
-	TS          string
-	Op          string
-	IssueID     string
-	Actor       string
+	Seq     int64
+	TS      string
+	Op      string
+	IssueID string
+	Actor   string
+	// ActorSource is resolution provenance; empty on historical/actorless rows.
+	ActorSource string
 	IssueJSON   string
 	DepJSON     string
 	CommentJSON string

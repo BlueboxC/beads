@@ -13,6 +13,7 @@ import (
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/storage/dberrors"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/journalops"
 )
 
 // The durable events journal records every committed bead mutation as a row in
@@ -447,9 +448,9 @@ func insertEventRow(ctx context.Context, tx DBTX, op EventOp, issueID string, is
 	}
 	insert := func(seq int64) error {
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO bd_events_journal (seq, ts, op, issue_id, actor, issue_json, dep_json, comment_json)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		`, seq, time.Now().UTC(), string(op), issueID, actor, issueJSON, depJSON, commentJSON)
+			INSERT INTO bd_events_journal (seq, ts, op, issue_id, actor, actor_source, issue_json, dep_json, comment_json)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, seq, time.Now().UTC(), string(op), issueID, actor, journalops.ActorSource(ctx, actor), issueJSON, depJSON, commentJSON)
 		return err
 	}
 

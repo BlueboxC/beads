@@ -46,6 +46,8 @@ Root DOX.md and the parent chain remain binding.
 - code impact is readonly and reports conservative inverse file dependencies, witness paths, candidate tests and established learning/issue references. code relink emits review drafts without updating assertions. code prune defaults to a readonly plan; --apply enforces readonly guards, embedded mode and the optional atomic memory capability. Never enable cleanup from hooks/watchers; retain full Dolt history and refuse mixed older writers.
 - SessionStart queues recovery before writing context; failure to write stdout retains next-prompt fallback, while marker-cache failure cannot prevent healthy context delivery. Diagnostics retain the latest event plus at most sixteen completed compact/failure attempts per session/workspace, containing metadata only; native admission remains a separate claim.
 
+- The journal records actor resolution provenance (`flag`, `env`, `config`, `git`, `user`, `unknown`, or `provided`) without changing actor names or authorization. Bind context provenance to the exact actor; system/different-actor rows cannot inherit it. CLI recovery and stdin/TTY do not authenticate a human.
+
 ## Work Guidance
 
 Keep existing CLI primitives and machine-readable output stable. Follow AGENTS.md and ../../engdocs/TESTING.md.

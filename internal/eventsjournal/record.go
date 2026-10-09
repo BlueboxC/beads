@@ -44,13 +44,14 @@ type Record struct {
 	// for the audit-events table; on an op=comment row it is the comment's
 	// author (caller-asserted, the same value as comment.author — structured
 	// comments emit no audit event). Absent when the mutation path has no
-	// actor: derived maintenance (is_blocked recomputes), the delete plumbing
-	// (every delete except a rename's synthetic delete row — the storage
-	// surface drops the actor before the journal sees it), and rows written
+	// actor: derived maintenance (is_blocked recomputes), system cleanup
+	// with no requesting actor, and rows written
 	// before the journal recorded actors. An absent actor is never user
 	// attribution; a consumer must read it as "system/unknown", not as a
 	// conflicting writer.
 	Actor string `json:"actor,omitempty"`
+	// ActorSource is how the identity was resolved, not authentication.
+	ActorSource string `json:"actor_source,omitempty"`
 	// Issue is the full issue state AFTER the mutation, and the literal JSON
 	// `null` on a delete — never absent. A delete has no surviving row, and a
 	// consumer must be able to tell that from a payload this server failed to
@@ -69,12 +70,13 @@ type Record struct {
 // NewRecord projects one stored row onto the published envelope.
 func NewRecord(row storage.EventsJournalRow) Record {
 	rec := Record{
-		Seq:     row.Seq,
-		TS:      row.TS,
-		Op:      row.Op,
-		IssueID: row.IssueID,
-		Actor:   row.Actor,
-		Issue:   json.RawMessage("null"),
+		Seq:         row.Seq,
+		TS:          row.TS,
+		Op:          row.Op,
+		IssueID:     row.IssueID,
+		Actor:       row.Actor,
+		ActorSource: row.ActorSource,
+		Issue:       json.RawMessage("null"),
 	}
 	if row.IssueJSON != "" {
 		rec.Issue = json.RawMessage(row.IssueJSON)

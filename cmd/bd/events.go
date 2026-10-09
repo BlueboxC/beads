@@ -110,6 +110,9 @@ Record contract (stable for external consumers):
                     derived maintenance, system cleanup with no request behind
                     it, and rows older than the column. Never user attribution
                     when empty.
+  actor_source string optional fork provenance: flag/env/config/git/user/unknown,
+                    or provided for a named direct caller. Absent on historical
+                    or actorless rows; never authenticated identity or authority.
   issue     object  full issue state AFTER the mutation; null on delete
   dep       object  {"kind","target","metadata"} for dep_add / dep_remove; omitted otherwise
   comment   object  {"id","author","text","created_at","source"} for comment; omitted otherwise

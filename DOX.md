@@ -17,6 +17,8 @@ Root owns fork policy, public API packages, license, build/version files, small 
 - Public memory lists support literal case-sensitive user-key prefix inclusion/exclusion, combined with the existing case-insensitive search; empty selectors preserve full-plane behavior. The optional AtomicMemories capability guards and mutates derived generations in one storage transaction; basic Memories callers remain compatible.
 - Use bd for tasks, dependencies and durable facts; record evidence before closing work. Keep private project records out of this public fork.
 
+- Public journal rows expose optional actor resolution provenance, not authenticated identity or authority. `journalops.WithActorSource` binds it to a caller actor; absent historical provenance stays absent. Existing issue/audit identity strings and SDK operation signatures remain compatible.
+
 ## Work Guidance
 
 - Prefer the simplest complete implementation and existing extension points. Avoid speculative configuration and dependencies.

@@ -12,6 +12,8 @@ Issue lifecycle queries and mutations.
 
 Root DOX.md and the parent chain remain binding.
 
+- Journal actor provenance shares the mutation transaction and cursor. Only an exact context actor match inherits the resolution source; other named actors are `provided`, actorless rows remain empty. Historical provenance is never inferred from a read.
+
 ## Work Guidance
 
 Preserve issue semantics across supported storage adapters and shared conformance tests.
