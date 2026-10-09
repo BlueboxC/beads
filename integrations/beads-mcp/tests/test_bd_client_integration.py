@@ -136,6 +136,31 @@ async def test_create_and_show_issue(bd_client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Ordinary MCP title",
+        "--actor=injected",
+        "--title=Injected by option",
+        "-x",
+        "--",
+        "--file=/fixture/not-read.md",
+    ],
+)
+async def test_create_option_shaped_title_preserves_content_and_actor(bd_client, title):
+    bd_client.actor = "agent:mcp-fixture"
+    created = await bd_client.create(
+        CreateIssueParams(title=title, description="Literal title regression", priority=1, issue_type="bug")
+    )
+    shown = await bd_client.show(ShowIssueParams(issue_id=created.id))
+    assert shown.title == title
+    assert shown.priority == 1
+    assert shown.issue_type == "bug"
+    raw = await bd_client._run_command("show", created.id)
+    assert raw[0]["created_by"] == "agent:mcp-fixture"
+
+
+@pytest.mark.asyncio
 async def test_list_issues(bd_client):
     """Test listing issues with real bd."""
     # Create multiple issues

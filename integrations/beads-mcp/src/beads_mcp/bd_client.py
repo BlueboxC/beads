@@ -532,7 +532,8 @@ class BdCliClient(BdClientBase):
 
     async def create(self, params: CreateIssueParams) -> Issue:
         """Create a new issue."""
-        args = ["create", params.title, "-p", str(params.priority), "-t", params.issue_type]
+        # Bind option-shaped titles as content (upstream PR #7396).
+        args = ["create", "--title", params.title, "-p", str(params.priority), "-t", params.issue_type]
 
         if params.description:
             args.extend(["-d", params.description])

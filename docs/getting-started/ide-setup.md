@@ -5,7 +5,7 @@ description: Configure bd setup recipes, hooks, and instruction files for Claude
 
 Configure your IDE or coding agent for optimal beads integration.
 
-Last reviewed: 2026-07-10
+Last reviewed: 2026-10-09
 
 Freshness source: `cmd/bd/setup*.go` and `internal/recipes/`.
 
@@ -23,7 +23,7 @@ bd setup claude --remove    # Uninstall
 | Recipe | Files written | Details |
 |--------|---------------|---------|
 | `claude` | `.claude/settings.json` (or `~/.claude/settings.json` with `--global`) + `CLAUDE.md` section | [Claude Code](/integrations/claude-code) |
-| `cursor` | `.cursor/rules/beads.mdc` | [Cursor](/integrations/cursor) |
+| `cursor` | `.cursor/rules/beads.mdc` + `.cursor/hooks.json` (global install writes `~/.cursor/hooks.json` hooks only) | [Cursor](/integrations/cursor) |
 | `gemini` | `~/.gemini/settings.json` (or `.gemini/settings.json` with `--project`) + `GEMINI.md` section | [Gemini CLI](/integrations/gemini) |
 | `copilot` | `.copilot-plugin/plugin.json` + `.github/copilot-instructions.md` | [Copilot CLI](/integrations/copilot-cli) |
 | `codex` | `.agents/skills/beads/` + `AGENTS.md` section + `.codex/` hooks | [Codex](/integrations/codex) |
@@ -52,7 +52,7 @@ Each integration writes one of two **profiles** that control how much content go
 | `full` | Factory, Mux, OpenCode | Complete command reference, issue types, priorities, workflow |
 | `minimal` | Claude Code, GitHub Copilot CLI, Gemini CLI | Pointer to `bd prime`, quick reference only (~60% smaller) |
 
-Hook-enabled agents use the `minimal` profile because `bd prime` injects full context at session start. AGENTS-first agents use the `full` profile because their instruction file remains the primary integration surface. Codex is skill-based instead: it uses `.agents/skills/beads/SKILL.md`, with managed `AGENTS.md` guidance telling Codex when to use the skill.
+Hook-enabled agents use the `minimal` profile because `bd prime` supplies workflow context at session start. AGENTS-first agents use the `full` profile because their instruction file remains the primary integration surface. Codex is skill-based instead: it uses `.agents/skills/beads/SKILL.md`, with managed `AGENTS.md` guidance telling Codex when to use the skill.
 
 **Profile precedence:** if a file already has a `full` profile section and a `minimal` profile tool installs to the same file (for example via symlinks), the `full` profile is preserved to avoid information loss.
 
@@ -101,7 +101,7 @@ If the [beads Claude Code plugin](/integrations/claude-code-plugin) is installed
 
 **How it works:**
 1. SessionStart hook runs `bd prime --hook-json` automatically
-2. `bd prime` injects ~1-2k tokens of workflow context
+2. `bd prime` supplies workflow context and the selected workspace memories
 3. You use `bd` CLI commands directly
 4. Git hooks refresh exports and legacy fallbacks; Dolt remotes handle sync
 
@@ -143,11 +143,14 @@ If you prefer manual configuration, add the hook to your Claude Code settings:
 ## Cursor IDE
 
 ```bash
-bd setup cursor            # Always-applied rules file
+bd setup cursor            # Project rules and lifecycle hooks
+bd setup cursor --global   # User hooks only
 ```
 
-This creates `.cursor/rules/beads.mdc` with beads-aware rules that Cursor
-re-includes every turn.
+Project setup creates `.cursor/rules/beads.mdc` with always-applied guidance
+and `.cursor/hooks.json` entries for `sessionStart`, `preCompact` and
+`postToolUse`, handled by `bd cursor-hook`. Global setup writes only hooks to
+`~/.cursor/hooks.json`.
 
 **Verify:**
 ```bash
@@ -271,7 +274,7 @@ All integrations use `bd prime` to inject context:
 bd prime
 ```
 
-This outputs a compact (~1-2k tokens) workflow reference including:
+This outputs a workflow reference whose size depends on the workspace and configured limits, including:
 - Available commands
 - Current project status
 - Workflow patterns
@@ -280,7 +283,13 @@ This outputs a compact (~1-2k tokens) workflow reference including:
 
 `bd prime` prints memories near the top and starts with a truncation warning. If your host stores the full hook output in a file and only shows a preview, have the agent read the full file before continuing.
 
-In hook contexts, `bd prime --hook-json` wraps the output in the SessionStart JSON envelope (Claude Code, Gemini CLI, Codex). For memory-only hooks:
+Claude Code and Gemini CLI use `bd prime --hook-json` for their SessionStart
+JSON envelope. Codex uses `bd codex-hook` for `SessionStart`, `PreCompact`,
+`PostCompact` and `UserPromptSubmit`; its separate `bd codex-activity` hooks
+capture operations only in explicitly enabled workspaces. Setup registers hooks;
+the client controls execution trust. See [Codex](/integrations/codex).
+
+For memory-only output:
 
 ```bash
 bd prime --memories-only
@@ -313,7 +322,7 @@ Add to Claude Desktop config:
 
 **Trade-offs:**
 - Works in MCP-only environments
-- Higher context overhead (10-50k tokens for tool schemas)
+- Additional tool schemas contribute to context size
 - Additional latency from MCP protocol
 
 See [MCP Server](/integrations/mcp-server) for detailed configuration.

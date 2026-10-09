@@ -312,6 +312,29 @@ async def test_create(bd_client, mock_process):
 
 
 @pytest.mark.asyncio
+async def test_create_passes_title_as_a_named_flag_not_a_bare_positional(bd_client, mock_process):
+    """Adapted from Rongjun GENG's upstream PR #7396."""
+    issue_data = {
+        "id": "bd-9",
+        "title": "--actor=injected",
+        "status": "open",
+        "priority": 2,
+        "issue_type": "task",
+        "created_at": "2024-01-01T00:00:00Z",
+        "updated_at": "2024-01-01T00:00:00Z",
+    }
+    mock_process.communicate = AsyncMock(return_value=(json.dumps(issue_data).encode(), b""))
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
+        await bd_client.create(CreateIssueParams(title="--actor=injected", priority=2, issue_type="task"))
+
+    call_args = list(mock_exec.call_args[0])
+    assert "--title" in call_args
+    title_idx = call_args.index("--title")
+    assert call_args[title_idx + 1] == "--actor=injected"
+
+
+@pytest.mark.asyncio
 async def test_create_with_optional_fields(bd_client, mock_process):
     """Test create method with all optional fields."""
     issue_data = {
