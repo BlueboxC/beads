@@ -499,11 +499,8 @@ func TestGraphIssueListBounds(t *testing.T) {
 			}); err != nil {
 				t.Fatal(err)
 			}
-			// Unlike the synthetic count probe, this oversized unrelated Memory is
-			// authored through the actual writer and exercises the persisted byte cap.
-			if _, err := s.Create(ctx, CreateRequest{Path: "beads/large", Body: strings.Repeat("x", PreviewCurrentReadByteLimit/2)}); err != nil {
-				t.Fatal(err)
-			}
+			// An old writer can have left an oversized, otherwise canonical Memory.
+			seedUnreadableMemory(t, ctx, s, "beads/large", strings.Repeat("x", PreviewCurrentReadByteLimit/2))
 			got, err := s.ListIssues(ctx, publicops.ListRequest{Limit: issueListInt(1)})
 			if err := assertBound(got, err); err != nil {
 				t.Fatal(err)
@@ -718,11 +715,9 @@ func TestGraphIssueQueriesDeletedMemoryReadBudget(t *testing.T) {
 			if _, err := s.BlockedIssues(ctx); err != nil {
 				t.Fatal(err)
 			}
-			// Two live copies fit alone; the separately retained deleted head causes
-			// the existing 16 MiB acquisition budget to refuse even these empty views.
-			if _, err := s.Create(ctx, CreateRequest{Path: "beads/filler", Body: strings.Repeat("f", 7<<20)}); err != nil {
-				t.Fatal(err)
-			}
+			// Simulate legacy data: live copies fit alone, but the deleted head
+			// takes acquisition over budget, including these empty query views.
+			seedUnreadableMemory(t, ctx, s, "beads/filler", strings.Repeat("f", 7<<20))
 			before := reopenState(t, ctx, s)
 			listed, listErr := s.ListIssues(ctx, publicops.ListRequest{Limit: issueListInt(1)})
 			blocked, blockedErr := s.BlockedIssues(ctx)

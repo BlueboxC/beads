@@ -14,6 +14,8 @@ Root DOX.md and the parent chain remain binding.
 
 ## Work Guidance
 
+Generated CLI freshness checks compare generated pages while excluding DOX.md work contracts; DOX reachability is checked separately.
+
 Reuse existing build and verification entry points. Do not run release publication as part of local setup.
 
 ## Verification

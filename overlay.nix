@@ -2,7 +2,19 @@
 # outside the `pkgs.callPackage` auto-argument machinery (callPackage cannot
 # supply a flake output on its own). flake.nix applies this as
 # `import ./overlay.nix self`.
-self: final: prev: {
+self: final: prev:
+let
+  # Apply the security patch to the existing Go recipe without changing Dolt.
+  beadsGo = final.go_1_26.overrideAttrs (_: {
+    version = "1.26.9";
+    src = final.fetchurl {
+      url = "https://go.dev/dl/go1.26.9.src.tar.gz";
+      hash = "sha256-lzXX3Ntls10/pXfwQGRzfAO4nPGitx5uaf4vPG+f1Mo=";
+    };
+  });
+in
+{
+  beads-go = beadsGo;
   # Unwrapped Go build of the bd binary. Exposed so downstream consumers can
   # override inputs (vendorHash, buildGoModule, etc.) via the standard
   # callPackage `.override` pattern, e.g.
@@ -15,7 +27,7 @@ self: final: prev: {
   #   }
   beads-unwrapped = final.callPackage ./default.nix {
     inherit self;
-    buildGoModule = final.buildGo126Module;
+    buildGoModule = final.buildGo126Module.override { go = beadsGo; };
   };
 
   # Wrap the unwrapped binary with shell completions and a `beads` alias.

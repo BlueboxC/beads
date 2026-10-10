@@ -599,7 +599,8 @@ func TestLinkUnlinkDefaultSourceReadBudget(t *testing.T) {
 			for _, selection := range []string{"id-default", "pair-default", "id-explicit"} {
 				t.Run(selection, func(t *testing.T) {
 					ctx, _, s, original, target, link := disclosureFixture(t, backend)
-					if _, err := s.Create(ctx, CreateRequest{Path: "beads/filler", Body: strings.Repeat("f", PreviewCurrentReadByteLimit/2-(512<<10))}); err != nil {
+					filler, err := s.Create(ctx, CreateRequest{Path: "beads/filler", Body: strings.Repeat("f", 6<<20)})
+					if err != nil {
 						t.Fatal(err)
 					}
 					if _, err := s.Read(ctx, "links/out"); err != nil {
@@ -610,6 +611,8 @@ func TestLinkUnlinkDefaultSourceReadBudget(t *testing.T) {
 						t.Fatalf("oversized replacement: changed=%t err=%v", replacement.Changed, err)
 					}
 					source := replacement.Source.(Record)
+					// Model oversized state left by a writer predating the budget guard.
+					replaceLegacyFixtureMemory(t, ctx, s, "beads/filler", filler, strings.Repeat("f", PreviewCurrentReadByteLimit/2-(512<<10)))
 					if _, err := s.Read(ctx, "links/out"); !errors.Is(err, ErrLimitExceeded) {
 						t.Fatalf("fixture must exceed current-read budget: %v", err)
 					}

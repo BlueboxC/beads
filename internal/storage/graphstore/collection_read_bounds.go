@@ -9,15 +9,11 @@ import (
 	"github.com/steveyegge/beads/internal/storage/sqlbuild"
 )
 
-// PreviewCurrentReadByteLimit is a conservative acquisition budget for the
-// entire live workspace and allocation metadata, before filtering, pagination
-// or exact Resource reads. All catalog allocations (including tombstones) and
-// informational rows (including corrupt orphans) are charged. It counts persisted bytes with repeated owner/Link acquisition and 256 bytes
-// per acquired row. This measures read acquisition, not a schema limit or an
-// exact Go heap/SQL-engine memory bound. Append-only preview
-// operations also reuse it as a transaction postcondition to prevent unreadable
-// growth when no inverse operation is admitted. Historical revisions
-// which are not current are neither acquired nor charged.
+// PreviewCurrentReadByteLimit bounds complete current acquisition before
+// filtering or decoding. It includes allocation metadata, tombstones, repeated
+// owner/Link reads and 256 bytes per row, but excludes older retained versions.
+// It does not measure heap or SQL-engine memory. Writers enforce it before
+// commit; oversized legacy state may shrink without discarding history.
 const PreviewCurrentReadByteLimit = 16 << 20
 
 type currentReadSizeQuery struct {
@@ -60,27 +56,17 @@ func currentReadSizeQueries() []currentReadSizeQuery {
 }
 
 func checkCurrentReadBytes(ctx context.Context, tx *sql.Tx) error {
-	var used uint64
-	for _, part := range currentReadSizeQueries() {
-		fields := []string{"256"}
-		for _, column := range strings.Split(part.columns, ",") {
-			fields = append(fields, "COALESCE(OCTET_LENGTH("+strings.TrimSpace(column)+"),0)")
-		}
-		// OCTET_LENGTH returns sizes on the SQL side; no payload column is selected
-		// into Go until all these checks have succeeded in this same transaction.
-		// SUM may otherwise surface as floating point. Clamp above the only
-		// relevant threshold and cast in SQL so both ordinary drivers return
-		// an exact integer, including when the raw sum is enormous.
-		query := "SELECT CAST(LEAST(COALESCE(SUM((" + strings.Join(fields, "+") + ")*?),0),?) AS UNSIGNED) FROM " + part.from
-		var size uint64
-		if err := tx.QueryRowContext(ctx, query, part.copies, PreviewCurrentReadByteLimit+1).Scan(&size); err != nil {
-			return err
-		}
-		if size > PreviewCurrentReadByteLimit-used {
-			return fmt.Errorf("%w: complete current read exceeds the %d-byte acquisition budget before payload decoding", ErrLimitExceeded, PreviewCurrentReadByteLimit)
-		}
-		used += size
+	used, err := currentReadBytes(ctx, tx)
+	if err != nil {
+		return err
 	}
+	if used > PreviewCurrentReadByteLimit {
+		return fmt.Errorf("%w: complete current read exceeds the %d-byte acquisition budget before payload decoding", ErrLimitExceeded, PreviewCurrentReadByteLimit)
+	}
+	return checkCurrentIssueAuthority(ctx, tx)
+}
+
+func checkCurrentIssueAuthority(ctx context.Context, tx *sql.Tx) error {
 	// Generic Issue hydration routes relations through a same-ID active wisp.
 	// Graph preview does not admit that alternative authority. Refuse it before
 	// the hydrator can acquire unbudgeted wisp payload/labels/comments/edges.
@@ -92,4 +78,23 @@ func checkCurrentReadBytes(ctx context.Context, tx *sql.Tx) error {
 		return fmt.Errorf("%w: live graph Issue also names a wisp", ErrInvalidStore)
 	}
 	return nil
+}
+
+// Size queries return numbers, never payloads. Clamp only at an impossible
+// acquisition size so an oversized legacy workspace can still shrink in steps.
+func currentReadBytes(ctx context.Context, tx *sql.Tx) (uint64, error) {
+	var used uint64
+	for _, part := range currentReadSizeQueries() {
+		fields := []string{"256"}
+		for _, column := range strings.Split(part.columns, ",") {
+			fields = append(fields, "COALESCE(OCTET_LENGTH("+strings.TrimSpace(column)+"),0)")
+		}
+		query := "SELECT CAST(LEAST(COALESCE(SUM((" + strings.Join(fields, "+") + ")*?),0),?) AS UNSIGNED) FROM " + part.from
+		var size uint64
+		if err := tx.QueryRowContext(ctx, query, part.copies, uint64(1)<<60).Scan(&size); err != nil {
+			return 0, err
+		}
+		used += size
+	}
+	return used, nil
 }

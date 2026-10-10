@@ -241,13 +241,6 @@ func (s *Store) UpdateIssue(ctx context.Context, request UpdateIssueRequest) (Is
 		if err := s.recordIssueMappingInTx(ctx, tx, request.Path, before.Properties.ID, request.Actor); err != nil {
 			return err
 		}
-		// Charge the new retained head as well as current data; an unreadable
-		// notes or metadata edit rolls back every write effect.
-		if patch.Notes.Set || patch.AppendNotes.Set || metadataChanged {
-			if err := checkCurrentReadBytes(ctx, tx); err != nil {
-				return err
-			}
-		}
 		after, err := s.showIssueInTx(ctx, tx, request.Path)
 		if err != nil {
 			return err

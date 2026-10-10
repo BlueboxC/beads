@@ -26,12 +26,8 @@ func TestIssueReferencesExceedsCurrentReadBudget(t *testing.T) {
 			if got, err := s.Read(ctx, "beads/work"); err != nil || !reflect.DeepEqual(got, withReferences.Issue) {
 				t.Fatalf("reference fixture is not initially readable: %v", err)
 			}
-			// Normal Memory authoring retains its current and saved content. This
-			// bounded 9MiB body puts their acquisition above the 16MiB budget; no
-			// schema seeding, direct payload edits or new writer policy is involved.
-			if _, err := s.Create(ctx, CreateRequest{Path: "beads/large-context", Title: "Unrelated live context", Body: strings.Repeat("m", 9<<20)}); err != nil {
-				t.Fatal(err)
-			}
+			// Simulate canonical data admitted before write-budget enforcement.
+			seedUnreadableMemory(t, ctx, s, "beads/large-context", strings.Repeat("m", 9<<20))
 			assertOverBudget := func() {
 				t.Helper()
 				if got, err := s.Read(ctx, "beads/work"); !errors.Is(err, ErrLimitExceeded) || got != nil {

@@ -565,11 +565,9 @@ func TestMemoryDeleteCurrentReadBudget(t *testing.T) {
 			if _, err := s.Create(ctx, CreateRequest{Path: "beads/small", Body: "small"}); err != nil {
 				t.Fatal(err)
 			}
-			// Filler has two current copies and alone fits; the retained deleted head
-			// takes the complete acquired state beyond the existing 16 MiB limit.
-			if _, err := s.Create(ctx, CreateRequest{Path: "beads/filler", Body: strings.Repeat("f", 7<<20)}); err != nil {
-				t.Fatal(err)
-			}
+			// Model legacy data: filler copies fit alone, but the deleted head
+			// takes complete acquisition over the current byte limit.
+			seedUnreadableMemory(t, ctx, s, "beads/filler", strings.Repeat("f", 7<<20))
 			before := workflowState(t, ctx, s)
 			assertCurrentReadBudgetRefusal(t, ctx, s, "beads/deleted")
 			if !reflect.DeepEqual(before, workflowState(t, ctx, s)) {

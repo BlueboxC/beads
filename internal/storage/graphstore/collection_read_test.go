@@ -179,14 +179,19 @@ func TestCurrentSnapshotLimit(t *testing.T) {
 			}()
 			// A synthetic oversized catalog proves refusal happens before backing
 			// hydration. This is a bound test, not a seeded user demonstration.
-			err = s.withTx(ctx, true, func(tx *sql.Tx) error {
+			tx, err := s.db.BeginTx(ctx, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = tx.Rollback() }()
+			err = func() error {
 				for i := 0; i <= PreviewSnapshotLimit; i++ {
 					if _, err := tx.ExecContext(ctx, `INSERT INTO graph_preview_catalog(path,resource_kind,type_url,revision,allocation_state,backing) VALUES (?,'bead',?,'00000000000000000000000000000000','live','generic')`, fmt.Sprintf("beads/limit%d", i), MemoryTypeURL(o.Binding.ScopeURL)); err != nil {
 						return err
 					}
 				}
-				return nil
-			})
+				return tx.Commit()
+			}()
 			if err != nil {
 				t.Fatal(err)
 			}

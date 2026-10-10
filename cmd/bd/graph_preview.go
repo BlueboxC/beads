@@ -689,6 +689,7 @@ func runGraphPreviewStatus(cmd *cobra.Command) error {
 					"genericTraversalNodes": graphGenericBound, "genericTraversalLinks": graphGenericBound, "genericTraversalInventoryResources": graphstore.PreviewSnapshotLimit,
 					"memoryBodyInputBytes": graphPreviewMemoryBodyLimit, "memoryOwnedLinks": graphstore.PreviewOwnedLinkLimit,
 					"issueOwnedLinks": graphstore.PreviewOwnedLinkLimit, "currentReadBytes": graphstore.PreviewCurrentReadByteLimit,
+					"continuityReadRows": graphstore.PreviewContinuityReadRowLimit, "continuityReadBytes": graphstore.PreviewContinuityReadByteLimit,
 					"linkPropertiesInputBytes": graphPreviewPropertiesLimit, "memoryPropertiesInputBytes": graphPreviewPropertiesLimit,
 					"memoryPatchInputBytes":      graphpatch.MaxInputBytes,
 					"memoryPatchOperations":      graphpatch.MaxOperations,

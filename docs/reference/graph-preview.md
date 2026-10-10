@@ -107,10 +107,17 @@ Issues without turning code symbols into tasks. Accepted solutions show their
 canonical record/version in node evidence. Plain native graph Memories also
 participate in bounded recovery, as untrusted memory content.
 
-The preview's complete inventory limit (1,000 live Resources) and current-read
-byte budget remain in force. Continuity publication refuses a result that would
-exceed them. This does not establish production scalability or upstream public
-Type/Memory/History compatibility.
+The complete canonical inventory is limited to 1,000 live Resources and 16 MiB
+of current acquisition bytes. Keyed continuity projections have a separate
+65,536-row / 64 MiB acquisition budget, including keys and row overhead.
+All graph writers check these limits before commit and roll back payloads,
+pointers, revisions and coordination together on rejection. Lists check sizes
+in SQL before transferring values; they never silently truncate a generation.
+A workspace left oversized by an older or external writer may be reduced in
+steps, with no dimension growing until all limits fit. Retained history stays
+intact and older snapshots are not charged to current reads. These limits are
+not process-RAM or disk-history ceilings and do not establish production scalability
+or upstream public Type/Memory/History compatibility.
 
 ## Guard an edit
 

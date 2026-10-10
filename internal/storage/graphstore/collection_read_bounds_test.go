@@ -10,9 +10,8 @@ import (
 	"testing"
 )
 
-// Real engines, normal schema initialization and only public graph authoring
-// APIs. The read budget is an operational refusal: authoring larger content is
-// still admitted, and both inventory and exact reads fail before decoding it.
+// Real engines verify public writes roll back before publishing unreadable
+// state, and reads refuse oversized state left by old or out-of-band writers.
 func TestCurrentReadAcquisitionBudget(t *testing.T) {
 	for _, backend := range []string{"embedded", "server"} {
 		t.Run(backend, func(t *testing.T) {
@@ -36,9 +35,7 @@ func TestCurrentReadAcquisitionBudget(t *testing.T) {
 					}
 					switch scenario {
 					case "memory":
-						if _, err := s.Create(ctx, CreateRequest{Path: "beads/large", Body: strings.Repeat("x", PreviewCurrentReadByteLimit/2+1024)}); err != nil {
-							t.Fatal(err)
-						}
+						seedUnreadableMemory(t, ctx, s, "beads/large", strings.Repeat("x", PreviewCurrentReadByteLimit/2+1024))
 						assertCurrentReadBudgetRefusal(t, ctx, s, "beads/large")
 					case "issue-hydration":
 						// The filler alone fits. A legal TEXT-sized Issue description plus its
@@ -51,10 +48,12 @@ func TestCurrentReadAcquisitionBudget(t *testing.T) {
 						}
 						request := plainIssue("bounded issue")
 						request.Issue.Description = strings.Repeat("d", 60<<10)
-						if _, err := s.CreateIssue(ctx, "beads/issue", request); err != nil {
+						if _, err := s.CreateIssue(ctx, "beads/issue", request); !errors.Is(err, ErrLimitExceeded) {
+							t.Fatalf("oversized Issue write: %v", err)
+						}
+						if _, err := s.CurrentSnapshot(ctx); err != nil {
 							t.Fatal(err)
 						}
-						assertCurrentReadBudgetRefusal(t, ctx, s, "beads/issue")
 					case "owned-link-and-history":
 						source, err := s.Create(ctx, CreateRequest{Path: "beads/source"})
 						if err != nil {
@@ -62,21 +61,24 @@ func TestCurrentReadAcquisitionBudget(t *testing.T) {
 						}
 						// This note's two persisted Link copies plus the owner's retained copy
 						// would fit without accounting for repeated owned/top-level acquisition.
-						added, err := s.AddInformationalLink(ctx, LinkCreateRequest{Path: "links/large", SourcePath: "beads/source", TargetPath: "beads/small", ExpectedSourceRevision: source.Revision, Properties: map[string]any{"note": strings.Repeat("n", PreviewCurrentReadByteLimit/5+4096)}})
+						request := LinkCreateRequest{Path: "links/large", SourcePath: "beads/source", TargetPath: "beads/small", ExpectedSourceRevision: source.Revision, Properties: map[string]any{"note": strings.Repeat("n", PreviewCurrentReadByteLimit/5+4096)}}
+						if _, err := s.AddInformationalLink(ctx, request); !errors.Is(err, ErrLimitExceeded) {
+							t.Fatalf("oversized Link write: %v", err)
+						}
+						request.Properties = map[string]any{"note": "small current value"}
+						added, err := s.AddInformationalLink(ctx, request)
 						if err != nil {
 							t.Fatal(err)
 						}
-						assertCurrentReadBudgetRefusal(t, ctx, s, "links/large")
+						// Older large snapshots exceed the current budget collectively,
+						// but are never charged to current-state acquisition.
 						owned := added.Source.(Record)
-						// Make retained historical bytes exceed the budget while leaving only a
-						// tiny current state. Neither old snapshot belongs in a current read.
-						enlarged, err := s.UpdateLink(ctx, LinkUpdateRequest{Path: "links/large", ExpectedRevision: added.Link.Revision, ExpectedSourceRevision: owned.Revision, Properties: map[string]any{"note": strings.Repeat("h", PreviewCurrentReadByteLimit/2+4096)}})
-						if err != nil {
-							t.Fatal(err)
-						}
-						owned = enlarged.Source.(Record)
-						if _, err := s.UpdateLink(ctx, LinkUpdateRequest{Path: "links/large", ExpectedRevision: enlarged.Link.Revision, ExpectedSourceRevision: owned.Revision, Properties: map[string]any{"note": "small current value"}}); err != nil {
-							t.Fatal(err)
+						for _, note := range []string{strings.Repeat("h", PreviewCurrentReadByteLimit/6), strings.Repeat("j", PreviewCurrentReadByteLimit/6), "small current value"} {
+							changed, err := s.UpdateLink(ctx, LinkUpdateRequest{Path: "links/large", ExpectedRevision: added.Link.Revision, ExpectedSourceRevision: owned.Revision, Properties: map[string]any{"note": note}})
+							if err != nil {
+								t.Fatal(err)
+							}
+							added.Link, owned = changed.Link, changed.Source.(Record)
 						}
 						snapshot, err := s.CurrentSnapshot(ctx)
 						if err != nil || len(snapshot.Records) != 3 {

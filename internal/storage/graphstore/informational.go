@@ -304,11 +304,6 @@ func (s *Store) writeLinkProperties(ctx context.Context, request LinkUpdateReque
 		result, err = s.finishInformationalWriteInTx(ctx, tx, request.Path, sourcePath, request.Actor, source)
 		if err == nil {
 			result.ReplacedSource = replacedMemory(source, request.UnconditionalSource)
-			if patch != nil || request.MergeProperties || hasCommonMetadataPatch(request.Metadata) {
-				// The new patch route must not commit a graph that current reads
-				// cannot acquire. Replacement retains its existing policy.
-				return checkCurrentReadBytes(ctx, tx)
-			}
 		}
 		return err
 	})

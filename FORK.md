@@ -107,7 +107,11 @@ separate optional glab reader, without importing the unrelated sync redesign.
   retain the last-good token set within the documented deadline limits.
 - Python MCP comments/notes preserve literal positional text and configured actor
   identity. Option-shaped text cannot become another CLI option.
-- Root/example dependencies retain the reviewed gRPC and cryptography minima;
+- Graph Preview rejects unreadable native/continuity writes atomically, bounds
+  SQL acquisition of keyed projections and allows gradual reduction of old
+  oversized state while retaining history. Complete snapshots reuse one binding
+  validation per transaction. Ordinary storage and existing projects retain their format.
+- Root/example builds require Go >=1.26.9 and x/net >=0.60.0, alongside the reviewed gRPC and cryptography minima;
   Python package requirements retain PyJWT >=2.15.0 and dev urllib3 >=2.8.0.
 
 The verified local source cut passed the canonical Go baseline (102 packages),

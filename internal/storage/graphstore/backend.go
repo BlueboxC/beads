@@ -220,12 +220,32 @@ func (s *Store) withTx(ctx context.Context, write bool, fn func(*sql.Tx) error) 
 			err = errors.Join(err, rollbackErr)
 		}
 	}()
+	var before acquisitionUsage
+	if write {
+		if err = checkBinding(ctx, tx, s.options); err != nil {
+			return err
+		}
+		before, err = readAcquisitionUsage(ctx, tx)
+		if err != nil {
+			return err
+		}
+	}
 	if err = fn(tx); err != nil {
 		return err
 	}
 	if !write {
 		err = tx.Rollback()
 		finished = true
+		return err
+	}
+	after, err := readAcquisitionUsage(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if err = checkAcquisitionGrowth(before, after); err != nil {
+		return err
+	}
+	if err = checkCurrentIssueAuthority(ctx, tx); err != nil {
 		return err
 	}
 	err = tx.Commit()

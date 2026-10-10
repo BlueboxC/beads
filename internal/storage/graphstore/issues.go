@@ -121,13 +121,6 @@ func (s *Store) CreateIssue(ctx context.Context, path string, request publicops.
 		if err := s.afterStage("retained"); err != nil {
 			return err
 		}
-		// Initial notes have no admitted replacement/clear inverse. Charge the
-		// completed mapping and native retained head before committing.
-		if request.Issue.Notes != "" {
-			if err := checkCurrentReadBytes(ctx, tx); err != nil {
-				return err
-			}
-		}
 		result, err = s.showIssueInTx(ctx, tx, path)
 		return err
 	})

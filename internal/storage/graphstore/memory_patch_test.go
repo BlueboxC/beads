@@ -216,20 +216,18 @@ func TestMemoryPatchFailureAtomicity(t *testing.T) {
 	}
 }
 
-func TestMemoryPatchIndependentOfCurrentReadBudget(t *testing.T) {
+func TestMemoryPatchCanRepairOversizedCurrentReadBudget(t *testing.T) {
 	for _, backend := range []string{"embedded", "server"} {
 		t.Run(backend, func(t *testing.T) {
 			ctx, _, s, original, _, _ := disclosureFixture(t, backend)
 			// Its current payload and complete retained snapshot exceed the global
 			// current-read acquisition budget, while this write's subject stays small.
-			if _, err := s.Create(ctx, CreateRequest{Path: "beads/large", Body: strings.Repeat("x", PreviewCurrentReadByteLimit/2)}); err != nil {
-				t.Fatal(err)
-			}
+			seedUnreadableMemory(t, ctx, s, "beads/large", strings.Repeat("x", PreviewCurrentReadByteLimit/2))
 			if _, err := s.Read(ctx, "beads/plan"); !errors.Is(err, ErrLimitExceeded) {
 				t.Fatalf("global Read: %v", err)
 			}
-			got, err := s.PatchMemory(ctx, MemoryPatchRequest{Path: "beads/plan", Title: patchText("small target"), ExpectedRevision: original.Revision})
-			if err != nil || !got.Changed || got.Memory.Properties != (Properties{Title: "small target", Body: original.Properties.Body}) || !reflect.DeepEqual(got.Memory.Owned, original.Owned) {
+			got, err := s.PatchMemory(ctx, MemoryPatchRequest{Path: "beads/plan", Body: patchText(""), ExpectedRevision: original.Revision})
+			if err != nil || !got.Changed || got.Memory.Properties != (Properties{Title: original.Properties.Title, Body: ""}) || !reflect.DeepEqual(got.Memory.Owned, original.Owned) {
 				t.Fatalf("subject-local patch: %+v %v", got, err)
 			}
 			if old, err := s.ReadVersion(ctx, "beads/plan", original.Version); err != nil || !reflect.DeepEqual(old, original) {

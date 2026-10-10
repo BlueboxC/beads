@@ -30,7 +30,7 @@ Root owns fork policy, public API packages, license, build/version files, small 
 - Include every verified correction in this fork and its local installed build without waiting for upstream review. Keep private disclosure and publication approval separate from local fixes.
 - The fork objective is continuity: recover project direction, existing modules, verified fixes and their evidence. Use one Beads product and its existing Dolt storage boundary.
 - Native baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c. Verified corrections preserve its baseline API; continuity extensions reuse the existing Dolt memory boundary. Keep main available for upstream synchronization and publish fork work on codex/project-continuity.
-- Root and example Go modules require gRPC >=1.83.2 and golang.org/x/crypto >=0.56.0; keep the root Dolt pin unchanged and align example locks with the root effective dependency graph.
+- Root and example Go modules require Go >=1.26.9, golang.org/x/net >=0.60.0, gRPC >=1.83.2 and golang.org/x/crypto >=0.56.0; keep the root Dolt pin unchanged and align example locks with the root effective dependency graph.
 - Follow AGENTS.md, AGENT_INSTRUCTIONS.md and engdocs/TESTING.md. Keep manual experiments in disposable directories.
 
 ## Verification

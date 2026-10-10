@@ -103,7 +103,10 @@ func (s *Store) writeMemory(ctx context.Context, request memoryWriteRequest) (Me
 		result, err = s.writeMemoryInTx(ctx, tx, request)
 		return err
 	})
-	return result, err
+	if err != nil {
+		return MemoryMutationResult{}, err
+	}
+	return result, nil
 }
 
 func (s *Store) writeMemoryInTx(ctx context.Context, tx *sql.Tx, request memoryWriteRequest) (MemoryMutationResult, error) {
@@ -170,14 +173,6 @@ func (s *Store) writeMemoryInTx(ctx context.Context, tx *sql.Tx, request memoryW
 		accepted, err := s.recordOwnedMemoryInTx(ctx, tx, request.path, request.actor, memory)
 		if err != nil {
 			return err
-		}
-		// New ordered patches must not publish a state that exceeds the existing
-		// current-read acquisition budget. Existing replacement/field routes retain
-		// their prior admission behavior. A no-op above writes nothing.
-		if request.propertiesPatch != nil || hasCommonMetadataPatch(request.metadataPatch) {
-			if err := checkCurrentReadBytes(ctx, tx); err != nil {
-				return err
-			}
 		}
 		result = MemoryMutationResult{Memory: accepted.(Record), Changed: true, Replaced: replaced}
 		return nil

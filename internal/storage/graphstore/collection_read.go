@@ -98,7 +98,7 @@ func (s *Store) currentSnapshotInTx(ctx context.Context, tx *sql.Tx) (Snapshot, 
 		var err error
 		switch a.backing {
 		case "generic":
-			record, err = s.showMemoryInTx(ctx, tx, a.path)
+			record, err = s.readMemoryInTx(ctx, tx, a.path)
 		case "issue":
 			record, err = s.showIssueInTx(ctx, tx, a.path)
 		case "dependency", "informational":

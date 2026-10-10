@@ -44,20 +44,7 @@ func (m *ContinuityMemories) transaction(ctx context.Context, write bool, fn fun
 		if err := checkBinding(ctx, tx, m.store.options); err != nil {
 			return err
 		}
-		if err := fn(tx); err != nil {
-			return err
-		}
-		if write {
-			var count int
-			if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM graph_preview_catalog WHERE allocation_state='live'").Scan(&count); err != nil {
-				return err
-			}
-			if count > PreviewSnapshotLimit {
-				return fmt.Errorf("%w: continuity exceeds %d live Resources", ErrLimitExceeded, PreviewSnapshotLimit)
-			}
-			return checkCurrentReadBytes(ctx, tx)
-		}
-		return nil
+		return fn(tx)
 	})
 }
 
@@ -98,7 +85,10 @@ func (m *ContinuityMemories) Remember(ctx context.Context, req memoryops.Remembe
 		result.Replaced = found
 		return m.rememberInTx(ctx, tx, key, req.Content)
 	})
-	return result, err
+	if err != nil {
+		return memoryops.RememberResult{}, err
+	}
+	return result, nil
 }
 
 func (m *ContinuityMemories) rememberInTx(ctx context.Context, tx *sql.Tx, key, value string) error {
@@ -182,7 +172,10 @@ func (m *ContinuityMemories) Recall(ctx context.Context, req memoryops.RecallReq
 		result.Value, result.Found, err = m.resolve(ctx, tx, key)
 		return err
 	})
-	return result, err
+	if err != nil {
+		return memoryops.RecallResult{}, err
+	}
+	return result, nil
 }
 
 func (m *ContinuityMemories) Forget(ctx context.Context, req memoryops.ForgetRequest) (memoryops.ForgetResult, error) {
@@ -199,7 +192,10 @@ func (m *ContinuityMemories) Forget(ctx context.Context, req memoryops.ForgetReq
 		}
 		return m.forgetInTx(ctx, tx, key)
 	})
-	return result, err
+	if err != nil {
+		return memoryops.ForgetResult{}, err
+	}
+	return result, nil
 }
 
 func (m *ContinuityMemories) forgetInTx(ctx context.Context, tx *sql.Tx, key string) error {
@@ -253,7 +249,10 @@ func (m *ContinuityMemories) List(ctx context.Context, req memoryops.ListRequest
 		result, err = m.listInTx(ctx, tx, req)
 		return err
 	})
-	return result, err
+	if err != nil {
+		return memoryops.ListResult{}, err
+	}
+	return result, nil
 }
 
 func (m *ContinuityMemories) Apply(ctx context.Context, req memoryops.BatchRequest) (memoryops.BatchResult, error) {
@@ -339,6 +338,19 @@ var _ memoryops.AtomicMemories = (*ContinuityMemories)(nil)
 
 func (m *ContinuityMemories) listInTx(ctx context.Context, tx *sql.Tx, req memoryops.ListRequest) (memoryops.ListResult, error) {
 	result := memoryops.ListResult{Memories: map[string]string{}}
+	if err := checkCurrentReadBytes(ctx, tx); err != nil {
+		return result, err
+	}
+	var count uint64
+	if err := tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM graph_preview_catalog WHERE allocation_state='live'").Scan(&count); err != nil {
+		return result, err
+	}
+	if count > PreviewSnapshotLimit {
+		return result, fmt.Errorf("%w: continuity exceeds %d live Resources", ErrLimitExceeded, PreviewSnapshotLimit)
+	}
+	if err := checkContinuityReadBounds(ctx, tx); err != nil {
+		return result, err
+	}
 	rows, err := txmemory.ListInTx(ctx, tx, req)
 	if err != nil {
 		return result, err
@@ -366,6 +378,9 @@ func (s *Store) ReadContinuity(ctx context.Context) (memoryops.ListResult, Snaps
 		var err error
 		snapshot, err = s.currentSnapshotInTx(ctx, tx)
 		if err != nil {
+			return err
+		}
+		if err := checkContinuityReadBounds(ctx, tx); err != nil {
 			return err
 		}
 		rows, err := txmemory.ListInTx(ctx, tx, memoryops.ListRequest{})

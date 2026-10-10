@@ -373,18 +373,27 @@ func TestLinkPropertiesPatchReadBudget(t *testing.T) {
 					}
 				})
 			}
-			// Replacement deliberately keeps its established subject-local policy.
-			// Make the workspace oversized through that real API, without SQL seeding.
+			// Replacement obeys the same atomic budget as a patch.
+			refused, err := s.UpdateLink(ctx, LinkUpdateRequest{Path: "links/out", Properties: map[string]any{"note": large}, ExpectedRevision: link.Link.Revision, ExpectedSourceRevision: original.Revision, Actor: "replacement"})
+			if !errors.Is(err, ErrLimitExceeded) || !reflect.ValueOf(refused).IsZero() || !reflect.DeepEqual(before, workflowState(t, ctx, s)) {
+				t.Fatalf("replacement budget refusal: %+v %v", refused, err)
+			}
+			filler, err := s.UpdateMemory(ctx, MemoryUpdateRequest{Path: "beads/filler", Properties: Properties{Body: strings.Repeat("f", 6<<20)}, Unconditional: true})
+			if err != nil {
+				t.Fatal(err)
+			}
 			replacement, err := s.UpdateLink(ctx, LinkUpdateRequest{Path: "links/out", Properties: map[string]any{"note": large}, ExpectedRevision: link.Link.Revision, ExpectedSourceRevision: original.Revision, Actor: "replacement"})
 			if err != nil || !replacement.Changed {
-				t.Fatalf("existing replacement policy changed: changed=%t err=%v", replacement.Changed, err)
+				t.Fatalf("bounded replacement: changed=%t err=%v", replacement.Changed, err)
 			}
 			replacementSource, ok := replacement.Source.(Record)
 			if !ok {
 				t.Fatalf("replacement source type %T", replacement.Source)
 			}
+			// Simulate canonical oversized state admitted by an older build.
+			replaceLegacyFixtureMemory(t, ctx, s, "beads/filler", filler.Memory, strings.Repeat("f", PreviewCurrentReadByteLimit/2-(512<<10)))
 			if _, err := s.Read(ctx, "links/out"); !errors.Is(err, ErrLimitExceeded) {
-				t.Fatalf("replacement must exceed current-read budget: %v", err)
+				t.Fatalf("legacy fixture must exceed current-read budget: %v", err)
 			}
 			oversizedState := workflowState(t, ctx, s)
 			t.Run("oversized-noop", func(t *testing.T) {

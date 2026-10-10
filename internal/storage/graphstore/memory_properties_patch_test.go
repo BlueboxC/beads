@@ -268,11 +268,13 @@ func TestMemoryPropertiesPatchReadBudget(t *testing.T) {
 					}
 				})
 			}
-			// Established content writer intentionally has different, subject-local admission.
-			legacy, err := s.PatchMemory(ctx, MemoryPatchRequest{Path: "beads/plan", Body: &large, ExpectedRevision: original.Revision})
-			if err != nil || !legacy.Changed {
-				t.Fatalf("existing writer changed policy: %+v %v", legacy, err)
+			// Content replacement also refuses growth and leaves all state intact.
+			refused, err := s.PatchMemory(ctx, MemoryPatchRequest{Path: "beads/plan", Body: &large, ExpectedRevision: original.Revision})
+			if !errors.Is(err, ErrLimitExceeded) || !reflect.ValueOf(refused).IsZero() || !reflect.DeepEqual(before, workflowState(t, ctx, s)) {
+				t.Fatalf("content budget rollback: %+v %v", refused, err)
 			}
+			// Seed canonical oversized state from before that writer guard existed.
+			legacy := MemoryMutationResult{Memory: replaceLegacyFixtureMemory(t, ctx, s, "beads/plan", original, large)}
 			if _, err := s.Read(ctx, "beads/plan"); !errors.Is(err, ErrLimitExceeded) {
 				t.Fatalf("expected oversized current view: %v", err)
 			}
@@ -543,19 +545,16 @@ func TestMemoryPropertiesPatchLostCommitResponse(t *testing.T) {
 	}
 }
 
-// API-authored deleted Memories retain their final live head. The current
-// reader charges those heads even though their current payloads are absent.
+// Legacy deleted Memories retain their final live head. The current reader
+// charges those heads even though their current payloads are absent.
 func propertiesPatchDeletedFiller(t *testing.T, ctx context.Context, s *Store) []Record {
 	t.Helper()
 	var retained []Record
 	for _, path := range []string{"beads/deleted-filler-a", "beads/deleted-filler-b"} {
-		memory, err := s.Create(ctx, CreateRequest{Path: path, Body: strings.Repeat("f", PreviewCurrentReadByteLimit/2-(512<<10))})
-		if err != nil {
-			t.Fatal(err)
-		}
+		memory := seedUnreadableMemory(t, ctx, s, path, strings.Repeat("f", PreviewCurrentReadByteLimit/2-(512<<10)))
 		deleted, err := s.DeleteMemory(ctx, MemoryDeleteRequest{Path: path, ExpectedRevision: memory.Revision})
 		if err != nil || !deleted.Deleted || !reflect.DeepEqual(deleted.Memory, memory) {
-			t.Fatalf("API-authored deleted filler: deleted=%t err=%v", deleted.Deleted, err)
+			t.Fatalf("legacy filler deletion: deleted=%t err=%v", deleted.Deleted, err)
 		}
 		retained = append(retained, memory)
 	}

@@ -21,15 +21,7 @@ buildGoModule {
   proxyVendor = true;
   # Match the locked Go dependencies; recompute after go.mod/go.sum changes
   # with scripts/update-nix-vendorhash.sh or a verified same-source Nix CI hash.
-  vendorHash = "sha256-tEinWH9B3RXqACAoZzqE1LHhgS3ogunbRDORWwDNb8U=";
-
-  # Match go.mod to the selected Nix Go toolchain. buildGoModule also builds
-  # vendored dependencies in the Nix sandbox, where toolchain downloads are not
-  # available.
-  postPatch = ''
-    goVer="$(go env GOVERSION | sed 's/^go//')"
-    go mod edit -go="$goVer"
-  '';
+  vendorHash = "sha256-kNnps1bSj5o1mIDO3oJOjhrt1iJZvk75UT2kfqoVYJU=";
 
   env.GOTOOLCHAIN = "local";
 
