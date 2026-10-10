@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/steveyegge/beads/internal/storage"
+	"github.com/steveyegge/beads/internal/storage/domain"
 	"github.com/steveyegge/beads/internal/types"
 	publicops "github.com/steveyegge/beads/issueops"
 )
@@ -77,6 +78,11 @@ func ValidateUpdateRequest(request publicops.UpdateRequest) error {
 		return fmt.Errorf("%w: invalid forced assignee transfer", storage.ErrValidation)
 	}
 	patch := request.Patch
+	if patch.ParentID.Set {
+		if err := domain.ValidateParentDetach(request.IssueID, patch.ParentID.Value); err != nil {
+			return err
+		}
+	}
 	if patch.Title.Set {
 		if err := types.ValidateIssueTitle(patch.Title.Value); err != nil {
 			return fmt.Errorf("%w: update title: %w", storage.ErrValidation, err)

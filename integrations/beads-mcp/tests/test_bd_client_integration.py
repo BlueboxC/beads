@@ -136,6 +136,31 @@ async def test_create_and_show_issue(bd_client):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Ordinary MCP title",
+        "--actor=injected",
+        "--title=Injected by option",
+        "-x",
+        "--",
+        "--file=/fixture/not-read.md",
+    ],
+)
+async def test_create_option_shaped_title_preserves_content_and_actor(bd_client, title):
+    bd_client.actor = "agent:mcp-fixture"
+    created = await bd_client.create(
+        CreateIssueParams(title=title, description="Literal title regression", priority=1, issue_type="bug")
+    )
+    shown = await bd_client.show(ShowIssueParams(issue_id=created.id))
+    assert shown.title == title
+    assert shown.priority == 1
+    assert shown.issue_type == "bug"
+    raw = await bd_client._run_command("show", created.id)
+    assert raw[0]["created_by"] == "agent:mcp-fixture"
+
+
+@pytest.mark.asyncio
 async def test_list_issues(bd_client):
     """Test listing issues with real bd."""
     # Create multiple issues
@@ -308,7 +333,7 @@ async def test_add_dependency(bd_client):
 
 
 @pytest.mark.asyncio
-async def test_comments_and_notes(bd_client):
+async def test_comments_and_notes(bd_client, tmp_path):
     """Test comment/comments/note round-trip with real bd."""
     issue = await bd_client.create(CreateIssueParams(title="Comment target", priority=1, issue_type="task"))
 
@@ -332,6 +357,21 @@ async def test_comments_and_notes(bd_client):
 
     shown = await bd_client.show(ShowIssueParams(issue_id=issue.id))
     assert "A durable note" in (shown.notes or "")
+
+    # This process boundary must persist option-shaped input literally.
+    decoy = tmp_path / "private decoy.txt"
+    decoy.write_text("ONLY_THE_OPERATOR_CAN_READ_THIS", encoding="utf-8")
+    bd_client.actor = "security-reviewer"
+    for text in [f"--file={decoy}", "--actor=spoof", "--", "-", "Línea uno\n🛠 Línea dos"]:
+        await bd_client.add_comment(AddCommentParams(issue_id=issue.id, text=text))
+        await bd_client.add_note(AddNoteParams(issue_id=issue.id, text=text))
+        comments = await bd_client.list_comments(ListCommentsParams(issue_id=issue.id))
+        assert comments[-1].text == text
+        assert comments[-1].author == "security-reviewer"
+        shown = await bd_client.show(ShowIssueParams(issue_id=issue.id))
+        assert text in (shown.notes or "")
+        assert "ONLY_THE_OPERATOR_CAN_READ_THIS" not in (shown.notes or "")
+    assert all("ONLY_THE_OPERATOR_CAN_READ_THIS" not in c.text for c in comments)
 
 
 @pytest.mark.asyncio

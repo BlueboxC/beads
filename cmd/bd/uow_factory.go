@@ -424,26 +424,11 @@ func resolveServerModeUOWTopologyWithTransportResolver(ctx context.Context, bead
 	return sqlServerUOWTopology{
 		database: database,
 		external: external,
-		// The proxy this topology builds must outlive every quiet period the
-		// process it serves can have, so it gets no idle timeout at all.
-		//
-		// The 30s default cannot work here. The only client this proxy will
-		// ever have is bd serve, whose pool releases its last connection after
-		// ConnMaxIdleTime (5m) of no requests; a finite-idle proxy then sees
-		// zero clients and exits, taking with it the OS-assigned port the
-		// provider's DSN pinned at construction. Nothing re-resolves that
-		// endpoint — GetCreateDatabaseProxyServerEndpoint runs once, above — so
-		// serve would go on answering /healthz with no database left to answer
-		// anything else from, unrecoverable without a restart.
-		//
-		// The tradeoff is a child that outlives serve, and it is deliberate: a
-		// never-idle proxy is already a supported configuration
-		// (`bd init --proxied-server --proxied-server-idle-timeout 0`), it is
-		// reused rather than duplicated by the next serve, and reaping it here
-		// would be worse — the endpoint API reports neither whether this
-		// process spawned the proxy nor whether another serve has since adopted
-		// it, so a shutdown reap could take the database out from under a
-		// concurrent serve. `bd dolt stop` does not reap it in these modes.
+		// Preserve the server-mode never-idle policy and reuse its proxy across
+		// serve processes. The provider now rediscovers authenticated endpoints
+		// for new physical connections, including finite-idle proxied workspaces.
+		// Shutdown still cannot reap a proxy another serve may have adopted;
+		// this endpoint API does not grant exclusive process ownership.
 		proxyIdle:    proxy.IdleTimeoutNever,
 		rootPassword: conn.ServerPassword,
 	}, nil

@@ -399,7 +399,7 @@ These behaviour changes can affect scripts; each is detailed below.
   to an inactive status, a dependency removal, a delete) now rechecks the
   dependents it recomputed once its transaction has committed. This covers the
   Dolt store write transactions, every write the proxied-server (uow/domain-db)
-  route serves — under `--proxied-server`, the default topology, that is
+  route serves — when explicitly using `--proxied-server`, that is
   `bd close` (single and batch), `bd update --status`, `bd dep remove`,
   `bd delete`, `bd batch` and `bd serve` — `RunInTransaction` (`bd batch`
   direct, `bd cook`, `bd mol squash`/`burn`, and SDK callers that close or

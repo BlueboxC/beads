@@ -16,7 +16,6 @@ import (
 	"github.com/steveyegge/beads/internal/codeindex"
 	"github.com/steveyegge/beads/internal/configfile"
 	"github.com/steveyegge/beads/internal/knowledge"
-	"github.com/steveyegge/beads/internal/storage/contextinfo"
 	"github.com/steveyegge/beads/internal/storage/dolt"
 	"github.com/steveyegge/beads/memoryops"
 )
@@ -55,6 +54,19 @@ func init() {
 			}
 			if dir == "" || cfg == nil || cfg.GetBackend() != configfile.BackendDolt || cfg.IsDoltServerMode() || cfg.IsDoltProxiedServerMode() {
 				return errors.New("maintain requires an initialized embedded Dolt workspace; shared/server maintenance is not supported")
+			}
+			if graphPreviewActive {
+				memories, err := openMemories("maintain needs memories")
+				if err != nil {
+					return err
+				}
+				python, _ := cmd.Flags().GetString("python")
+				node, _ := cmd.Flags().GetString("node")
+				result, err := maintainDerived(rootCtx, memories, filepath.Dir(dir), codeindex.ScanOptions{Python: python, Node: node, AllowMissingRoots: true})
+				if err != nil {
+					return err
+				}
+				return json.NewEncoder(cmd.OutOrStdout()).Encode(result)
 			}
 			// This scoped factory open uses the existing driver; no root-command
 			// import/template/hook/backup/export/push housekeeping runs on this path.
@@ -96,7 +108,7 @@ func init() {
 		},
 	}
 	once.Flags().String("python", "python3", "Operator Python for changed selected Python only")
-	once.Flags().String("node", "node", "Operator Node for changed selected JS/TS only")
+	once.Flags().String("node", "node", "Operator Node for changed selected JS/TS/Java/C#/Rust/C++ files")
 	watch := &cobra.Command{Use: "watch", Short: "Maintain saved selections until interrupted; release Dolt between passes", Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			CheckReadonly("maintain watch")
@@ -111,7 +123,7 @@ func init() {
 			if err != nil {
 				return err
 			}
-			info, err := contextinfo.NewContextProvider(cwd, Version).ContextUseCase().GetContextInfo(rootCtx)
+			info, err := continuityWorkspaceInfo(rootCtx, cwd)
 			if err != nil {
 				return err
 			}
@@ -123,7 +135,11 @@ func init() {
 				return err
 			}
 			workspace := filepath.Dir(info.BeadsDir)
-			env := graphViewerEnv(os.Environ(), info.BeadsDir, info.Database)
+			database := info.Database
+			if graphPreviewActive {
+				database = ""
+			}
+			env := graphViewerEnv(os.Environ(), info.BeadsDir, database)
 			python, _ := cmd.Flags().GetString("python")
 			node, _ := cmd.Flags().GetString("node")
 			pass := func(ctx context.Context) error {
@@ -150,7 +166,7 @@ func init() {
 	}
 	watch.Flags().Duration("interval", 30*time.Second, "Delay after each pass; errors back off to at least 5m")
 	watch.Flags().String("python", "python3", "Operator Python for changed selected Python only")
-	watch.Flags().String("node", "node", "Operator Node for changed selected JS/TS only")
+	watch.Flags().String("node", "node", "Operator Node for changed selected JS/TS/Java/C#/Rust/C++ files")
 	maintainCmd.AddCommand(once, watch)
 	rootCmd.AddCommand(maintainCmd)
 }

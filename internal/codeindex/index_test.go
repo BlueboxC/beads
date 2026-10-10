@@ -8,7 +8,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/steveyegge/beads/memoryops"
 )
@@ -272,5 +274,92 @@ func TestLargeCatalogMigratesAndPersistsWithoutRenewingHumanRecords(t *testing.T
 	}
 	if store.plane["@knowledge/record/solved"] != "unchanged reviewed solution" {
 		t.Fatal("catalog changed human record")
+	}
+}
+
+func BenchmarkParserHashUnchanged200(b *testing.B) {
+	parserHash("typescript")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		for i := 0; i < 400; i++ {
+			parserHash("typescript")
+		}
+	}
+}
+
+func TestParserFingerprintsRemainExactUnderConcurrency(t *testing.T) {
+	languages, err := normalizeLanguages([]string{"all"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for _, language := range languages {
+		want := computeParserHash(language)
+		for range 8 {
+			wg.Go(func() {
+				if got := parserHash(language); got != want {
+					t.Errorf("%s fingerprint changed: %s != %s", language, got, want)
+				}
+			})
+		}
+	}
+	wg.Wait()
+}
+func TestRefreshCacheDoesNotSurviveQueryOrHideNewContracts(t *testing.T) {
+	root := t.TempDir()
+	source(t, root, "pkg/a.go", "package pkg\nfunc First() {}\n")
+	r := readerFor(t, root)
+	index, err := r.ScanWithOptions(context.Background(), []string{"pkg"}, nil, Index{}, ScanOptions{Languages: []string{"go"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := r.RefreshSelected(index); got.Files[0].Validity != "current" {
+		t.Fatalf("initial state: %+v", got)
+	}
+	source(t, root, "pkg/DOX.md", "# Newly applicable contract\n")
+	if got := r.RefreshSelected(index); got.Files[0].Validity != "needs_review" {
+		t.Fatal("new DOX hidden by cache")
+	}
+	if err := os.Remove(filepath.Join(root, "pkg/DOX.md")); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.RefreshSelected(index); got.Files[0].Validity != "current" {
+		t.Fatal("stale contract result survived query")
+	}
+	source(t, root, "pkg/a.go", "package pkg\nfunc Changed() {}\n")
+	if got := r.RefreshSelected(index); got.Files[0].Validity != "needs_review" {
+		t.Fatal("changed file hidden by cache")
+	}
+}
+
+func TestIsolatedParserRunnerHonorsCancellationAndOutputBounds(t *testing.T) {
+	python, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("Python unavailable")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	if _, err := runParser(ctx, python, []string{"-I", "-S", "-c", "import time; time.sleep(30)"}, nil); err == nil {
+		t.Fatal("cancelled parser succeeded")
+	}
+	if ctx.Err() != context.DeadlineExceeded || time.Since(started) > 5*time.Second {
+		t.Fatal("parser did not stop within bounded cleanup")
+	}
+	for _, stream := range []string{"stdout", "stderr"} {
+		size := maxJSONBytes + 1
+		if stream == "stderr" {
+			size = 4097
+		}
+		script := fmt.Sprintf("import sys; sys.%s.write('x' * %d)", stream, size)
+		if _, err := runParser(context.Background(), python, []string{"-I", "-S", "-c", script}, nil); err == nil {
+			t.Fatalf("%s bound lost", stream)
+		}
+	}
+	for _, raw := range []string{`not json`, `{"files":[]}`, `{"files":[{"path":"foreign.py"}]}`} {
+		if _, err := decodeParser([]byte(raw), []parserInput{{Path: "selected.py"}}, "AST"); err == nil {
+			t.Fatal("invalid or foreign parser output accepted")
+		}
 	}
 }

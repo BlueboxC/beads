@@ -119,7 +119,12 @@ the old, roll the clients over, then delete the old line; both the addition and
 the removal take effect within about a second. The server re-reads the file
 while it runs — gated to at most one `stat(2)` per second for the whole
 process, on the accepting path as well as on a mismatch, which is what makes
-revocation work and not just rotation. Write it atomically (temp file plus
+revocation work and not just rotation. Established event streams recheck before
+record delivery and around each journal read, including idle and backlog
+passes. A successfully removed token closes its stream; reconnecting with that
+token receives 401. Checks share the one-second reload gate; a read or blocked
+write can delay termination until its existing deadline, but a revoked stream
+does not deliver the next read result. Write it atomically (temp file plus
 rename; a Kubernetes secret mount already does). A failed or empty re-read
 keeps the last-good set and logs `event=auth_reload_error`, so a writer that
 truncates before writing cannot lock every client out.

@@ -92,11 +92,11 @@ func wispChildrenOf(subgraph *TemplateSubgraph) []*types.Issue {
 
 func renderSquashDryRun(moleculeID string, subgraph *TemplateSubgraph, wispChildren []*types.Issue, keepChildren bool) {
 	fmt.Printf("\nDry run: would squash %d ephemeral children of %s\n\n", len(wispChildren), moleculeID)
-	fmt.Printf("Root: %s\n", subgraph.Root.Title)
+	fmt.Printf("Root: %s\n", ui.SanitizeForTerminal(subgraph.Root.Title))
 	fmt.Printf("\nWisp children to squash:\n")
 	for _, issue := range wispChildren {
 		status := string(issue.Status)
-		fmt.Printf("  - [%s] %s (%s)\n", status, issue.Title, issue.ID)
+		fmt.Printf("  - [%s] %s (%s)\n", status, ui.SanitizeForTerminal(issue.Title), issue.ID)
 	}
 	fmt.Printf("\nDigest preview:\n")
 	digest := generateDigest(subgraph.Root, wispChildren)

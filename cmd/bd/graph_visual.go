@@ -146,7 +146,7 @@ func renderGraphVisualTo(out io.Writer, layout *GraphLayout, subgraph *TemplateS
 func computeDAGNodeWidth(layout *GraphLayout) int {
 	maxW := 0
 	for _, node := range layout.Nodes {
-		titleLen := len([]rune(truncateTitle(node.Issue.Title, 22)))
+		titleLen := len([]rune(truncateTitle(dagDisplayTitle(node.Issue.Title), 22)))
 		contentW := titleLen + 3      // icon(1) + space(1) + trailing(1)
 		idW := len(node.Issue.ID) + 4 // space + ID + "  Pn"
 		if idW > contentW {
@@ -215,6 +215,13 @@ func collectGutterEdges(layout *GraphLayout, subgraph *TemplateSubgraph, numLaye
 	return result
 }
 
+// dagDisplayTitle keeps untrusted titles within one terminal row.
+func dagDisplayTitle(title string) string {
+	title = ui.SanitizeForTerminal(title)
+	title = strings.ReplaceAll(title, "\n", " ")
+	return strings.ReplaceAll(title, "\t", " ")
+}
+
 // dagNodeLine renders one line of a DAG node box with status colors
 func dagNodeLine(node *GraphNode, nodeW, lineIdx int) string {
 	switch lineIdx {
@@ -223,7 +230,7 @@ func dagNodeLine(node *GraphNode, nodeW, lineIdx int) string {
 
 	case 1: // status icon + title
 		icon := ui.RenderStatusIcon(string(node.Issue.Status))
-		title := truncateTitle(node.Issue.Title, nodeW-4) // room for icon + spaces
+		title := truncateTitle(dagDisplayTitle(node.Issue.Title), nodeW-4) // room for icon + spaces
 		padded := padRight(title, nodeW-4)
 
 		status := string(node.Issue.Status)

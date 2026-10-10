@@ -139,16 +139,16 @@ func displayShowIssueReturn(ctx context.Context, issueID string) *types.Issue {
 
 	// Content sections (matches standard bd show order)
 	if issue.Description != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(issue.Description))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Description)))
 	}
 	if issue.Design != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESIGN"), uimd.RenderMarkdown(issue.Design))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESIGN"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Design)))
 	}
 	if issue.Notes != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("NOTES"), uimd.RenderMarkdown(issue.Notes))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("NOTES"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Notes)))
 	}
 	if issue.AcceptanceCriteria != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("ACCEPTANCE CRITERIA"), uimd.RenderMarkdown(issue.AcceptanceCriteria))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("ACCEPTANCE CRITERIA"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.AcceptanceCriteria)))
 	}
 
 	// Labels
@@ -178,8 +178,8 @@ func displayShowIssueReturn(ctx context.Context, issueID string) *types.Issue {
 	if len(comments) > 0 {
 		fmt.Printf("\n%s\n", ui.RenderBold("COMMENTS"))
 		for _, comment := range comments {
-			fmt.Printf("  %s %s\n", ui.RenderMuted(comment.CreatedAt.UTC().Format("2006-01-02 15:04")), comment.Author)
-			rendered := uimd.RenderMarkdown(comment.Text)
+			fmt.Printf("  %s %s\n", ui.RenderMuted(comment.CreatedAt.UTC().Format("2006-01-02 15:04")), ui.SanitizeForTerminal(comment.Author))
+			rendered := uimd.RenderMarkdown(ui.SanitizeForTerminal(comment.Text))
 			for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
 				fmt.Printf("    %s\n", line)
 			}

@@ -224,12 +224,12 @@ func renderMolBondDryRun(in molBondInput, issueA *types.Issue, formulaA string, 
 	if formulaA != "" {
 		fmt.Printf("  A: %s (formula → will cook as proto)\n", formulaA)
 	} else if issueA != nil {
-		fmt.Printf("  A: %s (%s)\n", issueA.Title, operandType(aIsProto))
+		fmt.Printf("  A: %s (%s)\n", ui.SanitizeForTerminal(issueA.Title), operandType(aIsProto))
 	}
 	if formulaB != "" {
 		fmt.Printf("  B: %s (formula → will cook as proto)\n", formulaB)
 	} else if issueB != nil {
-		fmt.Printf("  B: %s (%s)\n", issueB.Title, operandType(bIsProto))
+		fmt.Printf("  B: %s (%s)\n", ui.SanitizeForTerminal(issueB.Title), operandType(bIsProto))
 	}
 	fmt.Printf("  Bond type: %s\n", in.bondType)
 	if in.ephemeral {

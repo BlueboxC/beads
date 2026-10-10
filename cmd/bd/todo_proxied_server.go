@@ -73,7 +73,7 @@ func runTodoAddProxiedServer(cmd *cobra.Command, ctx context.Context, args []str
 		fmt.Println(string(data))
 		return nil
 	}
-	fmt.Printf("Created %s: %s\n", ui.RenderID(res.ID), res.Title)
+	fmt.Printf("Created %s: %s\n", ui.RenderID(res.ID), ui.SanitizeForTerminal(res.Title))
 	return nil
 }
 

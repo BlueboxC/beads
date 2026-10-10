@@ -315,6 +315,8 @@ type DoltStore struct {
 	beadsDir string      // Path to .beads directory (parent of dbPath)
 	database string      // Database name (subdirectory under dbPath)
 	closed   atomic.Bool // Tracks whether Close() has been called
+	// Report migrations performed by this writable open once (#7283).
+	openApplied atomic.Int64
 	// eventsJournalEnabled activates the durable events journal for THIS store
 	// instance only (storage.EventsJournalConfigurer); never process-global.
 	eventsJournalEnabled atomic.Bool
@@ -2097,6 +2099,7 @@ func newServerMode(ctx context.Context, cfg *Config) (*DoltStore, error) {
 			// applied (0 for both guards today, since each refuses before
 			// migrating), so the rebuild below stays correct either way.
 		}
+		store.openApplied.Store(int64(applied))
 		// initSchema runs migrations over a separate pool (openMigrationDB).
 		// The Ping above already pinned a connection in store.db to the
 		// pre-migration session root; without a rebuild, the first read
@@ -3029,14 +3032,17 @@ func (s *DoltStore) initSchema(ctx context.Context, bootstrapHeal *schema.FreshB
 
 // ApplySchemaMigrations runs idempotent schema migrations under the
 // per-database advisory lock, with retry for transient lock contention.
+// The count includes the writable open's migrations once.
 // Implements storage.SchemaMigrator.
 func (s *DoltStore) ApplySchemaMigrations(ctx context.Context) (int, error) {
+	opened := int(s.openApplied.Swap(0))
 	migDB, err := s.openMigrationDB()
 	if err != nil {
-		return 0, err
+		return opened, err
 	}
 	defer migDB.Close()
-	return initSchemaOnDBWithRetry(ctx, migDB)
+	applied, err := initSchemaOnDBWithRetry(ctx, migDB)
+	return opened + applied, err
 }
 
 // openMigrationDB opens a one-off connection pool for schema migrations with no

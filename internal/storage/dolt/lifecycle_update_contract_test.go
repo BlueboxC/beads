@@ -66,6 +66,9 @@ func TestLifecycleUpdateContract(t *testing.T) {
 	t.Run("ClaimIsAMutationWhenThePatchRestoresTheRow", func(t *testing.T) {
 		conformance.RunLifecycleUpdateClaimIsAMutationWhenThePatchRestoresTheRow(t, ctx, fixture)
 	})
+	t.Run("HierarchicalDetachIsRefused", func(t *testing.T) {
+		conformance.RunLifecycleUpdateHierarchicalDetachIsRefused(t, ctx, fixture)
+	})
 	t.Run("ParentIDReplacesTheParentEdge", func(t *testing.T) {
 		conformance.RunLifecycleUpdateParentIDReplacesTheParentEdge(t, ctx, fixture)
 	})

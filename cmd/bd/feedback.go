@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/types"
+	"github.com/steveyegge/beads/internal/ui"
 )
 
 // formatFeedbackID returns "id — title" or just "id" based on output.title-length config.
@@ -34,7 +35,7 @@ func applyTitleConfig(title string) string {
 	case maxLen <= 0:
 		return "" // hide titles
 	default:
-		return truncateTitle(title, maxLen)
+		return truncateTitle(ui.SanitizeForTerminal(title), maxLen)
 	}
 }
 

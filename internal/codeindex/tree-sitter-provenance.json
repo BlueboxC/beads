@@ -1,0 +1,58 @@
+{
+  "package": "@vscode/tree-sitter-wasm",
+  "version": "0.3.1",
+  "repository": "https://github.com/microsoft/vscode-tree-sitter-wasm",
+  "tag_commit": "78c97c860ddd965b9617f0e30962ad1da08c4c91",
+  "tarball": "https://registry.npmjs.org/@vscode/tree-sitter-wasm/-/tree-sitter-wasm-0.3.1.tgz",
+  "integrity": "sha512-RJFoomET6FajjG511fmQxeBQfU6M24a0aFZPqpid+ttIxanWf1VGytBG0UmsGjt07qmIPJS8U31D+aecuCucsQ==",
+  "source_build": "https://github.com/microsoft/vscode-tree-sitter-wasm/blob/v0.3.1/build/main.ts",
+  "runtime_version": "0.25.10",
+  "cgmanifest_note": "Packaged cgmanifest lists 0.25.1; build/main.ts pins runtime v0.25.10. Payloads are identified by hashes, not inferred from cgmanifest.",
+  "grammars": {
+    "java": {
+      "version": "0.23.5",
+      "commit": "94703d5a6bed02b98e438d7cad1136c01a60ba2c"
+    },
+    "csharp": {
+      "commit": "485f0bae0274ac9114797fc10db6f7034e4086e3"
+    },
+    "rust": {
+      "commit": "261b20226c04ef601adbdf185a800512a5f66291"
+    },
+    "cpp": {
+      "commit": "12bd6f7e96080d2e70ec51d4068f2f66120dde35"
+    }
+  },
+  "files": {
+    "tree-sitter.js": {
+      "sha256": "874f4a37c4beddef04d8eb9a8dbd28a65b63111f2d2123a38fd3f5333ee046dd",
+      "gzip_sha256": "af304affc528ac11151ea1a4451bfa845c5d2a86efbddc693de3ef827519f0f7",
+      "bytes": 168729
+    },
+    "tree-sitter.wasm": {
+      "sha256": "3a31af706ffdf4a7116b064cdd4988df6791823298615009fc5b6bccbd42909b",
+      "gzip_sha256": "82122853fc4ea1dfb15d824007672682c54f6e3671a0641ad18d6b8d70e04180",
+      "bytes": 206218
+    },
+    "tree-sitter-java.wasm": {
+      "sha256": "4fdeac4ca6ca089f06c6f7e562abcac1733cd465728cc7031ebb73c2019122c4",
+      "gzip_sha256": "0889bd196c115365fecb0efc8dc01ee2b20de5fdb26c92e116b9f253842b7d2c",
+      "bytes": 414641
+    },
+    "tree-sitter-c-sharp.wasm": {
+      "sha256": "d12d85996c25957b4c1b71e26db2d7cc8a294997b60642e9c2a3b031b2c66dd3",
+      "gzip_sha256": "22f5e052b051aae1c3f3123318dd01fe467016434ccc49f7b0d90e848a829944",
+      "bytes": 5103332
+    },
+    "tree-sitter-rust.wasm": {
+      "sha256": "0dac14947cb04d94466e3df659f80a4e264c216a60b3eda175eae4cf12ed7a8d",
+      "gzip_sha256": "5f7f941d109591b642c2dd4e4bdf20cf4f7a80eb63c14a20cdae4fd88091a5b6",
+      "bytes": 1113644
+    },
+    "tree-sitter-cpp.wasm": {
+      "sha256": "77a65bd42f43c2dcd69af40c12a6c32d6ed81d360c025e9feb28911f8339fd69",
+      "gzip_sha256": "43a5656202f39568bd4e34fe3a7055f649b968c0536e955cd9e16f682b2c7fe4",
+      "bytes": 5394393
+    }
+  }
+}

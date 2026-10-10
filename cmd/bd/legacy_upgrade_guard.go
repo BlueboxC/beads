@@ -39,6 +39,13 @@ func guardLegacyUpgradeWorkspace(beadsDir string) error {
 	if err := validateConfiguredBackend(cfg, beadsDir); err != nil {
 		return err
 	}
+	graphMode, err := cfg.GetGraphMode()
+	if err != nil {
+		return err
+	}
+	if graphMode != configfile.GraphModeDependency {
+		return fmt.Errorf("workspace graph_mode %q requires the graph preview route; the legacy workspace was not opened", graphMode)
+	}
 	serverMode := workspaceSelectsServerMode(cfg)
 	if embeddeddolt.HasRepository(beadsDir) && !serverMode {
 		return nil

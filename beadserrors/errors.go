@@ -71,3 +71,26 @@ type ErrUnsupported struct {
 func (e *ErrUnsupported) Error() string {
 	return fmt.Sprintf("operation %q not supported by the %s backend", e.Op, e.Backend)
 }
+
+// ErrNotAuthority reports that the caller's workspace cannot establish authority
+// for the requested operation. It does not prescribe a recovery procedure.
+var ErrNotAuthority = errors.New("not the authority for this Scope")
+
+// ErrStateRewound reports that a recorded ledger head is no longer in the store.
+var ErrStateRewound = errors.New("state rewound: the recorded ledger head is no longer in the store")
+
+// ErrStateChanged reports that state moved under a recorded version.
+var ErrStateChanged = errors.New("state changed under the recorded version")
+
+// ErrSyncRequired reports a publication that needs synchronization because the
+// remote moved outside the graph. It does not imply that the local commit failed.
+var ErrSyncRequired = errors.New("sync required: the remote moved outside the graph")
+
+// ErrUnpublished reports a committed mutation that has not been published.
+var ErrUnpublished = errors.New("committed locally but not yet published")
+
+// ErrRepresentationTooLarge reports a value beyond the serving surface's bound.
+var ErrRepresentationTooLarge = errors.New("representation too large")
+
+// ErrNotServedYet reports a declared surface that is not served on this route.
+var ErrNotServedYet = errors.New("not served yet")

@@ -6,7 +6,9 @@
 package uimd
 
 import (
+	"html"
 	"os"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -42,6 +44,16 @@ func WrapWidth() int {
 // Returns the rendered markdown or the original text if rendering fails.
 // Word wraps at terminal width (or 80 columns if width can't be detected).
 func RenderMarkdown(markdown string) string {
+	markdown = ui.SanitizeForTerminal(markdown)
+	// Glamour decodes numeric HTML entities after parsing. Remove encoded
+	// controls before that decoding can recreate terminal instructions.
+	markdown = numericEntity.ReplaceAllStringFunc(markdown, func(entity string) string {
+		decoded := html.UnescapeString(entity)
+		if ui.SanitizeForTerminal(decoded) != decoded {
+			return ""
+		}
+		return entity
+	})
 	wrapWidth := WrapWidth()
 	if wrapWidth == 0 {
 		return markdown
@@ -111,6 +123,7 @@ func unescapeAngleBrackets(s string) string {
 }
 
 var (
+	numericEntity  = regexp.MustCompile(`&#(?:[0-9]+|[xX][0-9a-fA-F]+);?`)
 	angleEscaper   = strings.NewReplacer("<", "&lt;", ">", "&gt;")
 	angleUnescaper = strings.NewReplacer("&lt;", "<", "&gt;", ">")
 )

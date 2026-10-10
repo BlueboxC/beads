@@ -12,7 +12,7 @@
 
 **Docs:** https://beads.gascity.com/
 
-**BlueboxC continuity fork:** adds source-backed knowledge, supervised learning, a Python/Go/JS/TS code index, one native graph/history viewer and opt-in session capture in the existing Dolt. See [fork scope](FORK.md) and [fork installation/workflow](docs/core-concepts/fork-continuity.md). The upstream installation commands below install upstream Beads; build the fork branch to obtain these additions.
+**BlueboxC continuity fork:** adds source-backed knowledge, supervised learning, a structural code index covering 23 languages/formats, one native graph/history viewer and opt-in session capture in the existing Dolt. See [fork scope](FORK.md) and [fork installation/workflow](docs/core-concepts/fork-continuity.md). The upstream installation commands below install upstream Beads; build the fork branch to obtain these additions. This branch also includes the [verified fork corrections](FORK.md#included-corrections), independently of upstream review, and an [opt-in human gate resolver policy](docs/workflows/gates.md#optional-human-resolver-policy-blueboxc-fork). Copilot setup now [preserves shared instructions](docs/integrations/copilot-cli.md#installation) on installation and removal.
 
 Beads provides a persistent, structured memory for coding agents. It replaces messy markdown plans with a dependency-aware graph, allowing agents to handle long-horizon tasks without losing context.
 
@@ -223,6 +223,7 @@ This is useful for:
 | `bd knowledge scan/sources/list/context` | Selected documents/DOX, explicit records, source hashes and evidence validity. |
 | `bd knowledge prepare/propose/proposals/review` | Guided source-backed candidates, pinned session origins and supervised acceptance with preserved history. |
 | `bd code scan/status/query/graph` | Incremental Python, Go, JavaScript and TypeScript symbols/references and reviewed solution links. |
+| `bd code impact/relink/prune` | Static change review, supervised identical-content move drafts and explicit derived cleanup with preserved history. |
 | `bd graph --project --html` | Native interactive overview of tasks, knowledge and all indexed directories/files/symbols. |
 | `bd serve --graph-viewer` | Read-only live graph and Historial, manual/automatic refresh and retained layout/filters. |
 | `bd maintain once/watch` | Explicit maintenance of saved derived code/document selections without renewing human evidence. |

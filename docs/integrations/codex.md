@@ -32,6 +32,54 @@ Codex runs `SessionStart` with `source: "compact"` before the next model request
 
 Refresh markers are stored in a user cache/temp directory keyed by Codex `session_id` and workspace path. They are not written to tracked files or to the Beads database.
 
+## Local Hook Diagnostics
+
+Each of the four context handlers records its latest attempt per session,
+workspace and event beside the refresh marker: `<marker-key>.<event>.json` in
+`os.UserCacheDir()/beads/codex-hooks` (or the existing temp fallback). The key is
+SHA-256 of the session ID, one NUL byte and the cleaned workspace path,
+matching the marker key.
+Files use private permissions and atomic replacement; each JSON is under 2 KiB.
+They do not enter the database, tracked files or injected context.
+
+A valid supported invocation records `phase: running` before reading Beads,
+then `completed` with timestamps, duration, prime/output results and the final
+pending-refresh state. Known source/trigger values and a valid turn UUID allow
+correlation with native compaction evidence. `cwd_matches_input` compares the
+process and payload directory paths when available; symlink spellings can
+produce a mismatch. Context metadata contains only byte count and SHA-256.
+Raw context, prompts, transcript contents, paths, session text, environment,
+model and error messages are excluded.
+
+Failures add `prime_failure_stage`: `store_open`, `memory_accessor`,
+`memory_list`, `workspace_validation`, `prime_process` or `unknown`.
+`prime_failure_reason` is `deadline_exceeded`, `canceled`, `permission_denied`,
+`connection_refused` or `unavailable`, based on typed errors. Required child
+reads transport these categories by internal exit status; stderr is not parsed.
+Untyped failures remain `unavailable`; duration alone does not identify a lock
+or another engine cause. Missing fields in older records cannot be reconstructed.
+`binary_build`, when present, is a bounded commit build label; verifying the exact
+installed binary still requires its installation hash.
+
+`prime_result` distinguishes `loaded`, `empty`, `failed`, `timed_out`, `canceled`
+and `not_requested`. `output_result` distinguishes `context_written`,
+`warning_written`, `failed` and `none`. A successful write proves local stdout
+production; it does not prove Codex admitted the context. A `running` record
+can indicate an interrupted attempt. A missing record alone does not prove
+Codex omitted dispatch: invalid input, process termination or an unavailable
+cache can also leave no record. Diagnostic writes are advisory and never alter
+hook output or the refresh fallback. In addition to the four latest files,
+`<marker-key>.attempts/` retains at most sixteen completed SessionStart compact
+or failed/timed-out/canceled attempts per session/workspace, using the same
+private metadata schema. A later healthy attempt cannot overwrite those entries;
+oldest retained attempts are removed after the bound. This is a bounded local
+inspection aid, not complete dispatch history or evidence of native admission.
+
+SessionStart creates a pending fallback before context output, then consumes it
+after a successful full write. A failed cold stdout write therefore remains
+recoverable at the next prompt. If the marker cache itself is unavailable, a
+healthy delivery still proceeds; cache persistence cannot be guaranteed.
+
 The Beads Codex plugin stores hooks at `plugins/beads/.codex-plugin/hooks/hooks.json` and declares them in `plugins/beads/.codex-plugin/plugin.json` as `"hooks": "./.codex-plugin/hooks/hooks.json"`. Without the plugin, `bd setup codex` installs the same hook config in `.codex/hooks.json` and enables `[features].hooks = true`.
 
 ## Observed Activity

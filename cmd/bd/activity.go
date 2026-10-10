@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/steveyegge/beads/internal/beads"
 	"github.com/steveyegge/beads/internal/configfile"
 	"github.com/steveyegge/beads/internal/storage/dolt"
+	"github.com/steveyegge/beads/internal/storage/graphstore"
 	"github.com/steveyegge/beads/memoryops"
 )
 
@@ -94,6 +96,30 @@ func openActivity(ctx context.Context, write bool) (string, memoryops.Memories, 
 	}
 	if dir == "" || cfg == nil || cfg.GetBackend() != configfile.BackendDolt || cfg.IsDoltServerMode() || cfg.IsDoltProxiedServerMode() {
 		return "", nil, nil, errors.New("activity requires an initialized embedded Dolt workspace")
+	}
+	mode, err := cfg.GetGraphMode()
+	if err != nil {
+		return "", nil, nil, err
+	}
+	if mode == "link" {
+		marker, err := os.ReadFile(filepath.Join(dir, graphPreviewMarker)) // #nosec G304 -- fixed sentinel in the selected workspace
+		if err != nil || !cfg.GraphReady || cfg.GraphSchemaVersion != graphstore.SchemaVersion || !graphPreviewGenerationSupported(marker) {
+			return "", nil, nil, errors.New("activity requires a ready compatible Graph Preview workspace")
+		}
+		physical, err := filepath.EvalSymlinks(dir)
+		if err != nil || physical != cfg.GraphWorkspace {
+			return "", nil, nil, errors.New("activity graph workspace binding differs")
+		}
+		if write && graphPreviewActive {
+			if err := graphPreviewWritePolicy(); err != nil {
+				return "", nil, nil, err
+			}
+		}
+		st, err := graphstore.OpenExisting(ctx, graphOptionsFor(dir, cfg))
+		if err != nil {
+			return "", nil, nil, err
+		}
+		return filepath.Dir(dir), st.Memories(getActor()), func(bool) error { return st.Close() }, nil
 	}
 	selected := &dolt.Config{BeadsDir: dir, Database: cfg.GetDoltDatabase(), ReadOnly: true, DisableAutoStart: true}
 	st, err := newDoltStore(ctx, selected)

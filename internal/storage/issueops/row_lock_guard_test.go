@@ -100,6 +100,12 @@ var sqlWriteKeywordRe = regexp.MustCompile(`(?i)\b(?:SET|VALUES|SELECT)\b`)
 // status in the same statement as an is_blocked-marked WHERE predicate must
 // still stamp. See setClauseAssignsLifecycleField.
 var auxOrExemptMarkers = []string{
+	// The retained-history recorder runs after the accepted mutation has
+	// stamped/journaled its postimage. Advancing its revision pointers must
+	// preserve that postimage's row_lock and updated_at. The lifecycle-field
+	// check below still rejects a statement mixing this marker with a real
+	// lifecycle write.
+	"SET current_revision = ?",
 	"is_blocked",          // is_blocked recompute (exempt by design)
 	"compaction_level = ", // compaction bookkeeping/restore (exempt by design)
 	"SET id = ?",          // rename: primary-key rewrite (exempt by design)
@@ -532,6 +538,21 @@ func w(tx T, id, s string) {
 }`)
 	if n, v := scanIssueWriteRowLockStamps(t, "aux.go", aux); n != 0 || len(v) != 0 {
 		t.Errorf("aux write: got checked=%d violations=%v; want checked=0 violations=none", n, v)
+	}
+
+	revisionOnly := []byte(`package p
+func w(tx T, id string) {
+	tx.ExecContext(ctx, "UPDATE issues SET current_revision = ?, updated_at = updated_at WHERE id = ?", revision, id)
+}`)
+	if n, v := scanIssueWriteRowLockStamps(t, "revision.go", revisionOnly); n != 0 || len(v) != 0 {
+		t.Errorf("retained revision bookkeeping: checked=%d violations=%v", n, v)
+	}
+	mixedRevision := []byte(`package p
+func w(tx T, id string) {
+	tx.ExecContext(ctx, "UPDATE issues SET current_revision = ?, status = ? WHERE id = ?", revision, status, id)
+}`)
+	if n, v := scanIssueWriteRowLockStamps(t, "mixed-revision.go", mixedRevision); n != 1 || len(v) != 1 {
+		t.Errorf("revision marker hid lifecycle write: checked=%d violations=%v", n, v)
 	}
 
 	// An error-format string that echoes the verb+%s shape — like domain/db's

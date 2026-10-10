@@ -35,6 +35,10 @@ import (
 // rejected identically for both backends, and before any invocation that is
 // guaranteed to fail wastes a store open/migration.
 func validateCreateArgs(cmd *cobra.Command, args []string) error {
+	// Typed properties may supply the title; admission rejects these flags in ordinary workspaces.
+	if cmd.Flags().Changed("properties") || cmd.Flags().Changed("bead-type") {
+		return nil
+	}
 	markdownFile, _ := cmd.Flags().GetString("file")
 	graphFile, _ := cmd.Flags().GetString("graph")
 	titleFlag, _ := cmd.Flags().GetString("title")
@@ -52,6 +56,9 @@ var createCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewCreateIssue(cmd, args)
+		}
 		CheckReadonly("create") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("create")
@@ -880,15 +887,15 @@ func renderCreateDryRunPreview(issue *types.Issue, labels, deps []string) {
 	}
 	fmt.Printf("%s [DRY RUN] Would create issue:\n", ui.RenderWarn("⚠"))
 	fmt.Printf("  ID: %s\n", idDisplay)
-	fmt.Printf("  Title: %s\n", issue.Title)
+	fmt.Printf("  Title: %s\n", ui.SanitizeForTerminal(issue.Title))
 	fmt.Printf("  Type: %s\n", issue.IssueType)
 	fmt.Printf("  Priority: P%d\n", issue.Priority)
 	fmt.Printf("  Status: %s\n", issue.Status)
 	if issue.Assignee != "" {
-		fmt.Printf("  Assignee: %s\n", issue.Assignee)
+		fmt.Printf("  Assignee: %s\n", ui.SanitizeForTerminal(issue.Assignee))
 	}
 	if issue.Description != "" {
-		fmt.Printf("  Description: %s\n", issue.Description)
+		fmt.Printf("  Description: %s\n", ui.SanitizeForTerminal(issue.Description))
 	}
 	if len(labels) > 0 {
 		fmt.Printf("  Labels: %s\n", strings.Join(labels, ", "))

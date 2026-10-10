@@ -9,13 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
-	"time"
+	"sync"
 )
 
 //go:embed TYPESCRIPT-LICENSE
@@ -25,7 +24,7 @@ var typescriptLicense string
 var typescriptNotice string
 
 func ParserLicenses() string {
-	return "TypeScript 5.9.3 (Apache-2.0)\n" + typescriptLicense + "\n" + typescriptNotice
+	return "TypeScript 5.9.3 (Apache-2.0)\n" + typescriptLicense + "\n" + typescriptNotice + "\n" + treeLicenses + "\n" + commonLicenses
 }
 
 //go:embed go_ast.go
@@ -46,9 +45,50 @@ type ScanOptions struct {
 }
 
 func languageOf(path string) string {
+	if filepath.Ext(path) == ".C" {
+		return "cpp"
+	}
 	switch strings.ToLower(filepath.Ext(path)) {
+	case ".php", ".phtml":
+		return "php"
+	case ".c":
+		return "c"
+	case ".sh", ".bash":
+		return "bash"
+	case ".ps1", ".psm1", ".psd1":
+		return "powershell"
+	case ".html", ".htm":
+		return "html"
+	case ".css":
+		return "css"
+	case ".graphql", ".gql":
+		return "graphql"
+	case ".xml", ".xsd", ".xsl", ".xslt", ".svg", ".plist", ".storyboard", ".xib":
+		return "xml"
+	case ".kt", ".kts":
+		return "kotlin"
+	case ".swift":
+		return "swift"
+	case ".dart":
+		return "dart"
+	case ".sql":
+		return "sql"
+	case ".json":
+		return "json"
+	case ".yaml", ".yml":
+		return "yaml"
+	case ".toml":
+		return "toml"
 	case ".py":
 		return "python"
+	case ".java":
+		return "java"
+	case ".cs":
+		return "csharp"
+	case ".rs":
+		return "rust"
+	case ".cc", ".cpp", ".cxx", ".c++", ".h", ".hh", ".hpp", ".hxx", ".h++":
+		return "cpp"
 	case ".go":
 		return "go"
 	case ".ts", ".tsx", ".mts", ".cts":
@@ -73,7 +113,26 @@ func languagesFor(index Index) []string {
 func normalizeLanguages(values []string) ([]string, error) {
 	seen := map[string]bool{}
 	for _, v := range values {
-		if v != "python" && v != "go" && v != "typescript" && v != "javascript" {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "all":
+			for _, name := range []string{"python", "go", "javascript", "typescript", "java", "csharp", "rust", "cpp", "php", "c", "bash", "powershell", "html", "css", "graphql", "xml", "kotlin", "swift", "dart", "sql", "json", "yaml", "toml"} {
+				seen[name] = true
+			}
+			continue
+		case "c#", "cs", "c-sharp":
+			v = "csharp"
+		case "sh", "shell":
+			v = "bash"
+		case "ps1":
+			v = "powershell"
+		case "yml":
+			v = "yaml"
+		case "c++", "cxx":
+			v = "cpp"
+		default:
+			v = strings.ToLower(strings.TrimSpace(v))
+		}
+		if !treeLanguage(v) && v != "python" && v != "go" && v != "typescript" && v != "javascript" && v != "xml" {
 			return nil, fmt.Errorf("unsupported language %q", v)
 		}
 		seen[v] = true
@@ -88,10 +147,34 @@ func normalizeLanguages(values []string) ([]string, error) {
 	}
 	return result, nil
 }
+
+//go:embed xml_ast.go
+var xmlParserSource string
+
+// Embedded parser assets and the Go runtime version cannot change within a binary.
+var parserHashes sync.Map
+
 func parserHash(language string) string {
+	key := language
+	if !treeLanguage(language) && language != "python" && language != "go" && language != "xml" {
+		key = "script"
+	}
+	if cached, ok := parserHashes.Load(key); ok {
+		return cached.(func() string)()
+	}
+	cached, _ := parserHashes.LoadOrStore(key, sync.OnceValue(func() string { return computeParserHash(language) }))
+	return cached.(func() string)()
+}
+
+func computeParserHash(language string) string {
+	if treeLanguage(language) {
+		return treeParserHash(language)
+	}
 	switch language {
 	case "python":
 		return digest([]byte(parserScript))
+	case "xml":
+		return digest([]byte(xmlParserSource + runtime.Version()))
 	case "go":
 		return digest([]byte(goParserSource + runtime.Version()))
 	default:
@@ -135,28 +218,9 @@ func parseScripts(ctx context.Context, executable string, inputs []parserInput) 
 	if err != nil {
 		return parserOutput{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", scriptParser)
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	cmd.Stdin = bytes.NewReader(input)
-	var stdout, stderr boundedBuffer
-	stdout.limit, stderr.limit = maxJSONBytes, 4096
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	output, err := runParser(ctx, path, []string{"--no-addons", "--no-global-search-paths", "--max-old-space-size=512", "--eval", scriptParser}, input)
+	if err != nil {
 		return parserOutput{}, fmt.Errorf("isolated JS/TS AST parser failed: %w", err)
 	}
-	var output parserOutput
-	if err := json.Unmarshal(stdout.Bytes(), &output); err != nil {
-		return output, errors.New("invalid JS/TS parser output")
-	}
-	if len(output.Files) != len(inputs) {
-		return output, errors.New("JS/TS parser returned incomplete files")
-	}
-	for i, file := range output.Files {
-		if file.Path != inputs[i].Path {
-			return output, errors.New("JS/TS parser path mismatch")
-		}
-	}
-	return output, nil
+	return decodeParser(output, inputs, "JS/TS")
 }

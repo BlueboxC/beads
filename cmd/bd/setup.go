@@ -59,6 +59,9 @@ Use 'bd setup <recipe> --remove' to uninstall.`,
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
+	if graphPreviewActive {
+		return runGraphPreviewSetup(cmd, args)
+	}
 	evt := metrics.NewCommandEvent("setup")
 	defer func() {
 		if c := metrics.Global(); c != nil {
@@ -244,10 +247,26 @@ func runRecipe(name string) error {
 	}
 
 	if setupCheck {
-		var missing []string
+		var missing, unmanaged []string
 		for _, path := range paths {
-			if _, err := os.Stat(path); os.IsNotExist(err) {
+			var data []byte
+			var err error
+			if recipe.IsSharedPath(path) {
+				var text string
+				text, err = setup.ReadManagedSectionFile(path)
+				data = []byte(text)
+			} else {
+				_, err = os.Stat(path)
+			}
+			if os.IsNotExist(err) {
 				missing = append(missing, path)
+				continue
+			}
+			if err != nil {
+				return HandleError("read %s: %v", path, err)
+			}
+			if recipe.IsSharedPath(path) && !setup.ContainsManagedSection(string(data)) {
+				unmanaged = append(unmanaged, path)
 			}
 		}
 		if len(missing) > 0 {
@@ -255,6 +274,14 @@ func runRecipe(name string) error {
 			fmt.Printf("  Run: bd setup %s\n", name)
 			for _, path := range missing {
 				fmt.Printf("  Missing: %s\n", path)
+			}
+			return SilentExit()
+		}
+		if len(unmanaged) > 0 {
+			fmt.Printf("⚠ %s integration missing its beads section\n", recipe.Name)
+			fmt.Printf("  Run: bd setup %s\n", name)
+			for _, path := range unmanaged {
+				fmt.Printf("  No beads section: %s\n", path)
 			}
 			return SilentExit()
 		}
@@ -268,6 +295,32 @@ func runRecipe(name string) error {
 	if setupRemove {
 		removed := false
 		for _, path := range paths {
+			if recipe.IsSharedPath(path) {
+				data, err := setup.ReadManagedSectionFile(path)
+				if os.IsNotExist(err) {
+					continue
+				}
+				if err != nil {
+					return HandleError("read %s: %v", path, err)
+				}
+				remaining, hasUserContent, err := setup.RemoveManagedSection(data)
+				if err != nil {
+					return HandleError("%v", err)
+				}
+				if remaining == data {
+					// No beads section: the file is entirely the user's.
+					continue
+				}
+				if !hasUserContent {
+					if err := os.Remove(path); err != nil {
+						return HandleError("%v", err)
+					}
+				} else if err := setup.WriteManagedSectionFile(path, remaining); err != nil {
+					return HandleError("write file: %v", err)
+				}
+				removed = true
+				continue
+			}
 			if err := os.Remove(path); err != nil {
 				if os.IsNotExist(err) {
 					continue
@@ -298,6 +351,21 @@ func runRecipe(name string) error {
 		content, err := recipes.ContentForPath(*recipe, path)
 		if err != nil {
 			return HandleError("%v", err)
+		}
+		if recipe.IsSharedPath(path) {
+			action, err := setup.InstallManagedSectionFile(path, content)
+			if err != nil {
+				return HandleError("%v", err)
+			}
+			switch action {
+			case setup.SectionUpdated:
+				fmt.Printf("  ✓ Updated beads section in %s\n", path)
+			case setup.SectionAdded:
+				fmt.Printf("  ✓ Added beads section to existing %s\n", path)
+			default:
+				fmt.Printf("  ✓ Created %s with beads section\n", path)
+			}
+			continue
 		}
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // #nosec G306 -- config files need to be readable
 			return HandleError("write file: %v", err)

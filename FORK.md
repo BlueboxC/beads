@@ -6,8 +6,10 @@ across coding sessions. It builds on upstream **v1.3.1** at
 `c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c` and the published bootstrap
 `6fd8ea6288a1c9c5fa23dcb22a47183e779ca59c`.
 
-The extensions share Beads' existing **Dolt memory plane**. No second graph
-service, vector database, schema migration or hosted model is introduced.
+The continuity extensions share Beads' existing **Dolt memory plane**, without
+another graph service, vector database or hosted model. Native correctness
+repairs include forward blocked-state migrations 0067 and ignored/0027; shipped
+predecessors and the Dolt dependency pin remain unchanged.
 Upstream attribution and the MIT license remain intact. Fork additions are
 available on `codex/project-continuity`; upstream installation channels do not
 contain them. See [installation and workflow](docs/core-concepts/fork-continuity.md).
@@ -18,12 +20,19 @@ contain them. See [installation and workflow](docs/core-concepts/fork-continuity
 | --- | --- | --- |
 | Documents and DOX | Selected document catalogs, source hashes and explicit objectives, constraints, decisions, modules and solutions | A scanned document is source material; scanning does not extract or certify a learning. |
 | Supervised learning | Source-backed pending proposals, explicit accept/reject reviews, immutable history and pinned activity origins | A supervising human or agent reviews evidence. Existing solutions and historical verification scopes are preserved. |
-| Code structure | Incremental Python, Go, JavaScript and TypeScript AST index, imports/calls, symbols, source locations and reviewed learning links | Static references are not runtime proof. Dynamic or ambiguous references remain unresolved. |
+| Code structure | Incremental structure in 23 languages/formats: Python/Go/JS/TS/Java/C#/Rust/C++, PHP/C, Bash/PowerShell, HTML/CSS, GraphQL/XML, Kotlin/Swift/Dart and SQL/JSON/YAML/TOML; named symbols, source locations, conservative references and reviewed learning links | Static references are not runtime proof. Markup/configuration retain names and hierarchy, not scalar values. Dynamic or ambiguous references remain unresolved. |
+| Change review | Conservative inverse static file dependencies, shortest witness paths, associated learnings and candidate tests; unique identical-content move drafts | Dynamic impact and edited/ambiguous moves require manual analysis; a draft never renews prior evidence. |
+| Bounded structures | Large file structures split into integrity-checked content-addressed fragments in the same Dolt, within existing row/decoded limits | Interrupted publication preserves the previous complete index. Dense XML reports ASTLimit without partial symbols. Older binaries need their previous complete derived generation restored before downgrade. |
+| Derived retention | Read-only prune plan and explicit guarded atomic cleanup in upgraded direct embedded workspaces | Human records and Dolt history remain intact; cleanup is never automatic and does not promise filesystem savings. |
 | Native graphs | One interactive task/knowledge/code explorer with typed colors, grouped drag, zoom, filters, source/symbol details, back navigation and separate Fit/Reset | Families are presentation scopes, not ownership or task blockers. Offline exports are snapshots. |
 | Live viewer | Read-only graph/history queries, Actualizar grafo, Manual/Automático selection, visible disconnects and preserved layout | Refresh reads saved data; it does not parse code or renew evidence. |
 | Derived maintenance | Explicit `maintain once` and `maintain watch` over saved document/code selections | Only approved directory roots discover new files. Human records and task state are not rewritten. |
 | Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
+| Graph Preview | Opt-in typed Beads/Links, retained versions, guarded mutations, BDP Read and an integrated adapter for learning/code/Codex recovery/native viewer in one Dolt | Fresh workspaces only; experimental format. Canonical human Memories retain history; derived catalogs/code/activity share the same database. Existing projects retain their format. Embedded capture/maintenance only. See [Graph Preview](docs/reference/graph-preview.md) and [provenance](graphops/PROVENANCE.md). |
+| GitLab gates | Optional `gl:pipeline` and `gl:mr` checks through existing authenticated glab; strict states, nested project paths and exact branch/HEAD pipeline discovery | No token storage or automatic provider activation. Fixture/process qualification does not establish live GitLab credentials. |
+| Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata with typed read-phase/reason and commit build label | Local stdout success does not prove native context admission or universal reliability. |
 | Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
+| Efficient queries and process lifetime | Immutable parser fingerprints, per-query source snapshots, bulk graph dependencies, bounded recent-event selection and shared parser/client execution | Freshness checks, total/invalid counts and existing evidence are preserved; no automatic deletion or retry. MCP calls time out after 120 seconds and report an uncertain outcome. |
 
 Detailed references: [knowledge](docs/core-concepts/knowledge.md),
 [code index and maintenance](docs/core-concepts/code-index.md),
@@ -32,8 +41,8 @@ Detailed references: [knowledge](docs/core-concepts/knowledge.md),
 
 ## Public source and private operation
 
-This public branch starts from already-published history. Operator-only
-vulnerability patches are not included. Project databases, learned project
+This branch includes the verified fork corrections independently of upstream
+review. Upstream pull requests remain subject to separate owner authorization. Project databases, learned project
 records, chat/session exports, machine configuration, credentials, backups and
 installation evidence remain outside this repository. Source publication does
 not authorize publishing `refs/dolt/data`.
@@ -44,24 +53,103 @@ separate opt-in steps. Use the normal Codex hook trust flow; setup never grants
 trust. Neither indexing, source currency nor an accepted learning authorizes
 project execution, deployment or reopening completed work.
 
+## Included corrections
+
+The following native fixes adapt upstream contributors' proposed patches while
+preserving this fork's existing corrections:
+
+| Report | Included behavior | Source proposal |
+| --- | --- | --- |
+| [#7451](https://github.com/gastownhall/beads/issues/7451) | External prerequisites constrain ready, blocked, counts and atomic ready-claim before limits, including active issue/wisp descendants. Closed provides capabilities release consumers; missing/offline/moved providers stay blocked. Manual update-claim is unchanged. | Fork correction following chrisnestrud’s external-block reproduction; real embedded CLI and SQL-server selection probes |
+| [#7445](https://github.com/gastownhall/beads/issues/7445) | Typed permanent diagnostic for filesystem-denied embedded opens, with stderr JSON code and retryable=false; permission causes and hook categories survive. Logical readonly still requires driver filesystem access. | Fork implementation of dan-1492’s clear-diagnostic alternative; effective macOS deny-write reproduction, without claiming native Windows or a write-free engine |
+| [#7289](https://github.com/gastownhall/beads/issues/7289) | Retried single/batch creates regenerate IDs from the new snapshot and preserve concurrent writers. Explicit import IDs retain upsert semantics. | Fork fix; reporter's collision probe extended to tasks, wisps and batches |
+| [#7037](https://github.com/gastownhall/beads/issues/7037) | Forward migrations 0067 and ignored/0027 repair false blockers using separate target joins, without modifying shipped migration bytes or user timestamps. | Fork repair following the reporter's OR-free query design |
+| [#5963](https://github.com/gastownhall/beads/issues/5963) | Recall/Forget and CLI/HTTP recognize imported empty memory rows as present. New empty content remains refused. Selected-prefix reads and atomic batches remain supported. | [#5964](https://github.com/gastownhall/beads/pull/5964), adapted to preserve bounded UOW selection |
+| [#7091](https://github.com/gastownhall/beads/issues/7091) | Empty-parent updates for dotted IDs are refused atomically rather than claiming a detach that legacy readers undo. Explicit nonempty reparenting and nondotted detachment remain supported. | Fork compatibility guard; full dotted-ID detachment is not introduced |
+| [#7300](https://github.com/gastownhall/beads/issues/7300) | Ready readers and counts hide children of an indefinitely deferred parent. `IncludeDeferred` and unrelated relationships retain their behavior. | [#7304](https://github.com/gastownhall/beads/pull/7304), adapted to the baseline storage API |
+| [#7275](https://github.com/gastownhall/beads/issues/7275) | Long or dotted lowercase read-shaped memory keys cannot overwrite a neighboring memory. Explicit keyed writes keep their semantics. | [#7278](https://github.com/gastownhall/beads/pull/7278) |
+| [#7214](https://github.com/gastownhall/beads/issues/7214) | Failed process inspection preserves a live Dolt pid/port; EPERM means alive; stop does not signal an unverifiable or recycled PID. | [#7229](https://github.com/gastownhall/beads/pull/7229) |
+| [#7098](https://github.com/gastownhall/beads/issues/7098), [#5972](https://github.com/gastownhall/beads/issues/5972) | Local restore rejects empty/non-backup directories before calling Dolt. Nonempty regular manifest required; full content integrity and atomic restore remain outside this preflight. | [#7192](https://github.com/gastownhall/beads/pull/7192) |
+| [#7384](https://github.com/gastownhall/beads/issues/7384), [#7385](https://github.com/gastownhall/beads/issues/7385), [#7387](https://github.com/gastownhall/beads/issues/7387), [#7397](https://github.com/gastownhall/beads/issues/7397) | Audit examples use real event values; fresh-clone sync uses `init --remote`, existing data is preserved, obsolete `--no-db` guidance is removed and release notes describe proxied mode as explicit. | Rongjun GENG (rjgeng), [#7393](https://github.com/gastownhall/beads/pull/7393), adapted with existing-workspace guidance and the release-note correction |
+| [#7277](https://github.com/gastownhall/beads/issues/7277) | Opt-in telemetry resource uses explicit PID, executable and runtime detectors without automatic argv or owner collection. Long issue text no longer enlarges every metric resource; environment overrides and local credential-scrubbed command spans remain separate. | Julian Knutsen’s [#7279](https://github.com/gastownhall/beads/pull/7279), retaining and extending its resource regression |
+| [#7283](https://github.com/gastownhall/beads/issues/7283) | Direct shared-server migration counts work performed during store open once; its explicit verb skips the auxiliary version-bump open, preserving CLI applied status, write tracking and workspace version stamping. Existing consent and readonly gates remain. | kenny-ish’s [#7380](https://github.com/gastownhall/beads/pull/7380), preserving its regression; real Dolt 2.2.0 qualification |
+| [#7295](https://github.com/gastownhall/beads/issues/7295) | Long-lived SQL providers resolve the authenticated proxy on every new physical connection after idle retirement, preserving selected database, credentials/TLS and pool limits. No statement/transaction replay; canceled discovery stops waits and cleans up only its own spawned child. Schema bootstrap stays pinned. | Fork correction following bee-ghosttrack’s reproduction; managed and external provider regressions share a retained-data/recycled-port probe |
+| [#7294](https://github.com/gastownhall/beads/issues/7294) | History compaction preserves the boundary date and retained committer/date, author/date, message and empty commits; caller session overrides are restored on success/error. Tracker markers in the retained window still resolve without edits. Discarded history and already re-dated stores are not reconstructed. | uschtwill’s [#7296](https://github.com/gastownhall/beads/pull/7296), adapted following bee-ghosttrack’s committer-variable review; contributor regressions retained with real embedded history coverage |
+| [#7431](https://github.com/gastownhall/beads/issues/7431) | Copilot setup manages a marked section in shared instructions: install/check/remove preserve outside bytes and permissions, migrate exact legacy templates and refuse ambiguous markers or non-regular/link destinations. The manifest remains Beads-owned. | raykao’s report; Yi-111-a’s [#7433](https://github.com/gastownhall/beads/pull/7433) implementation and tests, adapted with stricter ranges and mode preservation |
+| [#7370](https://github.com/gastownhall/beads/issues/7370) | Opt-in `gates.human.resolvers` requires an explicit listed actor for human-gate closure, status/type/defer/persistence changes, deletion and protected edge removal/refresh. Forced completion of directly gated tasks is covered; batches retain their atomic/best-effort contracts. Missing policy preserves compatibility; actor names remain caller-asserted. | travisbgreen’s resolver-list proposal, enforced in shared transaction seams without executable veto hooks |
+| [#7371](https://github.com/gastownhall/beads/issues/7371) | Enabled journal stores actor resolution provenance without renaming actors: CLI flag/env/config/git/user/unknown; direct named callers provided. Historical and actorless sources remain empty; CLI/HTTP/SSE share the optional field. No authentication or gate policy is added. | travisbgreen’s `actor_source` proposal; additive migration for both clone-local schema doors |
+| [#7392](https://github.com/gastownhall/beads/issues/7392) | macOS managed startup proves listener ownership before publishing state. Foreign listeners trigger ephemeral-port retry; unknown/partial inspection fails within the readiness deadline. Cleanup reaps only the launched child/group; warning-level logs and Stop protections are preserved. Other platforms keep greeting-based readiness. | bee-ghosttrack, merged [#7257](https://github.com/gastownhall/beads/pull/7257), adapted to this baseline; strict unknown policy follows donnabox’s [draft #121](https://github.com/versioned-beads/beads/pull/121), with mixed-holder rejection and bounded inspectors |
+| [#7404](https://github.com/gastownhall/beads/issues/7404) | Jira pull renders nested lists, tables, panels, blockquotes, headings, code and supported inline marks as Markdown. Bounded conversion retains original JSON on malformed/over-limit ADF; v2 strings remain supported. | Fork implementation following yoyomeng2’s reproduction and recursive-walker proposal; both import callers covered |
+| [#7395](https://github.com/gastownhall/beads/issues/7395) | Python MCP binds creation titles to `--title`, preserving option-shaped content and the configured actor. | Rongjun GENG (rjgeng), [#7396](https://github.com/gastownhall/beads/pull/7396); contributor regression retained with real CLI round trips |
+| [#6873](https://github.com/gastownhall/beads/issues/6873) | Python MCP forwards label replacement and explicit clearing without changing omitted-label behavior. | [#6877](https://github.com/gastownhall/beads/pull/6877) |
+| [#7095](https://github.com/gastownhall/beads/issues/7095) | Codex hooks prime the payload workspace and scope Git authority there, including protection against selectors inherited from caller startup. | [#7119](https://github.com/gastownhall/beads/pull/7119), extended after its blocking review |
+| [#7334](https://github.com/gastownhall/beads/issues/7334) | Proxy fixtures that do not dial a chosen port bind port zero directly, preserving backend-error counters and explicit occupied-port refusal. | Reporter’s port-zero proposal, verified with a forced port collision |
+| [#7349](https://github.com/gastownhall/beads/issues/7349) | Worktree fixture commits and shared runners suppress detached Git maintenance with command-line options, including callers that scrub Git environment configuration. | Reporter’s audit proposal; real Git trace regression |
+| [#7327](https://github.com/gastownhall/beads/issues/7327) | Dolt server fixtures disable asynchronous event flushing before creating a temporary HOME, preventing detached metrics processes from racing configuration cleanup. Backend shutdown waiting remains unchanged. | Fork investigation with Dolt 2.2.0; the reported cleanup race reproduced locally |
+
+These adaptations do not merge, approve or reopen the upstream pull requests.
+
+The GitLab gate extension follows vishnujayvel's [#7432](https://github.com/gastownhall/beads/issues/7432)
+requirements. Their public synchronization branch does not implement these gate
+checks; the fork reuses its existing gate evaluation/closure path and adds a
+separate optional glab reader, without importing the unrelated sync redesign.
+
+- Project `.env` imports only documented selector/passive connection keys. Operator
+  values, including explicitly empty selectors, win during early and full loading.
+  Executable overrides and credential commands remain operator-controlled.
+- Database migration validates identifiers and real child directories before
+  changing paths. Corrupt authoritative metadata is refused without replacement;
+  recovery requires an explicit known-valid project backup.
+- Terminal issue rendering removes controls before styling; default DAG titles
+  stay on one row. Storage, JSON and exports retain original values.
+- Established event streams recheck authorization before delivery and around
+  journal reads. Successful revocation closes the stream; failed file reloads
+  retain the last-good token set within the documented deadline limits.
+- Python MCP comments/notes preserve literal positional text and configured actor
+  identity. Option-shaped text cannot become another CLI option.
+- Graph Preview rejects unreadable native/continuity writes atomically, bounds
+  SQL acquisition of keyed projections and allows gradual reduction of old
+  oversized state while retaining history. Complete snapshots reuse one binding
+  validation per transaction. Ordinary storage and existing projects retain their format.
+- Root/example builds require Go >=1.26.9 and x/net >=0.60.0, alongside the reviewed gRPC and cryptography minima;
+  Python package requirements retain PyJWT >=2.15.0 and dev urllib3 >=2.8.0.
+
+The verified local source cut passed the canonical Go baseline (102 packages),
+targeted regressions, native/Windows cross-lint, documentation checks and real
+Python-client round trips. Embedded Dolt has separate complete batch inventories.
+Focused local-server tests reproduce concurrent data loss and migration false
+blockers and verify their repairs; embedded and UOW tests verify memory presence
+and parent-update parity. These results do not qualify all server/Docker paths,
+native Windows, production or every
+native compact cycle, and do not claim all advisory inventory warnings vanished.
+The fixture-only repairs for #7334, #7349 and #7327 do not change the shipped
+CLI or operator configuration. Dolt cleanup was reproduced without
+`DOLT_ROOT_PATH`: one failure in 80 cycles before the repair, then 200 cycles
+with the race detector and no failures or skips. This is local macOS arm64
+evidence, not a rerun of upstream Bazel or macOS CI.
+Private reproduction reports, installation evidence and backups stay local.
+
 ## Remaining limits
 
+- Jira ADF pull preserves supported Markdown structure, not all ADF metadata or media. Unsupported containers keep descendant text; invalid/over-limit documents stay as original JSON. Push continues to emit plain paragraphs, so rich-text pull/push round trips are not qualified. No live Jira service was used for this correction.
 - Autonomous semantic extraction, embedding/vector retrieval and whole-language
   type analysis are not implemented. Codex supplies and reviews semantic content.
 - Journal capture is partial and redaction is best effort. Reported summaries and
   observed exit codes do not prove a repair or successful deployment.
 - The live viewer and maintenance require direct embedded workspaces; they do
   not aggregate unrelated projects or provide a writable web interface.
-- Old derived blobs and Dolt history are retained. Stored payload measurements
-  do not represent the entire database footprint.
-- Compact dispatch and fallback have handler/process coverage. An actual
-  context-limit-triggered midturn compact still needs end-to-end qualification
-  in the target Codex environment; configuration alone is not that evidence.
+- Unreferenced derived blobs can be pruned explicitly on upgraded direct embedded
+  writers. Dolt history is retained; live payload savings do not establish disk savings.
+  Server/proxied prune application and mixed older writers are not qualified.
+- Compact dispatch, cold-output fallback and bounded diagnostics have handler/process
+  coverage. Native context-limit-triggered midturn recovery must be qualified for
+  each deployed source/binary cut; historical positive cycles do not establish
+  universal reliability or explain previously missing deliveries.
 
 ## Development
 
 Keep `main` available for upstream synchronization and scope fork work to
 `codex/` branches. Use Beads for durable development tasks, the existing storage
 interfaces for persistence, and [engdocs/TESTING.md](engdocs/TESTING.md) for
-verification. Follow the DOX hierarchy before edits. Preserve the bundled D3
-and TypeScript licenses/notices; `bd code --licenses` exposes parser attribution.
+verification. Follow the DOX hierarchy before edits. Preserve the bundled D3,
+TypeScript and Tree-sitter licenses/notices; `bd code --licenses` exposes parser attribution.

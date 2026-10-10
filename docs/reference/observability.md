@@ -66,7 +66,13 @@ Every metric and span carries the OTel resource describing the bd process:
 | `service.name` | `bd` | Override with `OTEL_SERVICE_NAME`. |
 | `service.version` | bd version | |
 
-Add anything else via `OTEL_RESOURCE_ATTRIBUTES`.
+The default resource also includes host name, process PID, executable name/path
+and Go runtime name/version/description. It does not automatically collect
+`process.command_args`, `process.command_line` or `process.owner`, so issue text
+and long argument lists do not enter every metric resource.
+
+Add or override attributes via `OTEL_RESOURCE_ATTRIBUTES`. Explicit values are
+exported as configured; this is not a filter for operator-supplied attributes.
 
 ### Local debug mode
 
@@ -178,7 +184,7 @@ Spans are only exported when `OTEL_TRACES_EXPORTER=console` — there is no trac
 |-----------|-------------|
 | `bd.command` | Subcommand name (`list`, `create`, ...) |
 | `bd.version` | bd version |
-| `bd.args` | Raw arguments passed to the command (e.g. "create 'title' -p 2") |
+| `bd.args` | Credential-scrubbed arguments in local console traces; issue text may remain. This is separate from the resource and is not sent to a remote trace backend. |
 | `bd.actor` | Actor (resolved from git config / env) |
 
 **`hook.exec`**

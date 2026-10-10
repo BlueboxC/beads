@@ -165,6 +165,21 @@ standalone Beads users. The `bd` binary includes everything; just `bd init` and 
 - Push to GitHub with `bd dolt push` — code and issues in one repo
 - Zero ops: no server, no ports, no PID files
 
+### Readonly and filesystem access (BlueboxC fork)
+
+`--readonly` refuses Beads mutations and automatic schema/housekeeping writes.
+It does not make the embedded Dolt driver filesystem-readonly: opening storage
+still needs write access for engine storage files. A sandbox or filesystem denial
+therefore fails instead of yielding an empty successful result.
+
+The fork reports this as `embedded_open.permission_denied` with `retryable: false`
+under `--json`, on stderr. The original permission cause remains available to
+callers and hook diagnostics. Retrying with unchanged permissions will not help;
+use a workspace with the required existing access, or an already-configured
+server-backed workspace. Beads does not relax permissions, remove locks or switch
+transports automatically. Actual transient lock contention retains the driver's
+existing cancellation/backoff behavior.
+
 ### Server Mode (Multi-Writer / Orchestrator)
 
 Connects to a running `dolt sql-server` for multi-client access.

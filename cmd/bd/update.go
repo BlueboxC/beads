@@ -99,6 +99,9 @@ pointless).`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewUpdate(cmd, args)
+		}
 		CheckReadonly("update") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("update")

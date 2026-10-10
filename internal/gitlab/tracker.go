@@ -3,12 +3,10 @@ package gitlab
 import (
 	"context"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/tracker"
 	"github.com/steveyegge/beads/internal/types"
 )
@@ -563,30 +561,7 @@ func (t *Tracker) BuildExternalRef(issue *tracker.TrackerIssue) string {
 // For yaml-only keys (e.g. gitlab.token), reads from config.yaml first
 // to avoid leaking secrets when pushing the Dolt database to remotes.
 func (t *Tracker) getConfig(ctx context.Context, key, envVar string) (string, error) {
-	// Secret keys are stored in config.yaml, not the Dolt database,
-	// to avoid leaking secrets when pushing to remotes.
-	if config.IsYamlOnlyKey(key) {
-		if val := config.GetString(key); val != "" {
-			return val, nil
-		}
-		if envVar != "" {
-			if envVal := os.Getenv(envVar); envVal != "" {
-				return envVal, nil
-			}
-		}
-		return "", nil
-	}
-
-	val, err := t.store.GetConfig(ctx, key)
-	if err == nil && val != "" {
-		return val, nil
-	}
-	if envVar != "" {
-		if envVal := os.Getenv(envVar); envVal != "" {
-			return envVal, nil
-		}
-	}
-	return "", nil
+	return tracker.ReadConfig(ctx, t.store, key, envVar)
 }
 
 // gitlabToTrackerIssue converts a gitlab.Issue to a tracker.TrackerIssue.

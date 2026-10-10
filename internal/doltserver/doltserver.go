@@ -465,17 +465,43 @@ func portConflictDiagnostics(port int) string {
 		fmt.Sprintf(portConflictHint, port), port)
 }
 
+// readDoltProcesses reads the dolt sql-server process list. It is a variable
+// so tests can simulate a process list that cannot be read.
+var readDoltProcesses = readDoltProcessPIDs
+
+// listDoltProcessPIDs returns PIDs of all running dolt sql-server processes,
+// or nil when the process list cannot be read. Callers derive count (len) and
+// membership (linear scan) from the returned slice.
+func listDoltProcessPIDs() []int {
+	pids, _ := readDoltProcesses()
+	return pids
+}
+
 // countDoltProcesses returns the number of running dolt sql-server processes.
 func countDoltProcesses() int { return len(listDoltProcessPIDs()) }
 
-// isDoltProcess checks if a PID belongs to a running dolt sql-server.
+// isDoltProcess checks if a PID belongs to a running dolt sql-server. It
+// returns false when the process list cannot be read; use doltProcessStatus
+// where that case needs to be handled separately.
 func isDoltProcess(pid int) bool {
-	for _, p := range listDoltProcessPIDs() {
+	isDolt, _ := doltProcessStatus(pid)
+	return isDolt
+}
+
+// doltProcessStatus reports whether pid belongs to a running dolt sql-server.
+// known is false when the process list could not be read, in which case
+// isDolt carries no information.
+func doltProcessStatus(pid int) (isDolt, known bool) {
+	pids, err := readDoltProcesses()
+	if err != nil {
+		return false, false
+	}
+	for _, p := range pids {
 		if p == pid {
-			return true
+			return true, true
 		}
 	}
-	return false
+	return false, true
 }
 
 // readPortFile reads the actual port from the port file, if it exists.
@@ -986,8 +1012,17 @@ func IsRunning(beadsDir string) (*State, error) {
 		return &State{Running: false}, nil
 	}
 
-	// Verify it's actually a dolt sql-server process
-	if !isDoltProcess(pid) {
+	// Verify it's actually a dolt sql-server process. Only a process list that
+	// was read and lacks the PID proves the PID was reused. If the list cannot
+	// be read (ps is refused inside a macOS sandbox, for example), the process
+	// may be a healthy server shared with other bd processes. Removing its files
+	// would make each of them try to start a competing server, and reporting it
+	// as not running would make our caller start one and overwrite them, so
+	// keep the tracked state and let the caller find out whether it can connect.
+	// A stale file whose PID was reused then stays until a bd that can read the
+	// process list checks it.
+	isDolt, known := doltProcessStatus(pid)
+	if known && !isDolt {
 		// PID was reused by another process
 		_ = os.Remove(pidPath(beadsDir))
 		_ = os.Remove(portPath(beadsDir))
@@ -999,6 +1034,11 @@ func IsRunning(beadsDir string) (*State, error) {
 	if port == 0 {
 		cfg := DefaultConfig(beadsDir)
 		port = cfg.Port
+	}
+	if port == 0 && !known {
+		// Neither the process nor its port can be confirmed. Never signal a
+		// PID that may belong to an unrelated process.
+		return &State{Running: false}, nil
 	}
 	if port == 0 {
 		// Server is running but we can't determine its port (port file
@@ -1408,6 +1448,7 @@ func Start(beadsDir string) (*State, error) {
 	// Launch dolt sql-server.
 	var (
 		pid        int
+		started    *startedServer
 		actualPort int
 		lastErr    error
 		attempts   int
@@ -1528,7 +1569,9 @@ func Start(beadsDir string) (*State, error) {
 			// restarted. os/exec does not close those; mark them first.
 			sanitizeInheritedFDs()
 
-			if startErr := cmd.Start(); startErr != nil {
+			var startErr error
+			started, startErr = launchServer(cmd)
+			if startErr != nil {
 				lastErr = startErr
 				if !explicitPort {
 					continue // retry with a new ephemeral port
@@ -1537,12 +1580,11 @@ func Start(beadsDir string) (*State, error) {
 			}
 
 			pid = cmd.Process.Pid
-			_ = cmd.Process.Release()
 
 			// Quick check: did the process exit immediately (bind failure)?
 			// Give it a moment to fail on port bind before proceeding.
 			time.Sleep(200 * time.Millisecond)
-			if !isProcessAlive(pid) {
+			if started.hasExited() {
 				lastErr = fmt.Errorf("dolt sql-server exited immediately on port %d (attempt %d/%d)", actualPort, i+1, attempts)
 				pid = 0
 				if !explicitPort {
@@ -1551,12 +1593,21 @@ func Start(beadsDir string) (*State, error) {
 				break
 			}
 
-			lastErr = nil
+			lastErr = waitForManagedReady(started, cfg.Host, actualPort, readyTimeout())
+			if lastErr != nil {
+				started.killAndWait()
+				if !explicitPort && errors.Is(lastErr, errManagedPortInUse) {
+					continue
+				}
+			}
 			break
 		}
 		_ = logFile.Close()
 
 		if lastErr != nil {
+			if corrupt, logErr := logHasCorruptJournalError(logPath(beadsDir)); logErr == nil && corrupt {
+				return nil, fmt.Errorf("managed server failed readiness: %w\n\n%s", lastErr, corruptJournalRecoveryHint(beadsDir))
+			}
 			// GH#3290 / bd-6dnrw.6: unclean-shutdown manifest corruption is
 			// detected here but never auto-repaired — reinitializing .dolt is
 			// destructive, so repair stays behind explicit bd doctor --fix.
@@ -1571,34 +1622,15 @@ func Start(beadsDir string) (*State, error) {
 		}
 	}
 
-	// Write PID and port files
+	// Publish state only after the launched server has proved ready.
 	if err := os.WriteFile(pidPath(beadsDir), []byte(strconv.Itoa(pid)), 0600); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
+		started.killAndWait()
 		return nil, fmt.Errorf("writing PID file: %w", err)
 	}
 	if err := writePortFile(beadsDir, actualPort); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
+		started.killAndWait()
 		_ = os.Remove(pidPath(beadsDir))
 		return nil, fmt.Errorf("writing port file: %w", err)
-	}
-
-	// Wait for server to accept connections
-	if err := waitForReady(cfg.Host, actualPort, readyTimeout()); err != nil {
-		if proc, findErr := os.FindProcess(pid); findErr == nil {
-			_ = proc.Kill()
-		}
-		_ = os.Remove(pidPath(beadsDir))
-		_ = os.Remove(portPath(beadsDir))
-		if hasJournalCorruption, logErr := logHasCorruptJournalError(logPath(beadsDir)); logErr == nil && hasJournalCorruption {
-			return nil, fmt.Errorf("server started (PID %d) but not accepting connections on port %d: %w\n\n%s",
-				pid, actualPort, err, corruptJournalRecoveryHint(beadsDir))
-		}
-		return nil, fmt.Errorf("server started (PID %d) but not accepting connections on port %d: %w\nCheck logs: %s",
-			pid, actualPort, err, logPath(beadsDir))
 	}
 
 	return &State{
@@ -1757,6 +1789,22 @@ func StopWithForce(beadsDir string, force bool) error {
 		// errors.Is(err, ErrServerNotRunning) while operators see filesystem issues.
 		cleanupErr := cleanupStateFiles(beadsDir)
 		return errors.Join(ErrServerNotRunning, cleanupErr)
+	}
+
+	// IsRunning keeps the tracked state when the process list cannot be read,
+	// so the PID is not confirmed to be a dolt server and may be a stale PID
+	// reused by an unrelated process. Do not signal it, and leave the files for
+	// a bd that can read the process list.
+	isDolt, known := doltProcessStatus(state.PID)
+	if !known {
+		return fmt.Errorf("not stopping PID %d: the process list could not be read, "+
+			"so it is not confirmed to be a dolt sql-server", state.PID)
+	}
+	if !isDolt {
+		// The list is read again here, so it can be readable now even though it
+		// was not inside IsRunning. A readable list without the PID means the PID
+		// was reused and the server is gone: clean up as IsRunning would have.
+		return errors.Join(ErrServerNotRunning, cleanupStateFiles(beadsDir))
 	}
 
 	// Flush uncommitted working set changes before stopping the server.

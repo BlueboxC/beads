@@ -10,6 +10,44 @@ and source-backed solutions matters across sessions. [FORK.md](https://github.co
 identifies the upstream baseline, implemented additions and remaining limits.
 All project data stays in that project's existing Beads Dolt.
 
+## Optional Graph Preview
+
+The fork also includes an explicit experimental graph workspace format. It adds
+typed Links and retained versions over the same Dolt engine. It does not migrate
+existing continuity workspaces. Its adapter also supports the same
+code/knowledge/recovery/viewer commands, plus embedded activity and maintenance. See [Graph Preview](/reference/graph-preview) for fresh-workspace setup,
+contributor attribution and current limits. Ordinary initialization below preserves the current format of existing projects;
+new experimental graph projects can use the integrated continuity workflow.
+
+## Manual approval records
+
+The fork adds an opt-in `gates.human.resolvers` allowlist over the existing
+mutation transactions. Explicit listed actors can resolve human gates; fallback
+identities and `--force` cannot waive the policy. Closure, status/type/defer/
+persistence changes, deletion and removal of protected relations share the rule.
+See [gates](/workflows/gates#optional-human-resolver-policy-blueboxc-fork) for setup
+and batch behavior. Names are caller-asserted; your invoking system still owns
+identity, configuration permissions and authorization of external operations.
+
+## External prerequisites
+
+Configured `external:<project>:<capability>` blocks participate in ready,
+blocked, ready counts and atomic `ready --claim`. A capability is satisfied only
+by a closed provider bearing `provides:<capability>`; exporting it or forcing
+shipment while it remains open does not release consumers. Missing capabilities
+and unavailable or moved provider paths stay blocked, including active
+parent-child descendants across tasks and wisps. Limits apply after exclusion.
+
+Reads use the existing storage factory with no migration, hooks or server
+auto-start. Provider observations have a five-second cooperative lookup deadline;
+local selection/claim is atomic, but independent databases are not one distributed
+transaction. API embedders bind a read-only resolver with
+`issueops.WithExternalResolver`; HTTP callers pass `Config.ExternalResolver`.
+Without a resolver, external prerequisites remain blocked. Restart the normal
+API server after changing its configured provider paths. The explicit manual
+`update --claim` retains upstream's override semantics; use `ready --claim` for
+blocker-aware scheduling.
+
 ## Install the fork
 
 The upstream Homebrew/npm packages and upstream install script install upstream
@@ -30,8 +68,9 @@ existing source-install target that skips only that branch-equality check.
 
 Follow [build dependencies](https://github.com/BlueboxC/beads/blob/codex/project-continuity/docs/getting-started/installation.md#build-dependencies-contributors-only)
 for your platform. Python indexing uses an operator-owned Python 3 interpreter;
-JS/TS uses operator-owned Node.js and bundled TypeScript 5.9.3. Go parsing needs
-no project Go executable. The parsers do not execute project code, load project
+JS/TS uses operator-owned Node.js and bundled TypeScript 5.9.3; Java/C#/Rust/C++
+reuse Node with bundled MIT Tree-sitter WASM parsers. The additional PHP/C, scripts, web, GraphQL, mobile, SQL and configuration grammars share that fixed runtime. XML uses the Go standard XML decoder without DTD loading or external entity resolution. Go/XML parsing needs
+no project executable. The parsers do not execute project code, load project
 packages or `tsconfig`, or install dependencies. Use `bd code --licenses` for
 bundled parser notices. Keep a backup of an existing binary and project database
 before upgrading; do not infer feature availability from the upstream version
@@ -46,7 +85,7 @@ cd /path/to/project
 bd init --skip-hooks
 bd setup codex --check
 bd knowledge scan DOX.md docs
-bd code scan src tests --languages python,go,javascript,typescript
+bd code scan src tests --languages all
 bd code status --json
 ```
 
@@ -58,7 +97,8 @@ agent integration, not project enrollment. Avoid installing both global and
 plugin hook definitions for the same lifecycle.
 
 `knowledge scan` with paths replaces its saved document selection; supply the
-complete desired roots. `code scan` saves code roots/languages/exclusions.
+complete desired roots. `code scan` saves code roots/languages/exclusions. `all` selects the 23 languages/formats in [code-index coverage](/core-concepts/code-index); omitted languages reuse the saved
+selection, with Python as the first-index default.
 Directories discover new children when maintained; an exact file selection
 tracks only that file. Inspect selection/status before changing either.
 
@@ -190,3 +230,45 @@ Static calls, current hashes and successful local tests do not by themselves
 qualify installation, native compact behavior or production. Old binary rollback
 must respect derived manifest versions and expanded limits; retain the prior
 derived manifest as well as the binary/database backup.
+
+
+## Review a change and manage derived retention
+
+```bash
+bd code impact src/context.py --depth 8 --limit 200 --json
+bd code relink src/old.py src/new.py --json
+bd code prune --readonly --json
+```
+
+Impact returns conservative file dependencies, witness paths, recorded learnings
+and candidate tests. It does not run those tests or establish runtime coverage.
+Relink emits review drafts only for a unique identical-content move with current
+destination symbols and contracts; inspect and explicitly review the draft.
+Earlier verification remains historical.
+
+Prune defaults to a plan. Explicit `bd code prune --apply --json` needs upgraded
+direct embedded writers and a backup. All writes/deletes are guarded in the
+existing storage transaction; other adapters refuse application. Human knowledge
+and Dolt history are preserved. Retention reduces current rows, not necessarily
+disk use; restore a complete historical generation or rebuild after pruning.
+See [code-index boundaries](/core-concepts/code-index#derived-blob-retention).
+
+Context-hook diagnostics retain bounded private metadata beside the refresh
+marker. A failed cold stdout delivery keeps the next-prompt fallback; successful
+local delivery alone does not establish native context admission. See
+[hook diagnostics](/integrations/codex#local-hook-diagnostics).
+
+## Corrections and upgrade boundaries
+
+The fork branch includes the reviewed environment-selection, migration,
+terminal rendering, event-stream authorization, MCP argument and dependency
+corrections described in [the fork scope](https://github.com/BlueboxC/beads/blob/codex/project-continuity/FORK.md#included-corrections).
+Upstream review is independent of their inclusion here.
+
+Present operator environment values, including empty selectors, override project
+`.env` during startup and full loading; absent selectors retain their routing.
+A corrupt authoritative metadata file is rejected rather than replaced. Restore
+only an explicitly selected, known-valid project backup; do not reinitialize to
+bypass a refusal. Keep source/binary provenance and private backups before an
+upgrade. Passing local tests does not qualify every native compact cycle or a
+production runtime, and source publication never publishes project Dolt data.

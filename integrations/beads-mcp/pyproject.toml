@@ -9,6 +9,7 @@ dependencies = [
     "fastmcp==3.4.5",
     "pydantic==2.13.4",
     "pydantic-settings==2.14.2",
+    "PyJWT>=2.15.0",
 ]
 authors = [
     {name = "Beads Contributors"}
@@ -100,4 +101,5 @@ dev = [
     "pytest-cov>=7.0.0",
     "ruff>=0.14.0",
     "types-requests>=2.31.0",
+    "urllib3>=2.8.0",
 ]

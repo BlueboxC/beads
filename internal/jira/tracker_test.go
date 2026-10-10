@@ -158,7 +158,7 @@ func TestDescriptionToPlainText(t *testing.T) {
 					]
 				}
 			]
-		}`), "First paragraph\nSecond paragraph"},
+		}`), "First paragraph\n\nSecond paragraph"},
 	}
 
 	for _, tt := range tests {

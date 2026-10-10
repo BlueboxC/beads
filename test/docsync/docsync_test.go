@@ -242,15 +242,12 @@ func TestEveryDocsPageIsPublished(t *testing.T) {
 
 	var orphans []string
 	for _, path := range files {
-		if filepath.Base(path) == "DOX.md" {
-			continue // Repository contracts are not Mintlify pages.
-		}
 		rel, err := filepath.Rel(docsRoot, path)
 		if err != nil {
 			t.Fatal(err)
 		}
 		rel = filepath.ToSlash(rel)
-		if docsPublishExemptions[rel] {
+		if docsPublishExemptions[rel] || filepath.Base(path) == "DOX.md" {
 			continue
 		}
 		pageForm := strings.TrimSuffix(rel, filepath.Ext(rel))
@@ -272,7 +269,7 @@ func TestEveryDocsPageIsPublished(t *testing.T) {
 
 // TestDocsSiteLinks: published docs/ pages use Mintlify link conventions —
 // internal links are root-relative and extensionless, and every route
-// resolves. Pointer stubs (GitHub-viewed) use exact relative paths instead.
+// resolves. Pointer stubs and DOX contracts (GitHub-viewed) use exact relative paths instead.
 func TestDocsSiteLinks(t *testing.T) {
 	root := repoRoot()
 	docsRoot := filepath.Join(root, "docs")
@@ -284,12 +281,9 @@ func TestDocsSiteLinks(t *testing.T) {
 
 	var broken []string
 	for _, path := range files {
-		if filepath.Base(path) == "DOX.md" {
-			continue // DOX links follow actual repository paths.
-		}
 		rel, _ := filepath.Rel(docsRoot, path)
 		rel = filepath.ToSlash(rel)
-		isStub := docsPublishExemptions[rel]
+		isStub := docsPublishExemptions[rel] || filepath.Base(path) == "DOX.md"
 
 		data, err := os.ReadFile(path)
 		if err != nil {

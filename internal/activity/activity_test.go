@@ -3,6 +3,9 @@ package activity
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -151,5 +154,99 @@ func TestSerializedBoundsAndCanonicalRetries(t *testing.T) {
 	in.SessionID = "chat\nInjected instruction"
 	if _, err = Build(in, "/repo", time.Now()); err == nil {
 		t.Fatal("control-bearing identity accepted")
+	}
+}
+
+func activityBenchmarkPlane(b *testing.B) map[string]string {
+	b.Helper()
+	plane := map[string]string{SettingsKey: `{"version":1,"enabled":true}`}
+	for i := 0; i < 10000; i++ {
+		in := Input{SessionID: "session", TurnID: fmt.Sprint(i), CWD: "/repo", Event: "PostToolUse", Tool: "apply_patch", ToolUseID: fmt.Sprint(i)}
+		if i%20 == 0 {
+			in.Event = "Stop"
+			in.LastAssistantMessage = "Reported handoff"
+		}
+		e, err := Build(in, "/repo", time.Unix(int64(i), 0))
+		if err != nil {
+			b.Fatal(err)
+		}
+		raw, _ := json.Marshal(e)
+		plane[Prefix+"event/"+e.ID] = string(raw)
+	}
+	return plane
+}
+func BenchmarkActivityRecent1000(b *testing.B) {
+	plane := activityBenchmarkPlane(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		Read(plane, "", "", 1000)
+	}
+}
+func BenchmarkActivityContext(b *testing.B) {
+	plane := activityBenchmarkPlane(b)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		Context(plane)
+	}
+}
+
+func TestRecentSelectionKeepsCountsFiltersTiesAndHandoffs(t *testing.T) {
+	plane := map[string]string{SettingsKey: `{"version":1,"enabled":true}`, Prefix + "event/broken": "invalid"}
+	var events []Event
+	for i := 0; i < 100; i++ {
+		in := Input{SessionID: fmt.Sprintf("session-%d", i%2), TurnID: fmt.Sprint(i), CWD: "/repo", Event: "PostToolUse", Tool: "apply_patch", ToolUseID: fmt.Sprint(i)}
+		if i%3 == 0 {
+			in.Event = "Stop"
+			in.LastAssistantMessage = fmt.Sprintf("handoff-%03d", i)
+		}
+		e, err := Build(in, "/repo", time.Unix(int64(i/2), 0))
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, _ := json.Marshal(e)
+		plane[Prefix+"event/"+e.ID] = string(raw)
+		events = append(events, e)
+	}
+	sort.Slice(events, func(i, j int) bool {
+		if events[i].ObservedAt == events[j].ObservedAt {
+			return events[i].ID < events[j].ID
+		}
+		return events[i].ObservedAt > events[j].ObservedAt
+	})
+	for _, session := range []string{"", "session-0", "missing"} {
+		for _, turn := range []string{"", "99", "missing"} {
+			expected := []Event{}
+			for _, e := range events {
+				if (session == "" || e.SessionID == session) && (turn == "" || e.TurnID == turn) {
+					expected = append(expected, e)
+				}
+			}
+			for _, limit := range []int{-1, 0, 1, 3, 16, 100, 200} {
+				got := Read(plane, session, turn, limit)
+				want := expected
+				if limit > 0 && len(want) > limit {
+					want = want[:limit]
+				}
+				if !got.Enabled || got.Total != len(expected) || got.Invalid != 1 || !reflect.DeepEqual(got.Events, want) {
+					t.Fatalf("session=%s turn=%s limit=%d: %+v", session, turn, limit, got)
+				}
+			}
+		}
+	}
+	context := Context(plane)
+	n := 0
+	for _, e := range events {
+		if e.Kind != "turn_end" {
+			continue
+		}
+		n++
+		if strings.Contains(context, e.Summary) != (n <= 3) {
+			t.Fatalf("handoff selection mismatch %d: %s", n, context)
+		}
+	}
+	if !strings.Contains(context, "stored events: 100") {
+		t.Fatal("context count lost")
 	}
 }

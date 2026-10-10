@@ -31,6 +31,7 @@ type Edge struct {
 	Target   string `json:"target"`
 	Type     string `json:"type"`
 	Count    int    `json:"count,omitempty"`
+	Detail   any    `json:"detail,omitempty"`
 	Validity string `json:"validity,omitempty"`
 }
 

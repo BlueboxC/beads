@@ -15,7 +15,7 @@ import (
 func stubCodexHookPrime(t *testing.T, fn func(memoriesOnly bool) (string, error)) {
 	t.Helper()
 	orig := codexHookExecPrime
-	codexHookExecPrime = func(_ context.Context, memoriesOnly bool) (string, error) {
+	codexHookExecPrime = func(_ context.Context, _ string, memoriesOnly bool) (string, error) {
 		return fn(memoriesOnly)
 	}
 	t.Cleanup(func() { codexHookExecPrime = orig })

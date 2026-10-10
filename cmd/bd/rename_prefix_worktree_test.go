@@ -25,7 +25,7 @@ func setupWorktree(t *testing.T) (mainRepoDir, worktreeDir string) {
 	}
 
 	run := func(args ...string) {
-		cmd := exec.Command("git", args...)
+		cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 		cmd.Dir = mainRepoDir
 		if err := cmd.Run(); err != nil {
 			t.Skipf("git %v failed: %v", args, err)

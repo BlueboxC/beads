@@ -39,8 +39,12 @@ func (s *DoltStore) createIssue(ctx context.Context, issue *types.Issue, actor s
 		issue.Ephemeral = true // infra and wisp types get marked ephemeral (legacy behavior)
 	}
 
+	requestedID := issue.ID
 	var result issueops.CreateIssueResult
 	if err := s.withRetryTx(ctx, func(tx *sql.Tx) error {
+		// A rolled-back generated ID belongs to the old snapshot. Preserve
+		// explicit import IDs, but regenerate new IDs on every attempt.
+		issue.ID = requestedID
 		// SkipPrefixValidation matches legacy behavior: single-issue path does
 		// not validate prefixes for explicit IDs.
 		bc, err := issueops.NewBatchContext(ctx, tx, storage.BatchCreateOptions{
@@ -105,27 +109,36 @@ func (s *DoltStore) createIssuesWithFullOptions(ctx context.Context, issues []*t
 		return nil
 	}
 
-	// All-wisps fast path: one SQL transaction, no Dolt versioning.
-	// Covers both ephemeral issues and no-history issues (both skip DOLT_COMMIT).
-	if issueops.AllWisps(issues) {
+	requestedIDs := make([]string, len(issues))
+	for i, issue := range issues {
+		if issue != nil {
+			requestedIDs[i] = issue.ID
+		}
+	}
+	allWisps := issueops.AllWisps(issues)
+	if allWisps {
 		for _, issue := range issues {
 			if !issue.NoHistory {
 				issue.Ephemeral = true
 			}
 		}
-		return s.withRetryTx(ctx, func(tx *sql.Tx) error {
-			_, err := issueops.CreateIssuesInTxWithResult(ctx, tx, issues, actor, opts)
-			return err
-		})
 	}
 
 	var result issueops.CreateIssuesResult
 	if err := s.withRetryTx(ctx, func(tx *sql.Tx) error {
+		for i, issue := range issues {
+			if issue != nil {
+				issue.ID = requestedIDs[i]
+			}
+		}
 		var err error
 		result, err = issueops.CreateIssuesInTxWithResult(ctx, tx, issues, actor, opts)
 		return err
 	}); err != nil {
 		return err
+	}
+	if allWisps {
+		return nil // Ignored wisp tables do not require Dolt versioning.
 	}
 
 	// GH#2455: Stage only the tables we modified, then commit without -A.

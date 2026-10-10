@@ -5,7 +5,7 @@ description: Complete reference for bd configuration across config.yaml and data
 
 Complete configuration reference for beads.
 
-Last reviewed: 2026-08-28
+Last reviewed: 2026-10-09
 
 Freshness source: `cmd/bd/main.go`, `cmd/bd/config.go`, and `internal/configfile/`.
 
@@ -88,7 +88,7 @@ The full namespaces routed to YAML are:
 
 Plus these individual keys:
 
-`no-db`, `json`, `db`, `actor`, `identity`, `no-push`, `no-git-ops`, `agent.profile`, `create.require-description`, `import.auto`, `import.path`, `prime.max-memories`, `prime.max-memory-chars`, and the secret keys `github.token`, `gitlab.token`, `jira.api_token`, `ado.pat`, `linear.api_key`, `linear.oauth_client_id`, `linear.oauth_client_secret`.
+`json`, `db`, `actor`, `identity`, `no-push`, `no-git-ops`, `agent.profile`, `create.require-description`, `import.auto`, `import.path`, `prime.max-memories`, `prime.max-memory-chars`, and the secret keys `github.token`, `gitlab.token`, `jira.api_token`, `ado.pat`, `linear.api_key`, `linear.oauth_client_id`, `linear.oauth_client_secret`.
 
 Any key whose name contains `api_key`, `api-key`, `secret`, `token`, or `password` is treated as a secret: it is refused on git-tracked `config.yaml` files unless you pass `--force-git-tracked`. Prefer exporting the value as an environment variable instead (e.g. `LINEAR_API_KEY`).
 
@@ -100,7 +100,6 @@ Any key whose name contains `api_key`, `api-key`, `secret`, `token`, or `passwor
 | `db` | `--db` | `BD_DB` | (auto-discover) | Database path |
 | `actor` | `--actor` | `BEADS_ACTOR` | `git config user.name` | Actor name for audit trail (see [Actor identity](#actor-identity-resolution)) |
 | `identity` | `--identity` | `BEADS_IDENTITY` | (git user / hostname) | Sender identity for `bd mail` |
-| `no-db` | `--no-db` | `BD_NO_DAEMON` (related) | `false` | Run without opening the database |
 | `no-push` | `--no-push` | `BD_NO_PUSH` | `false` | Skip pushing to the remote in `bd dolt push` |
 | `no-git-ops` | — | — | `false` | Disable git ops in `bd prime` close protocol |
 | `agent.profile` | — | `BD_AGENT_PROFILE` | `conservative` | Policy profile `bd prime` uses for git/commit authority: `conservative`, `minimal`, `team-maintainer`; invalid values fall back to `conservative` |
@@ -269,15 +268,18 @@ The actor name (used for `created_by` and audit trails) is resolved in this orde
 1. `--actor` flag (explicit override)
 2. `BEADS_ACTOR` environment variable
 3. `BD_ACTOR` environment variable (deprecated alias)
-4. `git config user.name`
-5. `$USER` environment variable
-6. `"unknown"` (final fallback)
+4. `actor` in the selected YAML configuration
+5. `git config user.name`
+6. `$USER` environment variable
+7. `"unknown"` (final fallback)
 
 For most developers no configuration is needed — issue authorship matches commit authorship automatically. To override, set `BEADS_ACTOR` in your shell profile:
 
 ```bash
 export BEADS_ACTOR="my-github-handle"
 ```
+
+The fork records `actor_source` in the enabled [events journal](/reference/events-journal): `flag`, `env` (including the deprecated alias), `config`, `git`, `user`, or `unknown`. Integrations should pass `--actor` or `BEADS_ACTOR` explicitly. Stdin and terminal presence do not identify who is calling. The name and its source are declared provenance; neither proves a human identity or authorizes approval.
 
 ## Project-Level Settings (Database)
 
@@ -455,6 +457,8 @@ See [bd github](/cli-reference/github).
 ### Azure DevOps
 
 Connection keys (`ado.pat`, `ado.org`, `ado.project`, `ado.projects`, `ado.url`) each have an `AZURE_DEVOPS_*` environment variable equivalent; config keys take priority over env vars. When `ado.projects` is set, `bd ado sync` fetches work items from all listed projects in a single query. State maps default to the Agile process template (override with `ado.state_map.*` / `ado.type_map.*` for Scrum or CMMI), and priority mapping (ADO 1–4 ↔ beads 0–4, with backlog collapsing to low) is automatic and not configurable. Full setup, mapping tables, and sync commands: [Azure DevOps integration](/integrations/azure-devops) and [bd ado](/cli-reference/ado).
+
+Project `.beads/.env` files import only `BEADS_DIR`, `BEADS_DB`, `BD_DB`, `BEADS_DOLT_PASSWORD`, `BEADS_DOLT_SERVER_MODE`, `BEADS_DOLT_SHARED_SERVER`, `BEADS_DOLT_SERVER_HOST`, `BEADS_DOLT_SERVER_PORT`, `BEADS_DOLT_PORT`, `BEADS_DOLT_SERVER_SOCKET`, `BEADS_DOLT_SERVER_USER`, `BEADS_DOLT_SERVER_DATABASE`, and `BEADS_DOLT_SERVER_TLS`. Existing environment values, including empty values, take precedence. Unsupported keys are ignored with a names-only warning. Set credential commands, executable overrides and pager settings in the operator environment.
 
 ## Environment Variables
 

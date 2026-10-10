@@ -65,6 +65,11 @@ func buildReadyWorkPredicates(ctx context.Context, tx DBTX, filter types.WorkFil
 		inputs.ParentDescendantIDs = descendantIDs
 	}
 
+	var err error
+	inputs.ExternalBlockedIDs, err = ExternalBlockedIDsInTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
 	whereSQL, whereArgs, err := sqlbuild.BuildReadyWorkWhere(filter, tables, inputs)
 	if err != nil {
 		return nil, err
@@ -363,6 +368,13 @@ func filterReadyWispsInTx(ctx context.Context, tx DBTX, filter types.WorkFilter,
 	}
 
 	excluded := make(map[string]struct{})
+	externalIDs, err := ExternalBlockedIDsInTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range externalIDs {
+		excluded[id] = struct{}{}
+	}
 	if filter.ParentID != nil {
 		parentID := *filter.ParentID
 		descendantIDs, err := GetDescendantIDsInTx(ctx, tx, parentID, 0)
@@ -506,8 +518,8 @@ func queryReadyIssueIDPage(ctx context.Context, tx DBTX, query string, args []in
 	return issueIDs, nil
 }
 
-// getChildrenOfDeferredParentsInTx returns IDs of issues whose parent has a
-// future defer_until. Works within an existing transaction.
+// getChildrenOfDeferredParentsInTx returns children of parents with deferred
+// status or a future defer_until, within an existing transaction.
 //
 //nolint:gosec // G201: depTable is selected from a hardcoded list below.
 func getChildrenOfDeferredParentsInTx(ctx context.Context, tx DBTX) ([]string, error) {
@@ -517,8 +529,8 @@ func getChildrenOfDeferredParentsInTx(ctx context.Context, tx DBTX) ([]string, e
 		var exists int
 		err := tx.QueryRowContext(ctx, fmt.Sprintf(`
 			SELECT 1 FROM %s
-			WHERE defer_until IS NOT NULL
-			  AND defer_until > UTC_TIMESTAMP()
+			WHERE status = 'deferred'
+			   OR (defer_until IS NOT NULL AND defer_until > UTC_TIMESTAMP())
 			LIMIT 1
 		`, issueTable)).Scan(&exists)
 		if err == nil {
@@ -549,8 +561,8 @@ func getChildrenOfDeferredParentsInTx(ctx context.Context, tx DBTX) ([]string, e
 				FROM %s dep
 				JOIN %s parent ON parent.id = dep.%s
 				WHERE dep.type = 'parent-child'
-				  AND parent.defer_until IS NOT NULL
-				  AND parent.defer_until > UTC_TIMESTAMP()
+				  AND (parent.status = 'deferred'
+				    OR (parent.defer_until IS NOT NULL AND parent.defer_until > UTC_TIMESTAMP()))
 			`, depTable, issueTable, targetCol))
 			if err != nil {
 				// This FROM names two tables at once, so the gate has to key on

@@ -40,6 +40,9 @@ This is useful for agents executing molecules to see which steps can run next.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewReady(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("ready")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -247,12 +250,12 @@ This is useful for agents executing molecules to see which steps can run next.`,
 				fmt.Printf("%d. [%s] [%s] %s: %s\n", i+1,
 					ui.RenderPriority(issue.Priority),
 					ui.RenderType(string(issue.IssueType)),
-					ui.RenderID(issue.ID), issue.Title)
+					ui.RenderID(issue.ID), ui.SanitizeForTerminal(issue.Title))
 				if issue.EstimatedMinutes != nil {
 					fmt.Printf("   Estimate: %d min\n", *issue.EstimatedMinutes)
 				}
 				if issue.Assignee != "" {
-					fmt.Printf("   Assignee: %s\n", issue.Assignee)
+					fmt.Printf("   Assignee: %s\n", ui.SanitizeForTerminal(issue.Assignee))
 				}
 			}
 			fmt.Println()
@@ -300,6 +303,9 @@ var blockedCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewBlocked(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("blocked")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -332,7 +338,7 @@ var blockedCmd = &cobra.Command{
 		for _, issue := range blocked {
 			fmt.Printf("[%s] %s: %s\n",
 				ui.RenderPriority(issue.Priority),
-				ui.RenderID(issue.ID), issue.Title)
+				ui.RenderID(issue.ID), ui.SanitizeForTerminal(issue.Title))
 			blockedBy := issue.BlockedBy
 			if blockedBy == nil {
 				blockedBy = []string{}
@@ -531,7 +537,7 @@ func runReadyExplain(_ *cobra.Command) error {
 			fmt.Printf("  %s [%s] %s\n",
 				ui.RenderID(item.ID),
 				ui.RenderPriority(item.Priority),
-				item.Title)
+				ui.SanitizeForTerminal(item.Title))
 			fmt.Printf("    Reason: %s\n", item.Reason)
 			if len(item.ResolvedBlockers) > 0 {
 				fmt.Printf("    Resolved blockers: %s\n", strings.Join(item.ResolvedBlockers, ", "))
@@ -552,10 +558,10 @@ func runReadyExplain(_ *cobra.Command) error {
 			fmt.Printf("  %s [%s] %s\n",
 				ui.RenderID(item.ID),
 				ui.RenderPriority(item.Priority),
-				item.Title)
+				ui.SanitizeForTerminal(item.Title))
 			for _, blocker := range item.BlockedBy {
 				fmt.Printf("    ← blocked by %s: %s [%s]\n",
-					ui.RenderID(blocker.ID), blocker.Title, blocker.Status)
+					ui.RenderID(blocker.ID), ui.SanitizeForTerminal(blocker.Title), blocker.Status)
 			}
 			fmt.Println()
 		}
@@ -626,7 +632,7 @@ func runMoleculeReady(_ *cobra.Command, molIDArg string) error {
 		})
 	}
 
-	fmt.Printf("\n%s Ready steps in molecule: %s\n", ui.RenderAccent("🧪"), subgraph.Root.Title)
+	fmt.Printf("\n%s Ready steps in molecule: %s\n", ui.RenderAccent("🧪"), ui.SanitizeForTerminal(subgraph.Root.Title))
 	fmt.Printf("   ID: %s\n", moleculeID)
 	fmt.Printf("   Total: %d steps, %d ready\n", analysis.TotalSteps, len(readySteps))
 
@@ -664,7 +670,7 @@ func runMoleculeReady(_ *cobra.Command, molIDArg string) error {
 			ui.RenderPriority(step.Issue.Priority),
 			ui.RenderType(string(step.Issue.IssueType)),
 			ui.RenderID(step.Issue.ID),
-			step.Issue.Title,
+			ui.SanitizeForTerminal(step.Issue.Title),
 			groupAnnotation)
 
 		if len(step.ParallelInfo.CanParallel) > 0 {

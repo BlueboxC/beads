@@ -8,5 +8,5 @@ import "os"
 // caller's descriptor identity check prevents chmod unless it still refers to
 // the directory inspected with Lstat.
 func openBeadsDirHandle(path string) (beadsDirHandle, error) {
-	return os.Open(path)
+	return os.Open(path) //nolint:gosec // G304: directory handle only; caller checks descriptor identity before chmod.
 }

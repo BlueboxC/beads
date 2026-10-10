@@ -460,6 +460,12 @@ var proxyCapabilityRegistry = []capabilityRow{
 	// at the front door would leave those modes with no way to flush.
 	permitted("dolt commit").withHistory(HistoryProxySupported),
 
+	// Graph Preview uses direct workspace routes, never the proxy provider.
+	refusedPath("compare", "proxy.compare.unsupported", ProxyReasonUnimplemented, "generic graph CLI: gastownhall/beads#6703"),
+	refusedPath("links", "proxy.links.unsupported", ProxyReasonUnimplemented, "generic graph CLI: gastownhall/beads#6703"),
+	refusedPath("unlink", "proxy.unlink.unsupported", ProxyReasonUnimplemented, "generic graph CLI: gastownhall/beads#6703"),
+	refusedPath("versions", "proxy.versions.unsupported", ProxyReasonUnimplemented, "generic graph CLI: gastownhall/beads#6703"),
+
 	// --- untyped refusals inside RunE ---------------------------------------
 	// The gate permits these paths and the command refuses itself with a bare
 	// string, so a JSON consumer gets no code and no mutates flag. They are
@@ -539,6 +545,7 @@ var proxyPermittedPaths = []string{
 	"knowledge context", "knowledge graph", "knowledge list", "knowledge record", "knowledge scan",
 	"knowledge sources", "knowledge prepare", "knowledge propose", "knowledge proposals", "knowledge review",
 	"code", "code scan", "code status", "code query", "code graph",
+	"code impact", "code relink", "code prune",
 	"swarm status", "swarm validate",
 
 	// human-in-the-loop queue
@@ -554,7 +561,7 @@ var proxyPermittedPaths = []string{
 	"hooks install", "hooks list", "hooks run", "hooks uninstall",
 	"metrics", "metrics example", "metrics off", "metrics on",
 	"serve", "sql",
-	"codex-hook", "cursor-hook", "db-proxy-child", "send-metrics",
+	"claude-hook", "codex-hook", "cursor-hook", "db-proxy-child", "send-metrics",
 }
 
 func init() {

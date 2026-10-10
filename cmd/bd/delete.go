@@ -51,6 +51,9 @@ Force: Delete and orphan dependents
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewDeleteMemory(cmd, args, false)
+		}
 		CheckReadonly("delete")
 
 		evt := metrics.NewCommandEvent("delete")
@@ -220,7 +223,7 @@ func renderSingleDeletePreview(
 
 	fmt.Printf("\n%s\n", ui.RenderFail("⚠️  DELETE PREVIEW"))
 	fmt.Printf("\nIssue to delete:\n")
-	fmt.Printf("  %s: %s\n", issueID, issue.Title)
+	fmt.Printf("  %s: %s\n", issueID, ui.SanitizeForTerminal(issue.Title))
 	totalDeps := len(depRecords) + len(dependents)
 	if totalDeps > 0 {
 		fmt.Printf("\nDependency links to remove: %d\n", totalDeps)
@@ -240,7 +243,7 @@ func renderSingleDeletePreview(
 				(connIssue.Design != "" && re.MatchString(connIssue.Design)) ||
 				(connIssue.AcceptanceCriteria != "" && re.MatchString(connIssue.AcceptanceCriteria))
 			if hasRefs {
-				fmt.Printf("  %s: %s\n", id, connIssue.Title)
+				fmt.Printf("  %s: %s\n", id, ui.SanitizeForTerminal(connIssue.Title))
 				issuesWithRefs++
 			}
 		}
@@ -436,7 +439,7 @@ func outputDeletionPreview(issueIDs []string, issues map[string]*types.Issue, ca
 	fmt.Printf("\nIssues to delete (%d):\n", len(issueIDs))
 	for _, id := range issueIDs {
 		if issue := issues[id]; issue != nil {
-			fmt.Printf("  %s: %s\n", id, issue.Title)
+			fmt.Printf("  %s: %s\n", id, ui.SanitizeForTerminal(issue.Title))
 		}
 	}
 	if cascade {

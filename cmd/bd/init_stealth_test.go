@@ -25,7 +25,7 @@ func TestSetupGitExclude_Worktree(t *testing.T) {
 	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = mainDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "initial")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "initial")
 	cmd.Dir = mainDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to create initial commit: %v", err)
@@ -94,7 +94,7 @@ func TestSetupForkExclude_Worktree(t *testing.T) {
 	cmd := exec.Command("git", "add", ".")
 	cmd.Dir = mainDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "initial")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "initial")
 	cmd.Dir = mainDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("failed to create initial commit: %v", err)

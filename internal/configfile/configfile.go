@@ -20,6 +20,13 @@ type Config struct {
 	Database string `json:"database"`
 	Backend  string `json:"backend,omitempty"` // Storage backend: "dolt" (default), a registered extension, or a legacy rejection tombstone. Read via GetBackend().
 
+	GraphMode          string `json:"graph_mode,omitempty"`
+	GraphScopeURL      string `json:"graph_scope_url,omitempty"`
+	GraphAuthorityID   string `json:"graph_authority_id,omitempty"`
+	GraphWorkspace     string `json:"graph_workspace,omitempty"`
+	GraphSchemaVersion int    `json:"graph_schema_version,omitempty"`
+	GraphReady         bool   `json:"graph_ready,omitempty"`
+
 	// Deletions configuration
 	DeletionsRetentionDays int `json:"deletions_retention_days,omitempty"` // 0 means use default (3 days)
 

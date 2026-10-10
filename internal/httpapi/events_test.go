@@ -48,6 +48,8 @@ func journalServer(t *testing.T, journal *roleEventsJournal) *testServer {
 // CLI's would pass a length check.
 func TestEventsServesTheRecordsAndTheHead(t *testing.T) {
 	journal := &roleEventsJournal{page: storage.EventsJournalPage{Rows: eventsRows(4, 3), Head: 9}}
+	journal.page.Rows[0].Actor = "Owner"
+	journal.page.Rows[0].ActorSource = "git"
 	ts := journalServer(t, journal)
 
 	resp := ts.get(t, "/v0/beads/events?since=3")
@@ -64,6 +66,9 @@ func TestEventsServesTheRecordsAndTheHead(t *testing.T) {
 		t.Fatalf("records = %d, want 3", len(records))
 	}
 	first, _ := records[0].(map[string]any)
+	if first["actor"] != "Owner" || first["actor_source"] != "git" {
+		t.Fatalf("actor provenance lost in HTTP: %v", first)
+	}
 	if got := first["seq"]; got != float64(4) {
 		t.Errorf("records[0].seq = %v, want 4", got)
 	}

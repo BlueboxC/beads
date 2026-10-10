@@ -3,12 +3,15 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/steveyegge/beads/internal/storage/dbproxy/util"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,4 +76,22 @@ func TestShutdownWaitsForStartDelayedBeforeExec(t *testing.T) {
 	}
 
 	assert.NoFileExists(t, filepath.Join(root, spawnMarkerFileName))
+}
+
+func TestGetCreateContextCancelDuringSpawnReapsOwnChild(t *testing.T) {
+	root := t.TempDir()
+	childPath := filepath.Join(root, "waiting-child.sh")
+	require.NoError(t, os.WriteFile(childPath, []byte("#!/bin/sh\nexec sleep 30\n"), 0o700))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	previousResolve, previousHook := ResolveExecutable, beforeProxyChildStart
+	ResolveExecutable = func() (string, error) { return childPath, nil }
+	beforeProxyChildStart = cancel
+	t.Cleanup(func() { ResolveExecutable, beforeProxyChildStart = previousResolve, previousHook })
+	_, err := GetCreateDatabaseProxyServerEndpointContext(ctx, root, externalOpenOpts(root))
+	require.ErrorIs(t, err, context.Canceled)
+	assert.NoFileExists(t, filepath.Join(root, spawnMarkerFileName))
+	lock, err := util.TryLock(filepath.Join(root, LockFileName))
+	require.NoError(t, err)
+	lock.Unlock()
 }

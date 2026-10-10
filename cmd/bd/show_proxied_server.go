@@ -211,7 +211,7 @@ func runShowProxiedAsOf(ctx context.Context, uw uow.UnitOfWork, in *showProxiedI
 		fmt.Printf("\n%s (as of %s)\n", formatIssueHeader(issue), ui.RenderMuted(in.asOfRef))
 		fmt.Println(formatIssueMetadata(issue))
 		if issue.Description != "" {
-			fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(issue.Description))
+			fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Description)))
 		}
 		fmt.Println()
 	}
@@ -359,7 +359,7 @@ func runShowProxiedThread(ctx context.Context, uw uow.UnitOfWork, in *showProxie
 		return nil
 	}
 
-	fmt.Printf("\n%s Thread: %s\n", ui.RenderAccent("📬"), rootMsg.Title)
+	fmt.Printf("\n%s Thread: %s\n", ui.RenderAccent("📬"), ui.SanitizeForTerminal(rootMsg.Title))
 	fmt.Println(strings.Repeat("─", 66))
 	for _, msg := range threadMessages {
 		depth := 0
@@ -375,13 +375,13 @@ func runShowProxiedThread(ctx context.Context, uw uow.UnitOfWork, in *showProxie
 			statusIcon = "✓"
 		}
 		fmt.Printf("%s%s %s %s\n", indent, statusIcon, ui.RenderAccent(msg.ID), ui.RenderMuted(timeStr))
-		fmt.Printf("%s  From: %s  To: %s\n", indent, msg.Sender, msg.Assignee)
+		fmt.Printf("%s  From: %s  To: %s\n", indent, ui.SanitizeForTerminal(msg.Sender), ui.SanitizeForTerminal(msg.Assignee))
 		if parentID := repliesTo[msg.ID]; parentID != "" {
 			fmt.Printf("%s  Re: %s\n", indent, parentID)
 		}
-		fmt.Printf("%s  %s: %s\n", indent, ui.RenderMuted("Subject"), msg.Title)
+		fmt.Printf("%s  %s: %s\n", indent, ui.RenderMuted("Subject"), ui.SanitizeForTerminal(msg.Title))
 		if msg.Description != "" {
-			for _, line := range strings.Split(msg.Description, "\n") {
+			for _, line := range strings.Split(ui.SanitizeForTerminal(msg.Description), "\n") {
 				fmt.Printf("%s  %s\n", indent, line)
 			}
 		}
@@ -506,18 +506,18 @@ func proxiedRenderIssue(ctx context.Context, uw uow.UnitOfWork, issue *types.Iss
 	fmt.Println(formatIssueMetadata(issue))
 
 	if issue.Description != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(issue.Description))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESCRIPTION"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Description)))
 	} else {
 		fmt.Printf("\n%s\n  %s\n", ui.RenderBold("DESCRIPTION"), ui.RenderMuted("(none)"))
 	}
 	if issue.Design != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESIGN"), uimd.RenderMarkdown(issue.Design))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("DESIGN"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Design)))
 	}
 	if issue.Notes != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("NOTES"), uimd.RenderMarkdown(issue.Notes))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("NOTES"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.Notes)))
 	}
 	if issue.AcceptanceCriteria != "" {
-		fmt.Printf("\n%s\n%s\n", ui.RenderBold("ACCEPTANCE CRITERIA"), uimd.RenderMarkdown(issue.AcceptanceCriteria))
+		fmt.Printf("\n%s\n%s\n", ui.RenderBold("ACCEPTANCE CRITERIA"), uimd.RenderMarkdown(ui.SanitizeForTerminal(issue.AcceptanceCriteria)))
 	}
 
 	// A READ on an ALTERNATE view. `bd show`'s detail view is on
@@ -564,8 +564,8 @@ func proxiedRenderIssue(ctx context.Context, uw uow.UnitOfWork, issue *types.Iss
 	if len(comments) > 0 {
 		fmt.Printf("\n%s\n", ui.RenderBold("COMMENTS"))
 		for _, c := range comments {
-			fmt.Printf("  %s %s\n", ui.RenderMuted(formatTime(c.CreatedAt)), c.Author)
-			rendered := uimd.RenderMarkdown(c.Text)
+			fmt.Printf("  %s %s\n", ui.RenderMuted(formatTime(c.CreatedAt)), ui.SanitizeForTerminal(c.Author))
+			rendered := uimd.RenderMarkdown(ui.SanitizeForTerminal(c.Text))
 			for _, line := range strings.Split(strings.TrimRight(rendered, "\n"), "\n") {
 				fmt.Printf("    %s\n", line)
 			}

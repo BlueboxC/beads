@@ -83,7 +83,7 @@ Examples:
 				if entry.NewValue != nil {
 					fmt.Printf("  + %s: %s\n",
 						ui.StatusOpenStyle.Render(entry.IssueID),
-						entry.NewValue.Title)
+						ui.SanitizeForTerminal(entry.NewValue.Title))
 				} else {
 					fmt.Printf("  + %s\n", ui.StatusOpenStyle.Render(entry.IssueID))
 				}
@@ -128,7 +128,7 @@ Examples:
 				if entry.OldValue != nil {
 					fmt.Printf("  - %s: %s\n",
 						ui.RenderMuted(entry.IssueID),
-						ui.RenderMuted(entry.OldValue.Title))
+						ui.RenderMuted(ui.SanitizeForTerminal(entry.OldValue.Title)))
 				} else {
 					fmt.Printf("  - %s\n", ui.RenderMuted(entry.IssueID))
 				}

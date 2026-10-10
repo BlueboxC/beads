@@ -58,7 +58,8 @@ func newExternalTransportFixture(t *testing.T, network, address string, blackhol
 	if network == "unix" {
 		_ = os.Remove(address)
 	} else if address == "" {
-		// Use a dialable loopback endpoint on every host.
+		// An unspecified IPv6 listener address is not a dialable target on
+		// every host. These transport tests need a concrete loopback address.
 		address = "127.0.0.1:0"
 	}
 	ln, err := net.Listen(network, address)

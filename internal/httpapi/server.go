@@ -25,6 +25,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/steveyegge/beads/internal/httpapi/apigen"
+	"github.com/steveyegge/beads/internal/httpapi/bdpwire"
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/storage/domain"
 	"github.com/steveyegge/beads/internal/storage/uow"
@@ -112,6 +113,10 @@ const (
 // Config is everything the server needs to answer. It is assembled by the
 // caller — the package resolves no workspace state of its own.
 type Config struct {
+	// GraphRead is an exclusive BDP Read surface over a bound graph workspace.
+	GraphRead *GraphRead
+	// ExternalResolver is optional read-only provider resolution for request contexts.
+	ExternalResolver issueops.ExternalResolver
 	// GraphViewer selects an exclusive read-only presentation surface. No v0
 	// issue API is registered and no persistent database handle is held.
 	GraphViewer http.Handler
@@ -543,6 +548,9 @@ func Listen(cfg Config) (*Server, error) {
 		maxConns: maxConns,
 	}
 
+	if cfg.GraphRead != nil {
+		s.ctxBody.Capabilities = []string{"bdp-read"}
+	}
 	if cfg.GraphViewer != nil {
 		s.ctxBody.Capabilities = []string{"project_graph_readonly"}
 	}
@@ -654,6 +662,12 @@ func anyRoleFiresHooks(cfg Config) bool {
 }
 
 func checkDatabaseSource(cfg Config) error {
+	if cfg.GraphRead != nil {
+		if cfg.GraphViewer != nil || cfg.Provider != nil || anyRoleSet(cfg) || cfg.EventsJournal != nil || cfg.EventsJournalEnabled {
+			return errors.New("httpapi: graph Read cannot be combined with legacy database sources")
+		}
+		return cfg.GraphRead.validate()
+	}
 	if cfg.GraphViewer != nil {
 		if cfg.Provider != nil || anyRoleSet(cfg) || cfg.EventsJournal != nil || cfg.EventsJournalEnabled {
 			return errors.New("httpapi: graph viewer cannot be combined with an issue API database source")
@@ -1315,6 +1329,9 @@ func orDefault(v, fallback time.Duration) time.Duration {
 // catch-all that keeps unrouted paths on the same error shape, and the
 // middleware in front of both.
 func (s *Server) handler() http.Handler {
+	if s.cfg.GraphRead != nil {
+		return s.withRequestContext(s.checkHost(s.graphReadRoute()))
+	}
 	mux := http.NewServeMux()
 	// Rows carrying a customMethod SHARE a pattern, so they get one
 	// registration between them and a dispatcher in front. Collected in table
@@ -1357,7 +1374,13 @@ func (s *Server) handler() http.Handler {
 		s.fail(w, r, newResult(CodeNotFound, "no such route on this server"))
 	}))
 
-	return s.withRequestContext(s.checkHost(mux))
+	handler := http.Handler(mux)
+	if s.cfg.ExternalResolver != nil {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mux.ServeHTTP(w, r.WithContext(issueops.WithExternalResolver(r.Context(), s.cfg.ExternalResolver)))
+		})
+	}
+	return s.withRequestContext(s.checkHost(handler))
 }
 
 // reqInfo is the per-request record the log line is assembled from. Layers fill
@@ -1409,6 +1432,9 @@ func (s *Server) withRequestContext(next http.Handler) http.Handler {
 
 		// No client or intermediary may cache an answer about live work.
 		w.Header().Set("Cache-Control", "no-store")
+		if s.cfg.GraphRead != nil {
+			w.Header().Set("Cache-Control", "private, no-store")
+		}
 
 		sw := &statusWriter{
 			ResponseWriter: w,
@@ -1506,6 +1532,10 @@ func (s *Server) panicked(sw *statusWriter, r *http.Request, rec *reqInfo, p any
 		// superfluous-WriteHeader line to the log.
 		return
 	}
+	if s.cfg.GraphRead != nil {
+		graphReadResponse(sw, r, http.StatusInternalServerError, nil, "", "", nil)
+		return
+	}
 	s.fail(sw, r, newResult(CodeInternal, ""))
 }
 
@@ -1518,6 +1548,10 @@ func (s *Server) checkHost(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !s.hosts.allows(r.Host) {
 			requestInfo(r.Context()).refuse(r.Host)
+			if s.cfg.GraphRead != nil {
+				graphReadProblem(w, r, bdpwire.CodeMalformedRequest)
+				return
+			}
 			s.fail(w, r, InvalidArgument("Host", ReasonInvalidValue,
 				"Host header is not one this server answers to"))
 			return
@@ -1628,6 +1662,23 @@ func (s *Server) route(rt route) http.Handler {
 // the log gets instead is the reason — which of the three client mistakes it
 // was — and the request id that ties it to the response.
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rec *reqInfo) bool {
+	if s.credentialValid(r, rec) {
+		return true
+	}
+	if s.cfg.GraphRead != nil {
+		graphReadProblem(w, r, bdpwire.CodeUnauthenticated)
+		return false
+	}
+	s.fail(w, r, newResult(CodeUnauthenticated, ""))
+	return false
+}
+
+// credentialValid also serves established streams, whose headers are already
+// sent and which must terminate rather than append a second HTTP response.
+func (s *Server) credentialValid(r *http.Request, rec *reqInfo) bool {
+	if s.auth == nil {
+		return true
+	}
 	token, reason := bearerCredential(r.Header.Get("Authorization"))
 	if reason == "" {
 		ok, reloadErr := s.auth.Verify(token)
@@ -1645,7 +1696,6 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rec *reqInfo)
 
 	s.event("auth_refused", "request_id", rec.id, "op", rec.op,
 		"reason", reason, "remote_addr", r.RemoteAddr)
-	s.fail(w, r, newResult(CodeUnauthenticated, ""))
 	return false
 }
 
@@ -2002,6 +2052,9 @@ func (s *Server) logStartup() {
 // true value and is indistinguishable, on its own, from instrumentation that
 // broke. This is the line that tells them apart.
 func (s *Server) dbSource() string {
+	if s.cfg.GraphRead != nil {
+		return "graph-read"
+	}
 	if s.cfg.GraphViewer != nil {
 		return "graph-viewer-readonly"
 	}

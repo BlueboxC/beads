@@ -182,7 +182,7 @@ func (dr *depRender) annotationsFor(nodeID, childPrefix string) {
 	})
 	for _, r := range inView {
 		tag := ui.RenderMuted(fmt.Sprintf("%s %-20s", depGlyph, "["+r.label+"]"))
-		fmt.Println(childPrefix + tag + " " + r.target + " " + r.title)
+		fmt.Println(childPrefix + tag + " " + r.target + " " + ui.SanitizeForTerminal(r.title))
 	}
 
 	// Out-of-view edges: collapse to a single summary line so a filtered view

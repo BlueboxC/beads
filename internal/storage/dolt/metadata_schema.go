@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/steveyegge/beads/internal/config"
 	"github.com/steveyegge/beads/internal/storage"
+	"github.com/steveyegge/beads/internal/storage/issueops"
 )
 
 // loadMetadataSchema reads the metadata validation config from YAML and
@@ -44,64 +44,9 @@ func loadMetadataSchema() storage.MetadataSchemaConfig {
 	}
 }
 
-// parseFieldSchema converts a raw config map into a MetadataFieldSchema.
+// parseFieldSchema shares conversion with the other storage adapters.
 func parseFieldSchema(m map[string]interface{}) storage.MetadataFieldSchema {
-	schema := storage.MetadataFieldSchema{}
-
-	if t, ok := m["type"].(string); ok {
-		schema.Type = storage.MetadataFieldType(t)
-	}
-
-	if req, ok := m["required"].(bool); ok {
-		schema.Required = req
-	}
-
-	// Parse enum values
-	if vals, ok := m["values"]; ok {
-		switch v := vals.(type) {
-		case []interface{}:
-			for _, item := range v {
-				if s, ok := item.(string); ok {
-					schema.Values = append(schema.Values, s)
-				}
-			}
-		case string:
-			// Comma-separated fallback
-			for _, s := range strings.Split(v, ",") {
-				s = strings.TrimSpace(s)
-				if s != "" {
-					schema.Values = append(schema.Values, s)
-				}
-			}
-		}
-	}
-
-	// Parse min/max for numeric types
-	if min, ok := toFloat64(m["min"]); ok {
-		schema.Min = &min
-	}
-	if max, ok := toFloat64(m["max"]); ok {
-		schema.Max = &max
-	}
-
-	return schema
-}
-
-// toFloat64 converts an interface{} to float64, handling int and float YAML values.
-func toFloat64(v interface{}) (float64, bool) {
-	if v == nil {
-		return 0, false
-	}
-	switch n := v.(type) {
-	case float64:
-		return n, true
-	case int:
-		return float64(n), true
-	case int64:
-		return float64(n), true
-	default:
-		return 0, false
-	}
+	return issueops.ParseFieldSchema(m)
 }
 
 // validateMetadataIfConfigured checks metadata against the schema from config.

@@ -246,9 +246,14 @@ build, and says nothing about whether this workspace has a journal.
 | `op` | string | One of the seven operations below. |
 | `issue_id` | string | The mutated issue. |
 | `actor` | string | The acting identity that performed the mutation, as resolved for the audit-events table; on a `comment` row, the comment's author. A `delete` and the `dep_remove` records a cascading delete produces carry the identity that *requested* the delete, not the beads the cascade reached. Absent when the path genuinely has no actor — derived maintenance (`is_blocked` recomputes), system cleanup with no request behind it, and rows written before the journal recorded actors. An absent `actor` is never user attribution: read it as "system/unknown", not as a conflicting writer. |
+| `actor_source` | string | Fork addition: `flag`, `env`, `config`, `git`, `user`, `unknown`, or `provided`. Records how this mutation’s actor was resolved, not authentication. `provided` means a named API/storage actor without matching CLI provenance; absent on pre-migration and actorless rows. |
 | `issue` | object or null | The issue's full state *after* the mutation; `null` on a delete. |
 | `dep` | object | `{"kind","target","metadata"}` on `dep_add` and `dep_remove`; absent otherwise. |
 | `comment` | object | `{"id","author","text","created_at","source"}` on `comment`; absent otherwise. |
+
+Actor names, `created_by`, and audit-event identities retain their existing values. Source-aware consumers use this journal field; audit history does not gain it. Historical rows are not backfilled, and readers cannot infer whether an old name was explicit. Both paged HTTP reads and SSE use the same optional field. A direct Go caller may supply `journalops.WithActorSource(ctx, actor, source)`; its claim remains untrusted and applies only to that exact actor. A different actor, including a comment author, is `provided`; actorless derived rows remain empty. This does not restrict human-gate resolution.
+
+The additive clone-local column is created through both migration series. Older writers omit it and keep the empty default; updated readers require the migrated schema. Keep the column when rolling back the binary so new provenance is preserved. No Dolt remote sync or automatic enablement is required.
 
 Six operations are the public vocabulary — the only kinds a downstream event
 feed built on the journal may carry:

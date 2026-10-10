@@ -1,162 +1,87 @@
-# Security Policy
+# Security policy for the BlueboxC fork
 
-## Reporting Security Issues
+This policy covers `codex/project-continuity` in BlueboxC/beads. The fork
+preserves the upstream MIT attribution; upstream releases and security decisions
+remain owned by [gastownhall/beads](https://github.com/gastownhall/beads).
 
-If you discover a security vulnerability in bd, please report it responsibly:
+## Reporting
 
-**Email**: security@steveyegge.com (or open a private security advisory on GitHub)
+Do not publish exploit details, credentials or private project data in an issue
+or pull request. Arrange a private reporting channel with the fork owner
+[BlueboxC](https://github.com/BlueboxC) before sending sensitive findings. This
+fork does not advertise a verified security mailbox or a response-time guarantee.
+For an upstream finding, consult its current
+[security policy](https://github.com/gastownhall/beads/security/policy); this fork
+cannot guarantee that an upstream contact or private reporting feature works.
 
-Please include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
+A useful report identifies the source commit or installed binary, affected
+format/backend, prerequisites, reproduction, impact and any proposed fix.
 
-We will respond within 48 hours and work with you to address the issue.
+## Data and trust
 
-## Malicious "fix" attachments in issues, PRs, and discussions
+- Tasks, memories, proposals and code projections use one local Dolt database.
+  They are not encrypted. Filesystem permissions, database access and configured
+  remotes control who can read them. Git source publication does not require
+  publishing the database; Dolt sync, exports and backups can disclose its data.
+- Dolt history and native retained revisions are audit evidence, not authenticated
+  identity. Actor/reviewer strings are supplied by callers. Observed activity and
+  conversation summaries are untrusted data, not verification or execution authority.
+- Do not store passwords or API tokens in task content. Tokens saved through
+  database configuration are plaintext; prefer the provider's authenticated CLI
+  and grant only the scopes needed. Review exports, remotes and retained history.
+- Ordinary Beads and Graph Preview are separate formats. Preview initialization
+  requires a fresh workspace and exact scope/workspace binding. It does not
+  convert, restore or merge existing projects. See
+  [Graph Preview](docs/reference/graph-preview.md) for its supported operations.
+- Graph writes check resource counts and acquisition bytes in the transaction
+  before commit. Reads refuse over-budget state before payload transfer or
+  decoding. Existing oversized state may shrink without deleting retained history.
+  These budgets do not bound total process RAM, SQL-engine caches or disk history.
 
-Automated spam accounts have been posting on newly-opened issues across GitHub —
-including in this project — with a friendly, issue-specific message and an
-attached archive (for example a file named like `*_fix.zip`, `fix_win.zip`, or a
-"patched build") that claims to solve your problem. **These files are malware. Do
-not download or run them.**
+## Processes and networking
 
-How to stay safe:
+`bd serve`, the live graph viewer and Dolt SQL servers can open listening ports.
+They require explicit startup; the viewer is read-only and refresh does not
+execute project code. HTTP serving validates Host headers, bounds requests and
+supports token-file bearer authentication. Non-loopback serving requires explicit
+admission and authentication. The server does not provide TLS itself; use a
+trusted TLS boundary before exposing it beyond a trusted local host.
 
-- **Official builds and releases come only from this repository's
-  [Releases](https://github.com/gastownhall/beads/releases) page** and the project's documented install
-  instructions. Maintainers will never ask you to download a zip or executable
-  posted in an issue, pull request, or discussion comment.
-- A link that points to `github.com/user-attachments/files/...` is a file
-  someone attached to a comment — it is **not** a vetted release asset, even
-  though the URL is hosted on `github.com`.
-- Be especially wary of a brand-new account offering a "fix" as a download
-  within minutes of your post, or telling you to run an install command for a
-  package or module that is not an official project source.
+Tracker integrations, configured remotes and user-started synchronization can
+make network requests. Imported content can contain terminal controls or prompt
+injections: parameterized SQL and terminal sanitization do not make free-text
+instructions trustworthy. Never pass that content to a shell or let it override
+agent contracts. Resource paths and issue IDs follow the selected format's
+validators; no single legacy ID regex describes both formats.
 
-If you see one of these comments, please **report it** (the comment's `...` menu
-→ *Report content*) and do not click the attachment. Note that deleting the
-comment does not remove the uploaded file from GitHub's servers, so also report
-the attachment to GitHub Support so it can be taken down.
+Usage metrics and OpenTelemetry are separate. Upstream-style usage metrics are
+on unless the user's global preference or environment disables them; inspect
+`bd metrics` and use `bd metrics off`, `BD_DISABLE_METRICS=1` or `DO_NOT_TRACK=1`.
+Project configuration cannot override that user preference or redirect its
+endpoint. OpenTelemetry requires explicit configuration. Dolt also has its own
+metrics controls: `dolt config --global --add metrics.disabled true` and
+`DOLT_DISABLE_EVENT_FLUSH=1`. Disabling one channel does not disable the others.
 
-## Security Considerations
+Hooks run with the invoking user's permissions. Review their commands and native
+trust grants. Context recovery reads stored material; activity hooks record
+bounded observations. Neither automatically accepts learned solutions.
 
-### Database Security
+## Dependencies and updates
 
-bd stores issue data locally in a Dolt database (`.beads/dolt/`), which is gitignored.
+The fork depends on Dolt, Go, CLI, parser, HTTP, telemetry and provider libraries.
+`go.sum` records module checksums; it does not pin the Go compiler or prove that
+packages are vulnerability-free. Use the recorded Go floor/toolchain, verify
+modules, and assess advisories against actual call paths. Example modules and
+Nix builds must use the corrected effective dependencies and compiler too.
+The optional Python MCP has its own requirements and lockfile.
 
-**Important**:
-- Do not store sensitive information (passwords, API keys, secrets) in issue descriptions or metadata
-- Issue data is committed to git and will be visible to anyone with repository access
-- bd does not encrypt data at rest (it's a local development tool)
-- The `.beads/` directory contains server state files (PID, port) and should have restrictive permissions (0700) to prevent other local users from tampering with process lifecycle
+Only source and documented build/release channels are trusted update sources.
+Do not run unsolicited “fix” archives or binaries attached to issues or comments,
+including files hosted on `github.com/user-attachments`. Report suspicious
+attachments to GitHub. This guidance retains the upstream warning about malicious
+fix attachments.
 
-### Git Workflow Security
-
-- bd uses standard git operations (no custom protocols)
-- Export/import operations read and write local files only
-- No network communication except through git and the Dolt dependency (see Network & Privacy below)
-- Git hooks (if used) run with your local user permissions
-
-### Network & Privacy
-
-Beads is local-first — the beads codebase itself contains no telemetry,
-analytics, or outbound network calls.
-
-However, the **Dolt** database engine (a beads dependency) collects usage
-metrics by default, contacting `doltremoteapi.dolthub.com` even when no
-remotes are configured.
-
-To disable Dolt metrics collection, use either method:
-
-```sh
-# Method 1: Dolt config (persistent)
-dolt config --global --add metrics.disabled true
-
-# Method 2: Environment variable (per-session or export in shell profile)
-export DOLT_DISABLE_EVENT_FLUSH=1
-```
-
-To verify, block `doltremoteapi.dolthub.com` in your firewall or DNS — beads
-continues working normally with no degradation.
-
-### Tracker Integration Trust Model
-
-When syncing with external trackers (GitHub Issues, Jira, Linear, GitLab, Azure DevOps), all data crossing the integration boundary is treated as **untrusted input**.
-
-**Trust boundaries:**
-- Issue titles and descriptions from external trackers may contain arbitrary content, including ANSI escape sequences, control characters, or prompt injection payloads targeting AI agents
-- External content is sanitized before terminal display (ANSI stripping, control character removal)
-- API responses are size-limited to prevent out-of-memory conditions from malformed responses
-- External issue identifiers are validated before use in SQL queries
-
-**Credential handling:**
-- Tracker API tokens stored in beads config (`bd config set`) are **plaintext** in the Dolt database
-- Prefer platform-native authentication when available (`gh auth`, `glab auth`, Azure CLI) — these use the platform's secure credential store
-- Never store tokens in environment variables in shared environments
-- Tokens are scoped to the permissions you grant — use minimal required scopes
-
-**Sync security model:**
-- Sync is always **user-initiated** — no background daemons, no inbound webhooks, no listening ports
-- No data is sent to external trackers unless the user explicitly runs a sync command such as `bd dolt push`
-- Conflict resolution strategies are deterministic and auditable via Dolt history
-
-**Content safety for AI agents:**
-- Issue descriptions imported from external trackers may contain prompt injection payloads
-- Consuming agents should treat all issue content as untrusted input
-- The `--json` output flag provides structured data that separates metadata from free-text content
-- beads does not execute or interpret issue content — it is stored and displayed only
-
-### Command Injection Protection
-
-bd uses parameterized SQL queries to prevent SQL injection. However:
-- Do not pass untrusted input directly to `bd` commands
-- Issue IDs are validated against the pattern `^[a-z0-9-]+$`
-- File paths are validated before reading/writing
-
-### Dependency Security
-
-bd has minimal dependencies:
-- Go standard library
-- Dolt (version-controlled SQL database)
-- Cobra CLI framework
-
-All dependencies are pinned via `go.sum` and verified with `go mod verify`. Renovate (or Dependabot) monitors for known vulnerabilities. Run `go mod verify` locally to check integrity.
-
-## Supported Versions
-
-We provide security updates for:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| main    | :white_check_mark: |
-| < 1.0   | :x:                |
-
-Once version 1.0 is released, we will support the latest major version and one previous major version.
-
-## Best Practices
-
-1. **Don't commit secrets** - Never put API keys, passwords, or credentials in issue descriptions
-2. **Review before sharing** - Check issue content before sharing project details
-3. **Use private repos** - If your issues contain proprietary information, use private git repositories
-4. **Validate git hooks** - If using automated export/import hooks, review them for safety
-5. **Regular updates** - Keep bd updated with your package manager, or re-run the install script from [docs/getting-started/installation.md](docs/getting-started/installation.md).
-
-## Known Limitations
-
-- bd is designed for **development/internal use**, not production secret management
-- Issue data is stored in plain text in the Dolt database
-- No built-in encryption or access control (relies on filesystem permissions)
-- No audit logging beyond git history
-
-For sensitive workflows, consider using bd only for non-sensitive task tracking.
-
-## Security Updates
-
-Security updates will be announced via:
-- GitHub Security Advisories
-- Release notes on GitHub
-- Git commit messages (tagged with `[security]`)
-
-Subscribe to the repository for notifications.
+Security fixes are qualified on a named source/binary cut and backend. Local
+success does not establish all-platform, shared-server, independent-clone or
+production qualification. Keep a known-compatible binary and project backup
+before adopting an experimental format update.

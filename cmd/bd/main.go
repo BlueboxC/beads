@@ -44,6 +44,8 @@ import (
 	"github.com/steveyegge/beads/internal/telemetry"
 	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/utils"
+	"github.com/steveyegge/beads/issueops"
+	"github.com/steveyegge/beads/journalops"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )
@@ -414,6 +416,16 @@ func renderTypedOpenError(err error) bool {
 		}
 		return true
 	}
+	var permissionErr *embeddeddolt.OpenPermissionError
+	if errors.As(err, &permissionErr) {
+		if jsonOutput {
+			handleEmbeddedOpenPermissionJSON(permissionErr)
+		} else {
+			fmt.Fprintf(os.Stderr, "%s\n\n%s\n", permissionErr.Error(), permissionErr.Hint())
+		}
+		return true
+	}
+
 	return false
 }
 
@@ -460,18 +472,42 @@ func applyNoColorFlag() {
 }
 
 // loadBeadsEnvFile loads .beads/.env into process environment for per-project
-// Dolt credentials (GH#2520). Uses gotenv.Load which is non-overriding —
-// existing shell env vars always take precedence.
+// Dolt credentials (GH#2520). Only passive connection and selector settings
+// are imported; executable settings must come from the operator's environment.
+// Existing shell env vars, including explicit empty values, take precedence.
 // Safe to call with an empty beadsDir (no-op).
 func loadBeadsEnvFile(beadsDir string) {
 	if beadsDir == "" {
 		return
 	}
 	envFile := filepath.Join(beadsDir, ".env")
-	if _, err := os.Stat(envFile); err != nil {
+	pairs, err := gotenv.Read(envFile)
+	if err != nil {
 		return
 	}
-	_ = gotenv.Load(envFile)
+	keys := make([]string, 0, len(pairs))
+	for key := range pairs {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	for _, key := range keys {
+		allowedKey := key
+		if runtime.GOOS == "windows" {
+			allowedKey = strings.ToUpper(key)
+		}
+		switch allowedKey {
+		case "BEADS_DIR", "BEADS_DB", "BD_DB",
+			"BEADS_DOLT_PASSWORD", "BEADS_DOLT_SERVER_MODE", "BEADS_DOLT_SHARED_SERVER",
+			"BEADS_DOLT_SERVER_HOST", "BEADS_DOLT_SERVER_PORT", "BEADS_DOLT_PORT",
+			"BEADS_DOLT_SERVER_SOCKET", "BEADS_DOLT_SERVER_USER", "BEADS_DOLT_SERVER_DATABASE",
+			"BEADS_DOLT_SERVER_TLS":
+			if _, present := os.LookupEnv(key); !present {
+				_ = os.Setenv(key, pairs[key])
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "bd: ignored unsupported project .env key %q; set it in the operator environment if needed\n", key)
+		}
+	}
 }
 
 func logConfigDiscovery(beadsDir, reason string) {
@@ -501,7 +537,7 @@ func loadBeadsSelectionEnvFile(beadsDir string) {
 		return
 	}
 	for _, key := range []string{"BEADS_DIR", "BEADS_DB", "BD_DB"} {
-		if os.Getenv(key) != "" {
+		if _, present := os.LookupEnv(key); present {
 			continue
 		}
 		if value, ok := pairs[key]; ok && strings.TrimSpace(value) != "" {
@@ -723,10 +759,9 @@ func prepareSelectedCommandContext(beadsDir string, loadEnv bool) {
 	}
 	config.CheckBeadsDirPermissions(beadsDir)
 	if err := loadServerModeFromBeadsDir(beadsDir); err != nil {
-		// Warn, don't fatal: this context also serves no-DB commands —
-		// doctor, init, bootstrap, config — which are exactly the repair
-		// paths for a corrupt metadata.json. Data commands stay protected
-		// by the hard error at store init and in the store factories.
+		// Context preparation also serves store-free commands. Backend-
+		// selecting commands (including doctor/init/bootstrap) enforce their
+		// own metadata guard; data store factories reject the load failure.
 		fmt.Fprintf(os.Stderr, "warning: %v\n", err)
 	}
 }
@@ -754,7 +789,7 @@ func refreshBoundCommandConfig(cmd *cobra.Command) {
 		readonlyMode = config.GetBool("readonly")
 	}
 	if !root.PersistentFlags().Changed("actor") {
-		actor = resolveConfiguredActor()
+		actor, actorSource = resolveConfiguredActorIdentity()
 	}
 	if !root.PersistentFlags().Changed("dolt-auto-commit") {
 		doltAutoCommit = config.GetString("dolt.auto-commit")
@@ -800,45 +835,52 @@ func resolveCommandBeadsDir(dbPath string) string {
 // BEADS_ACTOR is also set, silently letting the deprecated alias win (GH#4645).
 // Check BEADS_ACTOR explicitly first so the primary override outranks it.
 func resolveConfiguredActor() string {
-	if beadsActor := os.Getenv("BEADS_ACTOR"); beadsActor != "" {
-		return beadsActor
-	}
-	return config.GetString("actor")
+	value, _ := resolveConfiguredActorIdentity()
+	return value
 }
 
-// getActorWithGit returns the actor for audit trails with git config fallback.
-// Priority: --actor flag > BEADS_ACTOR env > BD_ACTOR env (deprecated) > git config user.name > $USER > "unknown"
-// This provides a sensible default for developers: their git identity is used unless
-// explicitly overridden
-func getActorWithGit() string {
-	// If actor is already set (from --actor flag), use it
+func resolveConfiguredActorIdentity() (string, string) {
+	if value := os.Getenv("BEADS_ACTOR"); value != "" {
+		return value, "env"
+	}
+	if value := os.Getenv("BD_ACTOR"); value != "" {
+		return value, "env"
+	}
+	if value := config.GetString("actor"); value != "" {
+		return value, "config"
+	}
+	return "", ""
+}
+
+var actorSource string
+
+// resolveActorIdentity preserves the existing name fallback and carries its source.
+// A source is provenance, not proof of a human or permission to act.
+func resolveActorIdentity() (string, string) {
 	if actor != "" {
-		return actor
+		source := actorSource
+		if source == "" {
+			source = "provided"
+		}
+		return actor, source
 	}
-
-	// Check BEADS_ACTOR env var (primary env override)
-	if beadsActor := os.Getenv("BEADS_ACTOR"); beadsActor != "" {
-		return beadsActor
+	if value, source := resolveConfiguredActorIdentity(); value != "" {
+		return value, source
 	}
-
-	// Check BD_ACTOR env var (deprecated alias, kept for backwards compatibility)
-	if bdActor := os.Getenv("BD_ACTOR"); bdActor != "" {
-		return bdActor
-	}
-
-	// Try git config user.name - the natural default for a git-native tool
 	if out, err := exec.Command("git", "config", "user.name").Output(); err == nil {
-		if gitUser := strings.TrimSpace(string(out)); gitUser != "" {
-			return gitUser
+		if value := strings.TrimSpace(string(out)); value != "" {
+			return value, "git"
 		}
 	}
-
-	// Fall back to system username
-	if user := os.Getenv("USER"); user != "" {
-		return user
+	if value := os.Getenv("USER"); value != "" {
+		return value, "user"
 	}
+	return "unknown", "unknown"
+}
 
-	return "unknown"
+func getActorWithGit() string {
+	value, _ := resolveActorIdentity()
+	return value
 }
 
 // getOwner returns the human owner for CV attribution.
@@ -1065,6 +1107,10 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		if handled, err := admitGraphPreview(cmd); handled || err != nil {
+			return err
+		}
+
 		// Block dangerous env var overrides that could cause data fragmentation (bd-hevyw).
 		if err := checkBlockedEnvVars(); err != nil {
 			return HandleError("%v", err)
@@ -1128,8 +1174,9 @@ var rootCmd = &cobra.Command{
 			}{dbPath, true}
 		}
 		if !cmd.Root().PersistentFlags().Changed("actor") && actor == "" {
-			actor = resolveConfiguredActor()
+			actor, actorSource = resolveConfiguredActorIdentity()
 		} else if cmd.Root().PersistentFlags().Changed("actor") {
+			actorSource = "flag"
 			flagOverrides["actor"] = struct {
 				Value  interface{}
 				WasSet bool
@@ -1521,7 +1568,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set actor for audit trail
-		actor = getActorWithGit()
+		actor, actorSource = resolveActorIdentity()
+		setRootContext(issueops.WithExternalResolver(journalops.WithActorSource(rootCtx, actor, actorSource), configuredExternalResolver()), rootCancel)
 		// Attach actor to the command span now that we have it.
 		if commandSpan != nil {
 			commandSpan.SetAttributes(attribute.String("bd.actor", actor))
@@ -1636,7 +1684,9 @@ var rootCmd = &cobra.Command{
 		// apply schema migrations before RunE validates arguments or renders a
 		// dry-run plan. frozenForMaintenance excludes it for the same reason
 		// as the trackBdVersion call above — see that comment.
-		if policy.runMaintenance && !previewMode && !frozenForMaintenance {
+		// The explicit schema verb owns migration and version reconciliation.
+		// An auxiliary open would consume its applied count first (#7283).
+		if policy.runMaintenance && !previewMode && !frozenForMaintenance && !isSchemaMigrateVerb(cmd) {
 			autoMigrateOnVersionBump(beadsDir)
 		}
 
@@ -1967,6 +2017,9 @@ var rootCmd = &cobra.Command{
 			setRootContext(nil, nil)
 		}()
 		defer restoreChangeDirSelection()
+		if graphPreviewActive {
+			return nil
+		}
 		// Give the hooks this command fired their moment before the process
 		// exits. Both plumbings run them fire-and-forget on their own
 		// goroutines, and a bd command is short enough that returning from main
@@ -2417,6 +2470,12 @@ func main() {
 	metrics.CloseAndFlush()
 
 	if err != nil {
+		if executedCmd == primeCmd && primeRequireMemoryLoad {
+			if code, ok := primeMemoryFailureExitCode(err); ok {
+				fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+				os.Exit(code)
+			}
+		}
 		if code, ok := exitCodeFromError(err); ok {
 			os.Exit(code)
 		}

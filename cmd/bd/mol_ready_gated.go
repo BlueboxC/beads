@@ -103,12 +103,12 @@ func renderGatedReadyMolecules(molecules []*GatedMolecule) error {
 		ui.RenderAccent(""), len(molecules))
 
 	for i, mol := range molecules {
-		fmt.Printf("%d. %s: %s\n", i+1, ui.RenderID(mol.MoleculeID), mol.MoleculeTitle)
+		fmt.Printf("%d. %s: %s\n", i+1, ui.RenderID(mol.MoleculeID), ui.SanitizeForTerminal(mol.MoleculeTitle))
 		if mol.ClosedGate != nil {
 			fmt.Printf("   Gate closed: %s (%s)\n", mol.ClosedGate.ID, mol.ClosedGate.AwaitType)
 		}
 		if mol.ReadyStep != nil {
-			fmt.Printf("   Ready step: %s - %s\n", mol.ReadyStep.ID, mol.ReadyStep.Title)
+			fmt.Printf("   Ready step: %s - %s\n", mol.ReadyStep.ID, ui.SanitizeForTerminal(mol.ReadyStep.Title))
 		}
 		fmt.Println()
 	}

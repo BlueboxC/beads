@@ -71,7 +71,7 @@ func TestDeleteJournalsTheRequestingActor(t *testing.T) {
 		switch {
 		case rec.Op == "delete" && rec.IssueID == "dja-blocker":
 			sawDelete = true
-			if rec.Actor != "alice" {
+			if rec.Actor != "alice" || rec.ActorSource != "flag" {
 				t.Errorf("delete record actor = %q, want %q (#5985)", rec.Actor, "alice")
 			}
 		// The cascade edge removal is journaled under the edge's SOURCE — the
@@ -79,7 +79,7 @@ func TestDeleteJournalsTheRequestingActor(t *testing.T) {
 		// delete, not to whoever created the edge.
 		case rec.Op == "dep_remove" && rec.IssueID == "dja-dependent":
 			sawCascadeDepRemove = true
-			if rec.Actor != "alice" {
+			if rec.Actor != "alice" || rec.ActorSource != "flag" {
 				t.Errorf("cascade dep_remove record actor = %q, want %q (#5985)", rec.Actor, "alice")
 			}
 		}

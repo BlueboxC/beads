@@ -221,7 +221,7 @@ func newTestServer(t *testing.T, cfg Config, tune ...func(*Server)) *testServer 
 	// The default source, for the tests that care about something else. A
 	// config that already names a source — either one — keeps it: defaulting a
 	// provider onto a roles-backed config would serve the wrong one and pass.
-	if cfg.Provider == nil && cfg.Reader == nil && cfg.Claimer == nil && cfg.CycleDetector == nil {
+	if cfg.GraphRead == nil && cfg.GraphViewer == nil && cfg.Provider == nil && cfg.Reader == nil && cfg.Claimer == nil && cfg.CycleDetector == nil {
 		cfg.Provider = &fakeProvider{}
 	}
 	cfg.Stdout = stdout

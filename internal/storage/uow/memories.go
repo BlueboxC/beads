@@ -53,10 +53,8 @@ var _ memoryops.Memories = (*memories)(nil)
 // RunTx to write, so the "Remembered" versus "Updated" verb described a moment
 // that had already passed. Nothing moves between the two now.
 //
-// The probe is GetAllConfig rather than GetConfig because Replaced is about the
-// ROW: this seam maps a missing row and a row stored empty to the same "", and
-// the map's key set is the only place the difference survives. It is one extra
-// query, and it makes the answer the same on this backend as on the other two.
+// Selected config maps distinguish absent rows from stored empty values.
+// The probe and write remain inside the same unit of work.
 func (m *memories) Remember(ctx context.Context, req memoryops.RememberRequest) (memoryops.RememberResult, error) {
 	key, err := memoryapi.ResolveKey(req.Key, req.Content)
 	if err != nil {
@@ -65,7 +63,7 @@ func (m *memories) Remember(ctx context.Context, req memoryops.RememberRequest) 
 	storageKey := storagememoryops.StorageKey(key)
 	replaced, err := RunTxResult(ctx, m.provider, func(ctx context.Context, uw UnitOfWork) (bool, string, error) {
 		cfg := uw.ConfigUseCase()
-		all, err := cfg.GetAllConfig(ctx)
+		all, err := cfg.GetConfigByPrefix(ctx, storageKey, "")
 		if err != nil {
 			return false, "", err
 		}
@@ -87,11 +85,13 @@ func (m *memories) Recall(ctx context.Context, req memoryops.RecallRequest) (mem
 		return memoryops.RecallResult{}, err
 	}
 	return RunTxRead(ctx, m.provider, func(ctx context.Context, uw UnitOfWork) (memoryops.RecallResult, error) {
-		value, err := uw.ConfigUseCase().GetConfig(ctx, storagememoryops.StorageKey(key))
+		storageKey := storagememoryops.StorageKey(key)
+		all, err := uw.ConfigUseCase().GetConfigByPrefix(ctx, storageKey, "")
 		if err != nil {
 			return memoryops.RecallResult{}, err
 		}
-		return memoryops.RecallResult{Key: key, Value: value, Found: value != ""}, nil
+		value, found := all[storageKey]
+		return memoryops.RecallResult{Key: key, Value: value, Found: found}, nil
 	})
 }
 
@@ -110,11 +110,12 @@ func (m *memories) Forget(ctx context.Context, req memoryops.ForgetRequest) (mem
 	storageKey := storagememoryops.StorageKey(key)
 	result, err := RunTxResult(ctx, m.provider, func(ctx context.Context, uw UnitOfWork) (memoryops.ForgetResult, string, error) {
 		cfg := uw.ConfigUseCase()
-		previous, err := cfg.GetConfig(ctx, storageKey)
+		all, err := cfg.GetConfigByPrefix(ctx, storageKey, "")
 		if err != nil {
 			return memoryops.ForgetResult{}, "", err
 		}
-		if previous == "" {
+		previous, found := all[storageKey]
+		if !found {
 			return memoryops.ForgetResult{Key: key}, "", nil
 		}
 		if err := cfg.DeleteConfig(ctx, storageKey); err != nil {

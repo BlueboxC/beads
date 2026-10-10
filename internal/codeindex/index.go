@@ -42,13 +42,14 @@ const (
 var parserScript string
 
 type Symbol struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Kind    string `json:"kind"`
-	Line    int    `json:"line"`
-	EndLine int    `json:"end_line"`
-	Parent  string `json:"parent"`
-	Static  bool   `json:"static,omitempty"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Line      int    `json:"line"`
+	EndLine   int    `json:"end_line"`
+	Parent    string `json:"parent"`
+	Static    bool   `json:"static,omitempty"`
+	Uncertain bool   `json:"uncertain,omitempty"`
 }
 
 type Import struct {
@@ -138,6 +139,14 @@ func IsKey(key string) bool     { return strings.HasPrefix(key, Prefix) }
 func digest(data []byte) string { value := sha256.Sum256(data); return hex.EncodeToString(value[:]) }
 
 func pack(value any) (string, error) {
+	encoded, err := encode(value)
+	if err == nil && len(encoded) > maxRowBytes {
+		return "", errors.New("code index row exceeds 60 KiB; narrow roots or split a large module")
+	}
+	return encoded, err
+}
+
+func encode(value any) (string, error) {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return "", err
@@ -153,15 +162,15 @@ func pack(value any) (string, error) {
 	if err := writer.Close(); err != nil {
 		return "", err
 	}
-	encoded := "code-v1:" + base64.StdEncoding.EncodeToString(buf.Bytes())
-	if len(encoded) > maxRowBytes {
-		return "", errors.New("code index row exceeds 60 KiB; narrow roots or split a large module")
-	}
-	return encoded, nil
+	return "code-v1:" + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }
 
 func unpack(value string, target any) error {
-	if !strings.HasPrefix(value, "code-v1:") || len(value) > maxRowBytes {
+	return unpackBounded(value, target, maxRowBytes)
+}
+
+func unpackBounded(value string, target any, maxEncoded int) error {
+	if !strings.HasPrefix(value, "code-v1:") || len(value) > maxEncoded {
 		return errors.New("invalid code index encoding")
 	}
 	data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, "code-v1:"))
@@ -268,15 +277,15 @@ func loadIndex(read func(string) (string, bool, error), selected map[string]bool
 		if !exists || digest([]byte(value)) != ref.Blob {
 			return Index{}, errors.New("missing or corrupt code index blob: " + ref.Path)
 		}
-		var file File
-		if err := unpack(value, &file); err != nil {
+		file, fileBytes, err := readFile(value, read)
+		if err != nil {
 			return Index{}, err
 		}
 		if file.Path != ref.Path || (entry.Version == 3 && (file.Language != languageOf(file.Path) || !slices.Contains(entry.Languages, file.Language))) {
 			return Index{}, errors.New("code index path mismatch")
 		}
 		entry.Files = append(entry.Files, file)
-		entry.Stats.StoredBytes += len(value)
+		entry.Stats.StoredBytes += fileBytes
 	}
 	return entry.Index, nil
 }
@@ -291,14 +300,14 @@ func Save(ctx context.Context, memories memoryops.Memories, plane map[string]str
 	stored := 0
 	for _, file := range index.Files {
 		file.Validity = ""
-		encoded, err := pack(file)
+		encoded, fileBytes, err := packFile(file, blobs)
 		if err != nil {
 			return 0, fmt.Errorf("%s: %w", file.Path, err)
 		}
 		blob := digest([]byte(encoded))
 		entry.References = append(entry.References, reference{Path: file.Path, Blob: blob})
 		blobs[Prefix+"blob/"+blob] = encoded
-		stored += len(encoded)
+		stored += fileBytes
 	}
 	// References are bounded parts too; the final manifest stays within TEXT.
 	if index.Version >= 2 {
@@ -319,6 +328,16 @@ func Save(ctx context.Context, memories memoryops.Memories, plane map[string]str
 	encoded, err := pack(entry)
 	if err != nil {
 		return 0, err
+	}
+	if atomic, ok := memories.(memoryops.AtomicMemories); ok {
+		// A pruning writer must never race a reused blob against manifest publication.
+		// The storage capability checks the prior generation and writes every required
+		// row together, skipping equal values within that same transaction.
+		blobs[manifestKey] = encoded
+		_, err := atomic.Apply(ctx, memoryops.BatchRequest{
+			Expected: map[string]string{manifestKey: plane[manifestKey]}, Remember: blobs,
+		})
+		return stored + len(encoded), err
 	}
 	keys := make([]string, 0, len(blobs))
 	for key := range blobs {
@@ -453,16 +472,54 @@ type parserOutput struct {
 	TypeScript string `json:"typescript"`
 	Files      []File `json:"files"`
 }
+
+// A named buffer avoids promoting ReaderFrom, which would bypass the write bound.
 type boundedBuffer struct {
-	bytes.Buffer
-	limit int
+	buffer bytes.Buffer
+	limit  int
 }
 
 func (b *boundedBuffer) Write(data []byte) (int, error) {
-	if b.Len()+len(data) > b.limit {
+	if b.buffer.Len()+len(data) > b.limit {
 		return 0, errors.New("AST parser output exceeds bound")
 	}
-	return b.Buffer.Write(data)
+	return b.buffer.Write(data)
+}
+
+func (b *boundedBuffer) Bytes() []byte { return b.buffer.Bytes() }
+
+func runParser(ctx context.Context, path string, args []string, input []byte) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, path, args...)
+	cmd.WaitDelay = time.Second
+	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
+	cmd.Stdin = bytes.NewReader(input)
+	var stdout, stderr boundedBuffer
+	stdout.limit, stderr.limit = maxJSONBytes, 4096
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return stdout.Bytes(), nil
+}
+func decodeParser(raw []byte, inputs []parserInput, name string) (parserOutput, error) {
+	var output parserOutput
+	if err := json.Unmarshal(raw, &output); err != nil {
+		if name == "AST" {
+			return output, err
+		}
+		return output, fmt.Errorf("invalid %s parser output", name)
+	}
+	if len(output.Files) != len(inputs) {
+		return output, fmt.Errorf("%s parser returned incomplete files", name)
+	}
+	for i, file := range output.Files {
+		if file.Path != inputs[i].Path {
+			return output, fmt.Errorf("%s parser path mismatch", name)
+		}
+	}
+	return output, nil
 }
 
 func parse(ctx context.Context, executable string, inputs []parserInput) (parserOutput, error) {
@@ -477,30 +534,11 @@ func parse(ctx context.Context, executable string, inputs []parserInput) (parser
 	if err != nil {
 		return parserOutput{}, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, path, "-I", "-S", "-c", parserScript)
-	cmd.Stdin = bytes.NewReader(data)
-	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")}
-	var stdout, stderr boundedBuffer
-	stdout.limit, stderr.limit = maxJSONBytes, 4096
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	output, err := runParser(ctx, path, []string{"-I", "-S", "-c", parserScript}, data)
+	if err != nil {
 		return parserOutput{}, fmt.Errorf("isolated AST parser failed: %w", err)
 	}
-	var result parserOutput
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return result, err
-	}
-	if len(result.Files) != len(inputs) {
-		return result, errors.New("AST parser returned incomplete files")
-	}
-	for i, file := range result.Files {
-		if file.Path != inputs[i].Path {
-			return result, errors.New("AST parser path mismatch")
-		}
-	}
-	return result, nil
+	return decodeParser(output, inputs, "AST")
 }
 
 func (r *Reader) Scan(ctx context.Context, roots, exclusions []string, previous Index, rebuild bool, python string) (Index, error) {
@@ -567,7 +605,11 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 		language := languageOf(path)
 		file := File{Path: path, SHA256: digest(data), Bytes: len(data), Module: strings.TrimSuffix(strings.ReplaceAll(path, "/", "."), ".py")}
 		if language != "python" {
-			file.Module = "js:" + strings.TrimSuffix(path, filepath.Ext(path))
+			prefix := "js:"
+			if treeLanguage(language) {
+				prefix = language + ":"
+			}
+			file.Module = prefix + strings.TrimSuffix(path, filepath.Ext(path))
 		}
 		if version >= 3 {
 			file.Language = language
@@ -630,8 +672,16 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 				for _, input := range batch {
 					parsed.Files = append(parsed.Files, parseGo(input))
 				}
+			case "xml":
+				for _, input := range batch {
+					parsed.Files = append(parsed.Files, parseXML(input))
+				}
 			default:
-				parsed, err = parseScripts(ctx, options.Node, batch)
+				if treeLanguage(language) {
+					parsed, err = parseTrees(ctx, options.Node, language, batch)
+				} else {
+					parsed, err = parseScripts(ctx, options.Node, batch)
+				}
 			}
 			if err != nil {
 				return Index{}, err
@@ -641,7 +691,9 @@ func (r *Reader) ScanWithOptions(ctx context.Context, roots, exclusions []string
 			}
 			if parsed.Node != "" {
 				result.Node = parsed.Node
-				result.TypeScript = parsed.TypeScript
+				if parsed.TypeScript != "" {
+					result.TypeScript = parsed.TypeScript
+				}
 			}
 			for i, position := range positions[language][start:end] {
 				file := &result.Files[position]
@@ -769,18 +821,18 @@ func (r *Reader) refresh(index Index, discovery bool) Index {
 	if parserChanged && (discovery || index.Version < 3) {
 		index.Warnings = append(index.Warnings, "AST parser changed; run bd code scan")
 	}
-	cache := make(map[string]string)
-	current := func(path string) string {
-		if value, found := cache[path]; found {
-			return value
+	type snapshotResult struct {
+		source knowledge.Source
+		err    error
+	}
+	cache := make(map[string]snapshotResult)
+	snapshot := func(path string) (knowledge.Source, error) {
+		value, found := cache[path]
+		if !found {
+			value.source, value.err = r.sources.Snapshot(path)
+			cache[path] = value
 		}
-		source, err := r.sources.Snapshot(path)
-		if err == nil {
-			cache[path] = source.SHA256
-		} else {
-			cache[path] = ""
-		}
-		return cache[path]
+		return value.source, value.err
 	}
 	known := make(map[string]bool)
 	for i := range index.Files {
@@ -790,17 +842,19 @@ func (r *Reader) refresh(index Index, discovery bool) Index {
 			file.Validity = "needs_review"
 		}
 		known[file.Path] = true
-		if current(file.Path) != file.SHA256 {
+		source, sourceErr := snapshot(file.Path)
+		if sourceErr != nil || source.SHA256 != file.SHA256 {
 			file.Validity = "needs_review"
 		}
 		contracts := make(map[string]bool)
 		for _, source := range file.Contracts {
 			contracts[source.Path] = true
-			if current(source.Path) != source.SHA256 {
+			current, err := snapshot(source.Path)
+			if err != nil || current.SHA256 != source.SHA256 {
 				file.Validity = "needs_review"
 			}
 		}
-		if source, err := r.sources.Snapshot(file.Path); err == nil {
+		if sourceErr == nil {
 			for _, contract := range source.Contracts {
 				if !contracts[contract] {
 					file.Validity = "needs_review"
@@ -841,4 +895,9 @@ func Summary(plane map[string]string) string {
 		label = "Code index (" + strings.Join(entry.Languages, ", ") + ")"
 	}
 	return fmt.Sprintf("\n%s snapshot: %d files, %d symbols, %d imports, %d call sites, %d parse errors. Inspect current hashes with bd code status; query bd code query <path-or-symbol>. Static references are not runtime proof. Rebuild preserves human records.\n", label, entry.Stats.Files, entry.Stats.Symbols, entry.Stats.Imports, entry.Stats.Calls, entry.Stats.ParseErrors)
+}
+
+// Knowledge joins the same confined source reader with explicit human records.
+func (r *Reader) Knowledge(plane map[string]string) knowledge.State {
+	return r.sources.Refresh(knowledge.Decode(plane))
 }

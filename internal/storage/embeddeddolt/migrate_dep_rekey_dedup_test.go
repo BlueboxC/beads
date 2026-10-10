@@ -38,16 +38,12 @@ import (
 // pending state forces the one repair pass.
 const depRekeyMarkerVersion = 26
 
-// TestDepRekeyMarkerIsLatestIgnored keeps the fixtures in this file honest. They
-// force the repair pass by unrecording the marker, which only works while the
-// pass is genuinely pending afterwards. If a later ignored migration lands, this
-// fails first with an actionable message instead of the marker-driven tests
-// failing with assertions that indict the repair code.
+// TestDepRekeyMarkerIsLatestIgnored ensures the fixed marker remains available.
+// Fixtures unrecord it and every later version, so subsequent migrations do not
+// hide the pending repair pass.
 func TestDepRekeyMarkerIsLatestIgnored(t *testing.T) {
-	if got := schema.LatestIgnoredVersion(); got != depRekeyMarkerVersion {
-		t.Fatalf("latest ignored migration is %d, not the dep-rekey marker %d; "+
-			"if you added ignored %d, point depRekeyMarkerVersion at 0026 anyway and confirm "+
-			"unrecordIgnoredVersionsFrom still leaves the marker pending", got, depRekeyMarkerVersion, got)
+	if got := schema.LatestIgnoredVersion(); got < depRekeyMarkerVersion {
+		t.Fatalf("latest ignored migration %d precedes the dep-rekey marker %d", got, depRekeyMarkerVersion)
 	}
 }
 

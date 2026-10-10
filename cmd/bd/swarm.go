@@ -559,7 +559,7 @@ func computeReadyFronts(analysis *SwarmAnalysis) {
 
 // renderSwarmAnalysis outputs human-readable analysis.
 func renderSwarmAnalysis(analysis *SwarmAnalysis) {
-	fmt.Printf("\n%s Swarm Analysis: %s\n", ui.RenderAccent("🐝"), analysis.EpicTitle)
+	fmt.Printf("\n%s Swarm Analysis: %s\n", ui.RenderAccent("🐝"), ui.SanitizeForTerminal(analysis.EpicTitle))
 	fmt.Printf("   Epic ID: %s\n", analysis.EpicID)
 	fmt.Printf("   Total issues: %d (%d closed)\n", analysis.TotalIssues, analysis.ClosedIssues)
 
@@ -578,7 +578,7 @@ func renderSwarmAnalysis(analysis *SwarmAnalysis) {
 				if i < len(front.Titles) {
 					title = front.Titles[i]
 				}
-				fmt.Printf("      • %s: %s\n", ui.RenderID(id), title)
+				fmt.Printf("      • %s: %s\n", ui.RenderID(id), ui.SanitizeForTerminal(title))
 			}
 		}
 	}
@@ -593,7 +593,7 @@ func renderSwarmAnalysis(analysis *SwarmAnalysis) {
 	if len(analysis.Warnings) > 0 {
 		fmt.Printf("\n%s Warnings:\n", ui.RenderWarn("⚠"))
 		for _, warning := range analysis.Warnings {
-			fmt.Printf("   • %s\n", warning)
+			fmt.Printf("   • %s\n", ui.SanitizeForTerminal(warning))
 		}
 	}
 
@@ -601,7 +601,7 @@ func renderSwarmAnalysis(analysis *SwarmAnalysis) {
 	if len(analysis.Errors) > 0 {
 		fmt.Printf("\n%s Errors:\n", ui.RenderFail("❌"))
 		for _, err := range analysis.Errors {
-			fmt.Printf("   • %s\n", err)
+			fmt.Printf("   • %s\n", ui.SanitizeForTerminal(err))
 		}
 	}
 
@@ -847,7 +847,7 @@ func getSwarmStatus(ctx context.Context, s SwarmStorage, epic *types.Issue) (*Sw
 
 // renderSwarmStatus outputs human-readable swarm status.
 func renderSwarmStatus(status *SwarmStatus) {
-	fmt.Printf("\n%s Ready Front Analysis: %s\n\n", ui.RenderAccent("🐝"), status.EpicTitle)
+	fmt.Printf("\n%s Ready Front Analysis: %s\n\n", ui.RenderAccent("🐝"), ui.SanitizeForTerminal(status.EpicTitle))
 
 	// Completed
 	fmt.Printf("Completed:     ")
@@ -871,7 +871,7 @@ func renderSwarmStatus(status *SwarmStatus) {
 		for _, issue := range status.Active {
 			part := fmt.Sprintf("⟳ %s", issue.ID)
 			if issue.Assignee != "" {
-				part += fmt.Sprintf(" [%s]", issue.Assignee)
+				part += fmt.Sprintf(" [%s]", ui.SanitizeForTerminal(issue.Assignee))
 			}
 			parts = append(parts, part)
 		}
@@ -1109,7 +1109,7 @@ Examples:
 			})
 		}
 		fmt.Printf("\n%s Created swarm molecule: %s\n", ui.RenderPass("✓"), ui.RenderID(swarmMol.ID))
-		fmt.Printf("   Epic: %s (%s)\n", epicID, epicTitle)
+		fmt.Printf("   Epic: %s (%s)\n", epicID, ui.SanitizeForTerminal(epicTitle))
 		if coordinator != "" {
 			fmt.Printf("   Coordinator: %s\n", coordinator)
 		}
@@ -1229,9 +1229,9 @@ Examples:
 				progressStr += fmt.Sprintf(", %d active", item.Active)
 			}
 
-			fmt.Printf("%s %s\n", ui.RenderID(item.ID), item.Title)
+			fmt.Printf("%s %s\n", ui.RenderID(item.ID), ui.SanitizeForTerminal(item.Title))
 			if item.EpicID != "" {
-				fmt.Printf("   Epic: %s (%s)\n", item.EpicID, item.EpicTitle)
+				fmt.Printf("   Epic: %s (%s)\n", item.EpicID, ui.SanitizeForTerminal(item.EpicTitle))
 			}
 			fmt.Printf("   Progress: %s (%.0f%%)\n", progressStr, item.Progress)
 			if item.Coordinator != "" {

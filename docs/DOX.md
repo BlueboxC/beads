@@ -12,10 +12,17 @@ Installation, concepts, architecture, workflows and recovery guidance.
 
 Root DOX.md and the parent chain remain binding.
 
+- Cross-project prerequisite guidance documents closed provides capabilities, conservative unresolved blocking, optional API context resolution and the existing explicit manual-claim boundary. Embedded readonly guidance distinguishes mutation guards from driver filesystem access and permanent permission diagnostics.
+
+- reference/graph-preview.md owns this fork’s experimental format, actual supported commands, source attribution and compatibility limits; ordinary onboarding remains in fork-continuity.md.
+
 ## Work Guidance
 
-Document shipped behavior and distinguish fork goals from implemented capabilities.
+Document shipped behavior and distinguish fork goals from implemented capabilities. Human gate guidance owns opt-in resolver setup, protected mutations, batch behavior and caller-controlled identity/admin limits; do not describe manual resolution as authenticated approval. Audit examples use stored EventType literals; sync onboarding separates fresh `init --remote` from existing workspaces, preserves local data and describes embedded as the default. Do not advertise removed CLI modes.
+Code-index guidance owns conservative impact, bounded fragmented file persistence, explicit rename-review drafts and opt-in atomic pruning; distinguish live-row payload savings from unchanged Dolt history and filesystem size.
+Observability guidance distinguishes default process metadata from operator-supplied attributes and local command-span arguments; telemetry stays opt-in.
 Fork behavior and onboarding: core-concepts/fork-continuity.md. Detailed commands: core-concepts/knowledge.md and core-concepts/code-index.md. Generated CLI pages and upstream installation channels describe the upstream release. DOX contracts stay outside Mintlify navigation.
+workflows/gates.md also owns optional GitLab gate setup, glab host selection, strict outcomes, exact checkout discovery and fixture-only qualification limits.
 
 ## Verification
 

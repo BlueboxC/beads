@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -13,6 +15,7 @@ import (
 	"github.com/steveyegge/beads/internal/codeindex"
 	"github.com/steveyegge/beads/internal/graphview"
 	"github.com/steveyegge/beads/internal/knowledge"
+	"github.com/steveyegge/beads/internal/storage/graphstore"
 	"github.com/steveyegge/beads/internal/types"
 	"github.com/steveyegge/beads/internal/workapi"
 	"github.com/steveyegge/beads/issueops"
@@ -34,7 +37,18 @@ func runProjectGraph(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer func() { _ = reader.Close() }()
-	plane, err := memories.List(rootCtx, memoryops.ListRequest{})
+	var snapshot graphstore.Snapshot
+	var plane memoryops.ListResult
+	if !graphPreviewActive {
+		plane, err = memories.List(rootCtx, memoryops.ListRequest{})
+	}
+	if graphPreviewActive {
+		err = withGraphStoreOutput(func(ctx context.Context, st *graphstore.Store) (any, string, error) {
+			var readErr error
+			plane, snapshot, readErr = st.ReadContinuity(ctx)
+			return nil, "", readErr
+		}, func(any, string) error { return nil })
+	}
 	if err != nil {
 		return err
 	}
@@ -61,22 +75,49 @@ func runProjectGraph(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	issues, err := store.SearchIssues(rootCtx, "", filter)
-	if err != nil {
-		if capErr := handleMaxRowsError(err); capErr != nil {
-			return capErr
-		}
-		return err
-	}
+	var issues []*types.Issue
 	var deps []*types.Dependency
-	for _, issue := range issues {
-		records, err := store.GetDependencyRecords(rootCtx, issue.ID)
-		if err != nil {
-			return fmt.Errorf("reading dependencies for %s: %w", issue.ID, err)
+	if graphPreviewActive {
+		for _, entry := range snapshot.Records {
+			if record, ok := entry.(graphstore.IssueRecord); ok {
+				raw, err := json.Marshal(record.Properties)
+				if err != nil {
+					return err
+				}
+				var issue types.Issue
+				if err := json.Unmarshal(raw, &issue); err != nil {
+					return err
+				}
+				issues = append(issues, &issue)
+			}
 		}
-		deps = append(deps, records...)
+		if maxRows > 0 && len(issues) > maxRows {
+			return fmt.Errorf("project task selection exceeds --max-rows (%d)", maxRows)
+		}
+	} else {
+		issues, err = store.SearchIssues(rootCtx, "", filter)
+		if err != nil {
+			if capErr := handleMaxRowsError(err); capErr != nil {
+				return capErr
+			}
+			return err
+		}
+		ids := make([]string, len(issues))
+		for i, issue := range issues {
+			ids[i] = issue.ID
+		}
+		records, err := store.GetDependencyRecordsForIssues(rootCtx, ids)
+		if err != nil {
+			return fmt.Errorf("reading project dependencies: %w", err)
+		}
+		for _, id := range ids {
+			deps = append(deps, records[id]...)
+		}
 	}
 	page := buildProjectGraph(workspace, state, index, issues, deps)
+	if graphPreviewActive {
+		mergePreviewGraph(&page, snapshot)
+	}
 	journal := activity.Read(plane.Memories, "", "", 1000)
 	page.Activity = &journal
 	if graphHTML {
@@ -223,4 +264,90 @@ func buildProjectGraph(workspace string, state knowledge.State, index codeindex.
 	})
 	sort.Slice(page.Files, func(i, j int) bool { return page.Files[i].Path < page.Files[j].Path })
 	return page
+}
+
+// Keep the semantic overview IDs while exposing each retained canonical record.
+// Derived file/symbol edges remain evidence, not authoritative blockers.
+func mergePreviewGraph(page *graphview.Page, snapshot graphstore.Snapshot) {
+	ids := map[string]string{}
+	for _, entry := range snapshot.Records {
+		switch record := entry.(type) {
+		case graphstore.IssueRecord:
+			ids[record.ID] = "issue:" + record.Properties.ID
+		case graphstore.Record:
+			id := record.ID
+			var metadata map[string]any
+			_ = json.Unmarshal(record.Metadata, &metadata)
+			if key, ok := metadata[graphstore.ContinuityKeyMetadata].(string); ok {
+				if strings.HasPrefix(key, "@knowledge/record/") {
+					id = "record:" + strings.TrimPrefix(key, "@knowledge/record/")
+				}
+				if strings.HasPrefix(key, "@knowledge/proposal/") {
+					var envelope struct {
+						Proposal *knowledge.Proposal `json:"proposal"`
+					}
+					if json.Unmarshal([]byte(record.Properties.Body), &envelope) == nil && envelope.Proposal != nil {
+						id = "proposal:" + envelope.Proposal.ID
+					}
+				}
+				if strings.HasPrefix(key, "@knowledge/review/") {
+					var envelope struct {
+						Review *knowledge.Review `json:"review"`
+					}
+					if json.Unmarshal([]byte(record.Properties.Body), &envelope) == nil && envelope.Review != nil && envelope.Review.Accepted != nil {
+						id = "record:" + envelope.Review.Accepted.ID
+					}
+				}
+			}
+			ids[record.ID] = id
+			found := false
+			for i := range page.Nodes {
+				if page.Nodes[i].ID == id {
+					raw, _ := json.Marshal(page.Nodes[i].Detail)
+					var detail map[string]any
+					if json.Unmarshal(raw, &detail) != nil || detail == nil {
+						detail = map[string]any{"evidence": page.Nodes[i].Detail}
+					}
+					detail["canonical_record"] = record
+					page.Nodes[i].Detail = detail
+					found = true
+					break
+				}
+			}
+			if !found {
+				page.Nodes = append(page.Nodes, graphview.Node{ID: id, Title: record.Properties.Title, Type: "memory", Status: "open", Validity: "current", Layer: 1, Detail: record})
+			}
+		}
+	}
+	for _, entry := range snapshot.Records {
+		if record, ok := entry.(graphstore.IssueRecord); ok {
+			for i := range page.Nodes {
+				if page.Nodes[i].ID == ids[record.ID] {
+					page.Nodes[i].Detail = record
+				}
+			}
+		}
+		if link, ok := entry.(graphstore.LinkRecord); ok {
+			kind := link.Type[strings.LastIndex(link.Type, "/")+1:]
+			switch kind {
+			case "preview-blocks-v1":
+				kind = "blocks"
+			case "preview-related-v2":
+				kind = "related"
+			case "example-follows":
+				kind = "follows"
+			case "example-cites":
+				kind = "cites"
+			}
+			source, target := ids[link.Source], ids[link.Target]
+			if source != "" && target != "" {
+				page.Links = append(page.Links, graphview.Edge{Source: source, Target: target, Type: kind, Detail: link})
+			}
+		}
+	}
+	sort.Slice(page.Nodes, func(i, j int) bool { return page.Nodes[i].ID < page.Nodes[j].ID })
+	sort.Slice(page.Links, func(i, j int) bool {
+		a, b := page.Links[i], page.Links[j]
+		return a.Source+a.Target+a.Type < b.Source+b.Target+b.Type
+	})
 }

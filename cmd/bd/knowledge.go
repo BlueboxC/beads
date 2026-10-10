@@ -143,16 +143,8 @@ var knowledgeRecordCmd = &cobra.Command{
 		if !found && len(state.Records) >= knowledge.MaxRecords {
 			return fmt.Errorf("at most %d knowledge records; consolidate or explicitly forget an old record", knowledge.MaxRecords)
 		}
-		for _, related := range record.Related {
-			exists := false
-			for _, existing := range state.Records {
-				if existing.ID == related {
-					exists = true
-				}
-			}
-			if !exists || related == record.ID {
-				return fmt.Errorf("related record %q must already exist and differ from this record", related)
-			}
+		if err := validateProposalRelations(record, state); err != nil {
+			return err
 		}
 		if err := knowledge.SaveRecord(rootCtx, memories, record); err != nil {
 			return err

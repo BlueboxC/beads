@@ -171,6 +171,9 @@ var beadDMLExemptions = map[string]string{
 	"DeleteWispFromDependenciesInTx":         "cleans up dep rows during a delete that journals the delete",
 	"DeleteWispsFromDependenciesInTx":        "cleans up dep rows during a delete that journals the delete",
 	"DeleteWispAuxRowsInTx":                  "cleans up wisp label/event/comment/counter rows during a delete that journals the delete",
+	"RecordVersionForCreateInTx":             "records the accepted create postimage and revision bookkeeping; the calling create journals the logical mutation",
+	"RecordVersionAtInTx":                    "records an accepted postimage and revision bookkeeping; the calling mutation journals it",
+	"RecordVersionInTx":                      "records an accepted postimage and revision bookkeeping; the calling mutation journals it",
 
 	// (4) compaction maintenance — a lossy content rewrite outside the
 	// create/update/close/delete/dep/label op vocabulary. Carried from the

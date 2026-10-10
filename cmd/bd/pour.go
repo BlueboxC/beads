@@ -284,14 +284,14 @@ func renderPourDryRun(protoID string, subgraph *TemplateSubgraph, vars map[strin
 		newTitle := substituteVariables(issue.Title, vars)
 		suffix := ""
 		if issue.ID == subgraph.Root.ID && assignee != "" {
-			suffix = fmt.Sprintf(" (assignee: %s)", assignee)
+			suffix = fmt.Sprintf(" (assignee: %s)", ui.SanitizeForTerminal(assignee))
 		}
-		fmt.Printf("  - %s (from %s)%s\n", newTitle, issue.ID, suffix)
+		fmt.Printf("  - %s (from %s)%s\n", ui.SanitizeForTerminal(newTitle), issue.ID, suffix)
 	}
 	if len(attachments) > 0 {
 		fmt.Printf("\nAttachments (%s bonding):\n", attachType)
 		for _, attach := range attachments {
-			fmt.Printf("  + %s (%d issues)\n", attach.title, attach.steps)
+			fmt.Printf("  + %s (%d issues)\n", ui.SanitizeForTerminal(attach.title), attach.steps)
 		}
 	}
 }

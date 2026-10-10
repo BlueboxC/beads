@@ -116,6 +116,8 @@ func cliCompatibleMigrationSQL(name, sqlText string) string {
 		// synced the wisp tables must use the frozen source text instead --
 		// see cliSubstituteAssumesWispTables.
 		return cliMigration0065WidenWispCommentsText
+	case "0068_add_events_actor_source.up.sql":
+		return "ALTER TABLE bd_events_journal ADD COLUMN actor_source VARCHAR(16) NOT NULL DEFAULT '';"
 	case "0066_add_events_journal_actor.up.sql":
 		// Direct DDL for the same reason as 0060: the source migration's
 		// PREPARE guard (INFORMATION_SCHEMA probe) makes it idempotent on

@@ -527,9 +527,9 @@ func sortStepsByDependencyOrder(steps []*StepStatus, subgraph *TemplateSubgraph)
 // printMoleculeProgress prints the progress in human-readable format
 func printMoleculeProgress(mol *MoleculeProgress) {
 	fmt.Printf("You're working on molecule %s\n", ui.RenderAccent(mol.MoleculeID))
-	fmt.Printf("  %s\n", mol.MoleculeTitle)
+	fmt.Printf("  %s\n", ui.SanitizeForTerminal(mol.MoleculeTitle))
 	if mol.Assignee != "" {
-		fmt.Printf("  Assigned to: %s\n", mol.Assignee)
+		fmt.Printf("  Assigned to: %s\n", ui.SanitizeForTerminal(mol.Assignee))
 	}
 	fmt.Println()
 
@@ -539,14 +539,14 @@ func printMoleculeProgress(mol *MoleculeProgress) {
 		if step.IsCurrent {
 			marker = " <- YOU ARE HERE"
 		}
-		fmt.Printf("  %s %s: %s%s\n", statusIcon, step.Issue.ID, step.Issue.Title, marker)
+		fmt.Printf("  %s %s: %s%s\n", statusIcon, step.Issue.ID, ui.SanitizeForTerminal(step.Issue.Title), marker)
 	}
 
 	fmt.Println()
 	fmt.Printf("Progress: %d/%d steps complete\n", mol.Completed, mol.Total)
 
 	if mol.NextStep != nil && mol.CurrentStep == nil {
-		fmt.Printf("\nNext ready: %s - %s\n", mol.NextStep.ID, mol.NextStep.Title)
+		fmt.Printf("\nNext ready: %s - %s\n", mol.NextStep.ID, ui.SanitizeForTerminal(mol.NextStep.Title))
 		fmt.Printf("  Start with: bd update %s --claim\n", mol.NextStep.ID)
 	}
 
@@ -676,7 +676,7 @@ func PrintContinueResult(result *ContinueResult) {
 	}
 
 	fmt.Printf("\nNext ready in molecule:\n")
-	fmt.Printf("  %s: %s\n", result.NextStep.ID, result.NextStep.Title)
+	fmt.Printf("  %s: %s\n", result.NextStep.ID, ui.SanitizeForTerminal(result.NextStep.Title))
 
 	if result.AutoAdvanced {
 		fmt.Printf("\n%s Marked in_progress (use --no-auto to skip)\n", ui.RenderWarn("→"))
@@ -727,7 +727,7 @@ func filterStepsByRange(steps []*StepStatus, start, end int) []*StepStatus {
 // printLargeMoleculeSummary prints a summary for molecules with many steps.
 func printLargeMoleculeSummary(stats *types.MoleculeProgressStats) {
 	fmt.Printf("Molecule: %s\n", ui.RenderAccent(stats.MoleculeID))
-	fmt.Printf("  %s\n", stats.MoleculeTitle)
+	fmt.Printf("  %s\n", ui.SanitizeForTerminal(stats.MoleculeTitle))
 	fmt.Println()
 
 	// Progress summary

@@ -100,7 +100,7 @@ func renderStatuses(customStatuses []types.CustomStatus) error {
 	fmt.Println("Built-in statuses:")
 	for _, s := range builtInStatuses {
 		icon := ui.RenderStatusIcon(string(s.Status))
-		fmt.Printf("  %s %-14s [%-6s]  %s\n", icon, s.Status, s.Category, s.Description)
+		fmt.Printf("  %s %-14s [%-6s]  %s\n", icon, s.Status, s.Category, ui.SanitizeForTerminal(s.Description))
 	}
 
 	if len(customStatuses) > 0 {

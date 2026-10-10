@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/steveyegge/beads/internal/storage/graphstore"
 	"io"
 	"os"
 	"path/filepath"
@@ -144,7 +145,7 @@ Memory injection caps:
 		}
 		emit := func(content string) error {
 			if primeRequireMemoryLoad && primeMemoryLoadError != nil {
-				return fmt.Errorf("Beads memory context unavailable: %s", primeErrorSummary(primeMemoryLoadError))
+				return fmt.Errorf("Beads memory context unavailable: %w", primeMemoryLoadError)
 			}
 			if primeHookJSONMode {
 				_ = outputHookJSON(os.Stdout, content)
@@ -353,6 +354,25 @@ var primeAgentProfile = func() config.AgentProfile {
 	return config.GetAgentProfile()
 }
 
+var primeGitContextScope = func() string {
+	if changeDir != "" {
+		if dir, err := filepath.Abs(changeDir); err == nil {
+			return dir
+		}
+	}
+	if rc, err := internalbeads.GetRepoContext(); err == nil && rc.CWDRepoRoot != "" {
+		return rc.CWDRepoRoot
+	}
+	if cwd, err := os.Getwd(); err == nil {
+		return cwd
+	}
+	return "(unknown working directory)"
+}
+
+func primeGitContextScopeRule(scope string) string {
+	return fmt.Sprintf("Git context scope: %q. Git observations, restrictions, and authority in this output apply only to this workspace. For another repository, inspect its Git context and follow that repository's existing authority and higher-priority instructions; this output grants no authority there.", scope)
+}
+
 // primeHasGitRemote detects if any git remote is configured (stubbable for tests)
 var primeHasGitRemote = func() bool {
 	rc, err := internalbeads.GetRepoContext()
@@ -442,6 +462,32 @@ func outputMemoriesOnlyContext(w io.Writer) error {
 // silent: no workspace at all (nothing to inject), and a healthy store with
 // zero memories (a fresh workspace must not be given noise).
 func formatMemoriesForPrime(compact bool) string {
+	if graphPreviewActive {
+		var plane map[string]string
+		err := withGraphStoreOutput(func(ctx context.Context, st *graphstore.Store) (any, string, error) {
+			result, snapshot, err := st.ReadContinuity(ctx)
+			if err != nil {
+				return nil, "", err
+			}
+			plane = result.Memories
+			for _, entry := range snapshot.Records {
+				if record, ok := entry.(graphstore.Record); ok {
+					var metadata map[string]any
+					if json.Unmarshal(record.Metadata, &metadata) != nil {
+						return nil, "", errors.New("invalid graph memory metadata")
+					}
+					if _, managed := metadata[graphstore.ContinuityKeyMetadata]; !managed && record.Properties.Body != "" {
+						plane[record.ID] = record.Properties.Body
+					}
+				}
+			}
+			return nil, "", nil
+		}, func(any, string) error { return nil })
+		if err != nil {
+			return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("memory_list", err))
+		}
+		return renderPrimeMemoryPlane(plane, compact)
+	}
 	// bd-mm8wf: in a proxied-server workspace the memory read must ride the
 	// proxied plane (UOW provider), never ensureStoreActiveForPrime — the
 	// lazy direct-store open is the same seam class bd-m7zzd closed in
@@ -467,19 +513,19 @@ func formatMemoriesForPrime(compact bool) string {
 			if errors.Is(err, ErrNoBeadsDatabase) {
 				return "" // No workspace here — genuinely nothing to inject.
 			}
-			return formatPrimeMemoryUnavailable(compact, err)
+			return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("store_open", err))
 		}
 	}
 	if store == nil {
-		return formatPrimeMemoryUnavailable(compact, errors.New("storage reported ready but no store is active"))
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("store_open", errors.New("storage reported ready but no store is active")))
 	}
 	memories, err := store.Memories()
 	if err != nil {
-		return formatPrimeMemoryUnavailable(compact, err)
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("memory_accessor", err))
 	}
 	result, err := memories.List(context.Background(), memoryops.ListRequest{})
 	if err != nil {
-		return formatPrimeMemoryUnavailable(compact, err)
+		return formatPrimeMemoryUnavailable(compact, newPrimeMemoryFailure("memory_list", err))
 	}
 	return renderPrimeMemoryPlane(result.Memories, compact)
 }
@@ -617,8 +663,12 @@ func primeMemoryCapNote(maxCount, maxChars int) string {
 }
 
 func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
+	return formatPrimeMemoryTimeoutAt(compact, timeout, "store_open")
+}
+
+func formatPrimeMemoryTimeoutAt(compact bool, timeout time.Duration, stage string) string {
 	if primeRequireMemoryLoad {
-		primeMemoryLoadError = context.DeadlineExceeded
+		primeMemoryLoadError = newPrimeMemoryFailure(stage, context.DeadlineExceeded)
 	}
 	if timeout <= 0 {
 		timeout = primeStoreTimeoutDefault
@@ -643,7 +693,7 @@ func formatPrimeMemoryTimeout(compact bool, timeout time.Duration) string {
 // zero recall (gh#5877).
 func formatPrimeMemoryUnavailable(compact bool, err error) string {
 	if primeRequireMemoryLoad {
-		primeMemoryLoadError = errors.New(primeErrorSummary(err))
+		primeMemoryLoadError = err
 	}
 	msg := fmt.Sprintf("Skipped: beads storage unavailable (%s) — persistent memories were NOT injected this session. Run `bd doctor`; if the store is a Dolt server, check it is running and reachable.", primeErrorSummary(err))
 	if compact {
@@ -680,6 +730,7 @@ func primeErrorSummary(err error) string {
 
 // outputMCPContext outputs minimal context for MCP users
 func outputMCPContext(w io.Writer, stealthMode bool) error {
+	gitScope := primeGitContextScope()
 	ephemeral := isEphemeralBranch()
 	noPush := primeNoPushConfigured()
 	// localOnly reflects only the git-remote axis (drives git push/pull
@@ -699,10 +750,10 @@ func outputMCPContext(w io.Writer, stealthMode bool) error {
 	} else if localOnly {
 		if primeAgentProfile() == config.ProfileTeamMaintainer {
 			closeProtocol = "Before saying \"done\": bd close <completed-ids>; run checks; run git status and commit local changes as routine work (agent.profile=team-maintainer); do not push, pull, or run remote sync."
-			profileRule = "Git authority: local-only/no-remote. No git remote configured. Profile: team-maintainer active (agent.profile=team-maintainer) - local commits are routine; do not push, pull, or run remote sync. Explicit no-commit instructions still override."
+			profileRule = "Git authority: local-only/no-remote. No git remote configured for this workspace. Profile: team-maintainer active (agent.profile=team-maintainer) - local commits are routine; do not push, pull, or run remote sync. Explicit no-commit instructions still override."
 		} else {
 			closeProtocol = "Before saying \"done\": bd close <completed-ids>; run checks; report git status and proposed handoff (local-only/no remote sync)"
-			profileRule = "Git authority: local-only/no-remote. No git remote configured. Do not push, pull, or run remote sync. Local git operations follow active user, orchestrator, and repository authority."
+			profileRule = "Git authority: local-only/no-remote. No git remote configured for this workspace. Do not push, pull, or run remote sync. Local git operations follow active user, orchestrator, and repository authority."
 		}
 	} else if ephemeral {
 		closeProtocol = "Before saying \"done\": bd close <completed-ids>; run checks; report git status and proposed handoff (no push - ephemeral branch)"
@@ -749,6 +800,7 @@ func outputMCPContext(w io.Writer, stealthMode bool) error {
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - **Memory**: Use ` + "`bd remember`" + ` for persistent knowledge. Do NOT use MEMORY.md files.
 - Persistence you don't need beats lost context
+- ` + primeGitContextScopeRule(gitScope) + `
 - ` + profileRule + `
 
 Start: Check ` + "`ready`" + ` tool for available work.
@@ -760,6 +812,7 @@ Start: Check ` + "`ready`" + ` tool for available work.
 
 // outputCLIContext outputs full CLI reference for non-MCP users
 func outputCLIContext(w io.Writer, stealthMode bool) error {
+	gitScope := primeGitContextScope()
 	ephemeral := isEphemeralBranch()
 	noPush := primeNoPushConfigured()
 	// localOnly reflects only the git-remote axis (drives git push/pull
@@ -789,7 +842,7 @@ bd close <id1> <id2> ...    # Close all completed issues at once
 		gitWorkflowRule = "Git workflow: stealth mode (no git ops)"
 		profileRule = "Git authority: no git operations in this context"
 	} else if localOnly {
-		closeNote = "**Note:** No git remote configured. Do not push, pull, or run remote sync. Local git operations follow active user, orchestrator, and repository authority."
+		closeNote = "**Note:** No git remote configured for this workspace. Do not push, pull, or run remote sync. Local git operations follow active user, orchestrator, and repository authority."
 		syncSection = `### Sync & Collaboration
 - ` + "`bd search <query>`" + ` - Search issues by keyword`
 		if primeAgentProfile() == config.ProfileTeamMaintainer {
@@ -943,6 +996,7 @@ git status                  # Check changed files
 - **Workflow**: Create beads issue BEFORE writing code, mark in_progress when starting
 - **Memory**: Use ` + "`bd remember \"insight\"`" + ` for persistent knowledge across sessions. Do NOT use MEMORY.md files — they fragment across accounts. Search with ` + "`bd memories <keyword>`" + `.
 - Persistence you don't need beats lost context
+- ` + primeGitContextScopeRule(gitScope) + `
 - ` + profileRule + `
 - ` + gitWorkflowRule + `
 - Session management: check ` + "`bd ready`" + ` for available work

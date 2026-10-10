@@ -33,6 +33,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewVersions(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("history")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -115,7 +118,7 @@ func runHistory(ctx context.Context, backend historyBackend, issueID string, lim
 			fmt.Printf("  %s %s: %s [P%d - %s]\n",
 				statusIcon,
 				entry.Issue.ID,
-				entry.Issue.Title,
+				ui.SanitizeForTerminal(entry.Issue.Title),
 				entry.Issue.Priority,
 				entry.Issue.Status)
 		}

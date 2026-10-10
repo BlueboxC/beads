@@ -1,0 +1,228 @@
+{
+  "package": "tree-sitter-wasm",
+  "version": "2.0.4",
+  "repository": "https://github.com/Crysthamus/tree-sitter-wasm",
+  "source_commit": "1500b80eca8dcda8da1a3286b524435fc5e2d824",
+  "tarball": "https://registry.npmjs.org/tree-sitter-wasm/-/tree-sitter-wasm-2.0.4.tgz",
+  "integrity": "sha512-U83TRmp3oC3DtFA7bMka+o9jtOjZDZpW5/Y5oLzVtSzkcBllQWaYwtQIeTh14aRzZ7feTweBMSFk8NAqwQWmkg==",
+  "runtime": "Existing @vscode/tree-sitter-wasm 0.3.1 / web-tree-sitter 0.25.10 unchanged",
+  "source_note": "Sources and license notices match packaged devDependency specifiers. npm integrity verifies the archive bytes; build reproducibility and cryptographic attestation verification are not claimed. The package attestation identifies source_commit. XML uses Go encoding/xml, not a bundled XML grammar.",
+  "grammars": {
+    "php": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-php",
+      "commit": "92b5271b60bec77fb65b5e5bc41561e8dac81299",
+      "declared_specifier": "git+https://github.com/tree-sitter/tree-sitter-php.git#92b5271b60bec77fb65b5e5bc41561e8dac81299",
+      "source_tarball_sha256": "2dfa7643857b94a273b6b413b4cb694aef9c9898e17403f97b66a9ba9c163891"
+    },
+    "c": {
+      "package": "tree-sitter-c",
+      "version": "0.24.1",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter/tree-sitter-c.git",
+        "type": "git"
+      },
+      "integrity": "sha512-lkYwWN3SRecpvaeqmFKkuPNR3ZbtnvHU+4XAEEkJdrp3JfSp2pBrhXOtvfsENUneye76g889Y0ddF2DM0gEDpA==",
+      "git_head": "7fa1be1b694b6e763686793d97da01f36a0e5c12",
+      "declared_specifier": "^0.24.1",
+      "source_tarball_sha256": "8e9ecd7687665d2fa1b3c07fbd1f4380b7d285850d6954629e2156e1b757451e"
+    },
+    "bash": {
+      "package": "tree-sitter-bash",
+      "version": "0.25.1",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter/tree-sitter-bash.git",
+        "type": "git"
+      },
+      "integrity": "sha512-7hMytuYIMoXOq24yRulgIxthE9YmggZIOHCyPTTuJcu6EU54tYD+4G39cUb28kxC6jMf/AbPfWGLQtgPTdh3xw==",
+      "git_head": "801326684a26ffc4e749bb016c50c6c30bdfa345",
+      "declared_specifier": "^0.25.1",
+      "source_tarball_sha256": "d4b2819508ea97cb8953fff7e304a610d443007bd395c8f03a15de9a8ae4a6f9"
+    },
+    "powershell": {
+      "package": "tree-sitter-powershell",
+      "version": "0.26.4",
+      "repository": {
+        "url": "git+https://github.com/airbus-cert/tree-sitter-powershell.git",
+        "type": "git"
+      },
+      "integrity": "sha512-5RwNW/qN/cKArZY0znvTOG+OWSau7Agel5K0A8KQ5Nubw/4SyZ5KC02RKCaYcA2ur5UQ8esyxe9+6yXup2MXkw==",
+      "git_head": "4ffe56d66aa926c28442befbb5b89d1437d7199c",
+      "declared_specifier": "^0.26.4",
+      "source_tarball_sha256": "92f0ce6497f1456248eb1a2d74c567cdfb1328cccd573c1a48d1b7c4e76b53e3"
+    },
+    "html": {
+      "package": "tree-sitter-html",
+      "version": "0.23.2",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter/tree-sitter-html.git",
+        "type": "git"
+      },
+      "integrity": "sha512-TN+l+7cCeLx9db/1RhRSqMAZO/266Oh2BHb8J8hMSSFLuzYvFTYP/UnD3S0mny5awzw05KzFNgu2vnwzN9wVJg==",
+      "git_head": "5a5ca8551a179998360b4a4ca2c0f366a35acc03",
+      "declared_specifier": "^0.23.2",
+      "source_tarball_sha256": "6b024fc38fce2b4807d0ac35023487da682a15cd986ba2ee9d6c25feff9392ed"
+    },
+    "css": {
+      "package": "tree-sitter-css",
+      "version": "0.25.0",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter/tree-sitter-css.git",
+        "type": "git"
+      },
+      "integrity": "sha512-FRc9R8ePrwJiUhZsuZ/wcFQ3K8Z+9yCgDrrUjuYswGWlN89UvcB9vslTUGZElQWGwhS8sUw3/r2n4lpb2sxT4Q==",
+      "git_head": "dda5cfc5722c429eaba1c910ca32c2c0c5bb1a3f",
+      "declared_specifier": "^0.25.0",
+      "source_tarball_sha256": "612587252f82487d6d0376287bb8f435e5ad5ce3e2ca75fc0fe4727fae050c9e"
+    },
+    "graphql": {
+      "repository": "https://github.com/joowani/tree-sitter-graphql",
+      "commit": "1abcd628084f2fd8b1e74081b5552acfd2c21cd6",
+      "declared_specifier": "git+https://github.com/joowani/tree-sitter-graphql.git#1abcd628084f2fd8b1e74081b5552acfd2c21cd6",
+      "source_tarball_sha256": "e31d68724bc7c5dc415dd4442ebf2804f3d6f15c3ec085d481d3a47a2489d821"
+    },
+    "kotlin": {
+      "package": "tree-sitter-kotlin",
+      "version": "0.3.8",
+      "repository": {
+        "url": "git+https://github.com/fwcd/tree-sitter-kotlin.git",
+        "type": "git"
+      },
+      "integrity": "sha512-A4obq6bjzmYrA+F0JLLoheFPcofFkctNaZSpnDd+GPn1SfVZLY4/GG4C0cYVBTOShuPBGGAOPLM1JWLZQV4m1g==",
+      "git_head": "e1a2d5ad1f61f5740677183cd4125bb071cd2f30",
+      "declared_specifier": "^0.3.8",
+      "source_tarball_sha256": "e2da896c8316af1d491afc69b49173da97373bb757d07f11c455a0963c62e6b0"
+    },
+    "swift": {
+      "package": "tree-sitter-swift",
+      "version": "0.7.1",
+      "repository": {
+        "url": "git+https://github.com/alex-pinkus/tree-sitter-swift.git",
+        "type": "git"
+      },
+      "integrity": "sha512-pneKVTuGamaBsqqqfB9BvNQjktzh/0IVPR54jLB5Fq/JTDQwYHd0Wo6pVyZ5jAYpbztzq+rJ/rpL9ruxTmSoKw==",
+      "git_head": "88bfd19a89be9d0481b14566fb6160cccea2fe0a",
+      "declared_specifier": "^0.7.1",
+      "source_tarball_sha256": "abd89284f1b0f1375ba5efaa9ddf99ad4b16ac91fc7751ef10c5f013cca06f8c"
+    },
+    "dart": {
+      "repository": "https://github.com/UserNobody14/tree-sitter-dart",
+      "commit": "be07cf7118d3dba06236a3f19541685a68209934",
+      "declared_specifier": "git+https://github.com/UserNobody14/tree-sitter-dart.git#be07cf7118d3dba06236a3f19541685a68209934",
+      "source_tarball_sha256": "b126efb8dfeeba8b71f0c6ae1f0cd09cf8b205560786b31d44cc16b283e782f2"
+    },
+    "sql": {
+      "package": "@derekstride/tree-sitter-sql",
+      "version": "0.3.11",
+      "repository": {
+        "url": "git+https://github.com/derekstride/tree-sitter-sql.git",
+        "type": "git"
+      },
+      "integrity": "sha512-YRtTXVWK4n7/3BUGchhGcW/IF1u2ldR2fd0t3Uw7ymbGXcRfiG3v1T6N43jQKXz2LwN+Nx+Ab96T0HtusBVH9g==",
+      "git_head": "7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8",
+      "declared_specifier": "^0.3.11",
+      "source_tarball_sha256": "20f2670c6bee98c442cf0a2afe6e4965b1a96a7752c89d8a37604c173db0c623"
+    },
+    "json": {
+      "package": "tree-sitter-json",
+      "version": "0.24.8",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter/tree-sitter-json.git",
+        "type": "git"
+      },
+      "integrity": "sha512-Tc9ZZYwHyWZ3Tt1VEw7Pa2scu1YO7/d2BCBbKTx5hXwig3UfdQjsOPkPyLpDJOn/m1UBEWYAtSdGAwCSyagBqQ==",
+      "git_head": "ee35a6ebefcef0c5c416c0d1ccec7370cfca5a24",
+      "declared_specifier": "^0.24.8",
+      "source_tarball_sha256": "39e96d1e4231d200562ebd69105151cd43f58dda4b18a0e9a62fe2991da35b9c"
+    },
+    "yaml": {
+      "repository": "https://github.com/tree-sitter-grammars/tree-sitter-yaml",
+      "commit": "a1c4812a73ec5e089de8e441fdea3a921e8d5079",
+      "declared_specifier": "git+https://github.com/tree-sitter-grammars/tree-sitter-yaml.git#a1c4812a73ec5e089de8e441fdea3a921e8d5079",
+      "source_tarball_sha256": "6548cd059983e8073dfa39f102641f71d045b37f3a05b7ebd799ad17df8471d1"
+    },
+    "toml": {
+      "package": "@tree-sitter-grammars/tree-sitter-toml",
+      "version": "0.7.0",
+      "repository": {
+        "url": "git+https://github.com/tree-sitter-grammars/tree-sitter-toml.git",
+        "type": "git"
+      },
+      "integrity": "sha512-873Kl518Qm5ghbWadISY41rwFjee0v+2bU4twwvAw2VAJcWwj2vBo3F3hOCXfbqHaFiqc4qh6eLhkMl2YZJS0g==",
+      "git_head": "64b56832c2cffe41758f28e05c756a3a98d16f41",
+      "declared_specifier": "^0.7.0",
+      "source_tarball_sha256": "b3a7834caf2e5266d09fc5df0b166a665412b9688b86ac02ab172c48bdab7e13"
+    }
+  },
+  "files": {
+    "tree-sitter-php.wasm": {
+      "sha256": "d2e6951899eb5df9e04bfbf67292a708ca61d595387bc064fc837829de2da453",
+      "gzip_sha256": "62976697c1d36bda9afbd9bdb6351263ad8f1f1f16811e1a5ebcb81941b2f712",
+      "bytes": 1074644
+    },
+    "tree-sitter-c.wasm": {
+      "sha256": "7b80a64003e8ef8cde197329ee0167e9270f67663f2e6c6ef7d67b5425998aac",
+      "gzip_sha256": "1e1802165b4d6380aa2f08bdf8e325c5b859c810184acb43fb6859ccc7459dd9",
+      "bytes": 625921
+    },
+    "tree-sitter-bash.wasm": {
+      "sha256": "5daf3f2ac1cea01a64cfd6878ef7d247310925a4c62238eb4b8c1feb5dce355a",
+      "gzip_sha256": "52ac08fe4a9f65834e4f37bda041737451d14b107159e693e484b948018f8088",
+      "bytes": 1358633
+    },
+    "tree-sitter-powershell.wasm": {
+      "sha256": "56b83930aff207664ee64e9341e79bd448645f43c8f37cd2fab861e0e6b9cac1",
+      "gzip_sha256": "9eb1f1892d3e4028171fd1241a4a168f94bbdfd6060fbc645ea5e40fa48ec6df",
+      "bytes": 990529
+    },
+    "tree-sitter-html.wasm": {
+      "sha256": "586f702f79fb297bf6d040807c9c7b315023dc4e65633a9ed548676a23777151",
+      "gzip_sha256": "a733cabdaaaee675108ad97f6703797954724d33ce016834945900315351c6ec",
+      "bytes": 18868
+    },
+    "tree-sitter-css.wasm": {
+      "sha256": "0ec436be0a1bcf4776a38741e0d0f600445a199b75d8e7a558480c07ae6b33fb",
+      "gzip_sha256": "8bb704c1e528ffa7b79a85378463b2455e7a482d131da5c0dbee17ea72618e18",
+      "bytes": 128781
+    },
+    "tree-sitter-graphql.wasm": {
+      "sha256": "5fb7e8610369e582e7592cc04c3fa66e0a5a02235d89dae887e6afeb1af8be07",
+      "gzip_sha256": "9c1c57ab23b78762b059cd835ed8120316640fa4685c9cecc0a8b1e9fb260f23",
+      "bytes": 52419
+    },
+    "tree-sitter-kotlin.wasm": {
+      "sha256": "82f658c6d6e07f0c2a421ab7e1308763fffa16627c7d10e9dd9f6f9a4f9ff25a",
+      "gzip_sha256": "a470a95b744d5fb57db4d18069616baa3c887dd292e86daf6a1934d351d6600f",
+      "bytes": 4086561
+    },
+    "tree-sitter-swift.wasm": {
+      "sha256": "3553bb4258b20fe3514c12a6e68d990036b9446e528283ec6ab79ede8854e791",
+      "gzip_sha256": "13e92b0eb7b77138b5e321d06d620e4ab394f70a938b2ab84d6493ba576e7f70",
+      "bytes": 3317127
+    },
+    "tree-sitter-dart.wasm": {
+      "sha256": "2c35d80a22a0fa1a23388679b1ab14eb7298156e891d82893301a7cc4babfd5d",
+      "gzip_sha256": "9ea3c4ab07e6bc62bc4e800b8ca803ad9727a29b51a44ba61840a743e678f881",
+      "bytes": 1156490
+    },
+    "tree-sitter-sql.wasm": {
+      "sha256": "b77530893b1dd6d1d4814eacf34d25bcbe4a12ec9a25a8c45b320d447265f42b",
+      "gzip_sha256": "56e275f236db7ed46ebc6b1a11fd00b07b194108bcf1460b7ce61744aca6d24b",
+      "bytes": 2472235
+    },
+    "tree-sitter-json.wasm": {
+      "sha256": "f60270905cfa2483e8444559620150c0a1a2b23684a9d4b8b79b4528887863bb",
+      "gzip_sha256": "7aaee135de7ae743179ac15bf9f95c593a479ef04ec880ba4cb372dbed7ccfc7",
+      "bytes": 6188
+    },
+    "tree-sitter-yaml.wasm": {
+      "sha256": "81dd56ecfadd34b62181f996e52cff6d3c4c026d7fbff6a201323a9abe8b2580",
+      "gzip_sha256": "3f99ac88bf1ee4b383dcdfc4c3d774f3151ea74f47bc5911f0a8dc37ce6b6089",
+      "bytes": 192300
+    },
+    "tree-sitter-toml.wasm": {
+      "sha256": "2c3205cdd7a9e8d85547a2a9ad13fa760cc1012f7a6e65f898a5ae5d919c7175",
+      "gzip_sha256": "bd6fdebd308c025f15a10716e9e561dac8ab4f01b89baeeca32dcfdbd0267947",
+      "bytes": 25055
+    }
+  }
+}

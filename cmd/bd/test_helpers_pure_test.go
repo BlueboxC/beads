@@ -365,7 +365,7 @@ func buildBDForInitTests(t *testing.T) string {
 // fails the test on error. Used by bootstrap and init-safety subprocess tests.
 func runGitForBootstrapTest(t *testing.T, dir string, args ...string) {
 	t.Helper()
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 	if dir != "" {
 		cmd.Dir = dir
 	}

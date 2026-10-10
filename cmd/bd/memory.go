@@ -24,6 +24,9 @@ import (
 // is reachable by neither route. It is per-verb because the shipped text names
 // the verb.
 func openMemories(directRequirement string) (memoryops.Memories, error) {
+	if graphPreviewActive {
+		return graphContinuityRole{}, nil
+	}
 	if usesProxiedServer() {
 		return proxiedMemories()
 	}
@@ -72,7 +75,7 @@ func memoriesFromProvider(provider uow.UnitOfWorkProvider) (memoryops.Memories, 
 // route they are on, which is the point. So the guard lives here, once, the way
 // noteDirectConfigWrite does for the settings plane.
 func noteDirectMemoryWrite() {
-	if !usesProxiedServer() {
+	if !graphPreviewActive && !usesProxiedServer() {
 		commandDidWrite.Store(true)
 	}
 }
@@ -106,13 +109,24 @@ func matchesKnownCommand(cmd *cobra.Command, insight string) (string, bool) {
 	return "", false
 }
 
-// rememberBareKeyPath implements the desire-path / footgun guard for
-// `bd remember <bare-slug>` (no --key): a bare slug naming an EXISTING memory
-// is recalled instead of stored; a bare slug naming nothing is refused. The
-// caller only invokes it when memoryKeyFlag == "" and the insight round-trips
-// through memoryapi.DeriveKey unchanged, having already read the key.
-func rememberBareKeyPath(key, insight, existing string) error {
-	if existing != "" {
+// isBareMemoryKey recognizes read-shaped arguments independently of key
+// derivation: explicit keys can contain dots or exceed the derivation limits.
+func isBareMemoryKey(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, c := range value {
+		if !(c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '.' || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// rememberBareKeyPath renders an exact-key recall or a refusal. A suggestion
+// is only a hint; it must never substitute another memory for the requested key.
+func rememberBareKeyPath(key, insight, existing, suggestion string, found bool) error {
+	if found {
 		if jsonOutput {
 			return outputJSON(map[string]interface{}{
 				"key":    key,
@@ -127,11 +141,15 @@ func rememberBareKeyPath(key, insight, existing string) error {
 		fmt.Printf("%s\n", existing)
 		return nil
 	}
+	hint := ""
+	if suggestion != "" {
+		hint = fmt.Sprintf("\ndid you mean %s", suggestion)
+	}
 	return HandleErrorRespectJSON(
 		"no memory named %q to recall -- and refusing to store a bare key-like token as its own content. "+
 			"`bd remember` WRITES (its positional arg is CONTENT, not a key). "+
-			"To store it anyway: `bd remember %q --key %s`. To browse keys: `bd memories`",
-		key, insight, key)
+			"To store it anyway: `bd remember %q --key %s`. To browse keys: `bd memories`%s",
+		key, insight, key, hint)
 }
 
 // printRememberResult renders the `bd remember` success output.
@@ -211,21 +229,21 @@ func printForgetResult(key, existing string) error {
 
 // printRecallResult renders the `bd recall` output (including the not-found
 // SilentExit contract).
-func printRecallResult(key, value string) error {
+func printRecallResult(key, value string, found bool) error {
 	if jsonOutput {
 		if jerr := outputJSON(map[string]interface{}{
 			"key":   key,
 			"value": value,
-			"found": value != "",
+			"found": found,
 		}); jerr != nil {
 			return jerr
 		}
-		if value == "" {
+		if !found {
 			return SilentExit()
 		}
 		return nil
 	}
-	if value == "" {
+	if !found {
 		fmt.Fprintf(os.Stderr, "No memory with key %q\n", key)
 		return SilentExit()
 	}
@@ -253,10 +271,13 @@ Examples:
   bd remember "auth module uses JWT not sessions" --key auth-jwt
   bd remember dolt-phantoms        # bare existing key: reads it (= bd recall)`,
 	GroupID:       "setup",
-	Args:          cobra.ExactArgs(1),
+	Args:          rememberArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewRemember(cmd, args)
+		}
 		CheckReadonly("remember") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("remember")
@@ -294,34 +315,24 @@ Examples:
 			return HandleError("%v", err)
 		}
 
-		// Desire path + footgun guard: `bd remember <x>` is a WRITE whose positional arg is
-		// the CONTENT, not a key -- but "remember X" reads as a getter in English, so agents
-		// routinely type `bd remember some-key` meaning "do you remember X?". The tell-tale of
-		// a mistyped read is content that round-trips through the key derivation unchanged (a
-		// bare slug); real prose insights never do. When that happens and no explicit --key was
-		// given:
-		//   - the key EXISTS  -> pave the desire path: recall it instead of writing
-		//   - no such key     -> refuse; storing a key-like token as its own content would
-		//                        create a junk memory that hides the mistake
-		// Passing --key states write intent and bypasses both branches.
-		//
-		// It stays ABOVE the role because it decides WHETHER TO WRITE AT ALL, and
-		// because it exists to disambiguate English: an HTTP POST is not ambiguous
-		// and must not inherit it. The read below is a plain Recall, so this whole
-		// branch touches nothing.
-		//
-		// `derived != ""` is load-bearing and is not decoration: DeriveKey("")
-		// is "", so without it every empty or unslugifiable insight would satisfy
-		// derived == insight and be routed into a "recall" of the empty key. The
-		// shipped code was saved from that by an empty-content check that ran
-		// first; that check is the role's now, so the condition has to say it.
-		derived := memoryapi.DeriveKey(insight)
-		if memoryKeyFlag == "" && derived != "" && derived == insight {
-			recalled, err := memories.Recall(rootCtx, memoryops.RecallRequest{Key: derived})
+		// A bare slug is always a read, even when derivation would shorten or
+		// rewrite it. An explicit --key states write intent and bypasses this.
+		if memoryKeyFlag == "" && isBareMemoryKey(insight) {
+			recalled, err := memories.Recall(rootCtx, memoryops.RecallRequest{Key: insight})
 			if err != nil {
 				return HandleErrorRespectJSON("recalling memory: %v", err)
 			}
-			return rememberBareKeyPath(derived, insight, recalled.Value)
+			suggestion := ""
+			if derived := memoryapi.DeriveKey(insight); !recalled.Found && derived != "" && derived != insight {
+				candidate, err := memories.Recall(rootCtx, memoryops.RecallRequest{Key: derived})
+				if err != nil {
+					return HandleErrorRespectJSON("recalling memory: %v", err)
+				}
+				if candidate.Found {
+					suggestion = derived
+				}
+			}
+			return rememberBareKeyPath(insight, insight, recalled.Value, suggestion, recalled.Found)
 		}
 
 		result, err := memories.Remember(rootCtx, memoryops.RememberRequest{Key: memoryKeyFlag, Content: insight})
@@ -364,6 +375,15 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewMemories(cmd, args)
+		}
+		if cmd.Flags().Changed("format") {
+			format, _ := cmd.Flags().GetString("format")
+			if strings.EqualFold(format, "json") {
+				jsonOutput = true
+			}
+		}
 		evt := metrics.NewCommandEvent("memories")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -415,6 +435,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewDeleteMemory(cmd, args, true)
+		}
 		CheckReadonly("forget")
 
 		evt := metrics.NewCommandEvent("forget")
@@ -458,6 +481,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewRecall(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("recall")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -474,7 +500,7 @@ Examples:
 			return HandleErrorRespectJSON("recalling memory: %v", err)
 		}
 
-		return printRecallResult(result.Key, result.Value)
+		return printRecallResult(result.Key, result.Value, result.Found)
 	},
 }
 

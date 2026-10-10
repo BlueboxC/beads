@@ -122,11 +122,23 @@ func TestDoltNew_SharedStoreMigrateGate_NoRemote(t *testing.T) {
 	t.Run("verb consent migrates", func(t *testing.T) {
 		schema.SetSharedMigrateConsent(true)
 		defer schema.SetSharedMigrateConsent(false)
-		if err := openWith(&Config{}); err != nil {
+		s, err := New(ctx, &Config{
+			Path: tmpDir, CommitterName: "test", CommitterEmail: "test@example.com", Database: dbName,
+		})
+		if err != nil {
 			t.Fatalf("New (writable, consented) = %v, want success", err)
 		}
+		defer s.Close()
 		if got := cursor(); got != schema.LatestVersion() {
 			t.Fatalf("cursor = %d after a consented open, want %d", got, schema.LatestVersion())
+		}
+
+		// #7283: report the migrating open once so the CLI stamps its version.
+		if applied, err := s.ApplySchemaMigrations(ctx); err != nil || applied != 1 {
+			t.Fatalf("ApplySchemaMigrations after the migrating open = (%d, %v), want (1, nil)", applied, err)
+		}
+		if applied, err := s.ApplySchemaMigrations(ctx); err != nil || applied != 0 {
+			t.Fatalf("second ApplySchemaMigrations = (%d, %v), want (0, nil)", applied, err)
 		}
 	})
 }

@@ -328,6 +328,7 @@
         "group": "Reference",
         "pages": [
           "reference/index",
+          "reference/graph-preview",
           "reference/configuration",
           "reference/git-integration",
           "reference/worktrees",

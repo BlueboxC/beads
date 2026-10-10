@@ -88,7 +88,7 @@ func reportOrphans(orphans []orphanIssueOutput, fix, details bool) error {
 	})
 
 	for i, orphan := range orphans {
-		fmt.Printf("%d. %s: %s\n", i+1, ui.RenderID(orphan.IssueID), orphan.Title)
+		fmt.Printf("%d. %s: %s\n", i+1, ui.RenderID(orphan.IssueID), ui.SanitizeForTerminal(orphan.Title))
 		fmt.Printf("   Status: %s\n", orphan.Status)
 		if details && orphan.LatestCommit != "" {
 			fmt.Printf("   Latest commit: %s - %s\n", orphan.LatestCommit, orphan.LatestCommitMessage)

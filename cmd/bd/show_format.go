@@ -36,10 +36,10 @@ func formatShortIssue(issue *types.Issue) string {
 			ui.RenderMuted(issue.ID),
 			ui.RenderMuted(fmt.Sprintf("P%d", issue.Priority)),
 			ui.RenderMuted(string(issue.IssueType)),
-			ui.RenderMuted(" "+issue.Title))
+			ui.RenderMuted(" "+ui.SanitizeForTerminal(issue.Title)))
 	}
 
-	return fmt.Sprintf("%s %s %s %s%s", statusIcon, issue.ID, priorityTag, typeBadge, issue.Title)
+	return fmt.Sprintf("%s %s %s %s%s", statusIcon, issue.ID, priorityTag, typeBadge, ui.SanitizeForTerminal(issue.Title))
 }
 
 // formatIssueHeader returns the Tufte-aligned header line
@@ -75,7 +75,7 @@ func formatIssueHeader(issue *types.Issue) string {
 	// Build header: STATUS_ICON ID · Title   [Priority · STATUS]
 	idStyled := ui.RenderAccent(issue.ID)
 	return fmt.Sprintf("%s %s%s · %s%s   [%s · %s]",
-		statusIcon, idStyled, typeBadge, issue.Title, tierEmoji, priorityTag, statusStr)
+		statusIcon, idStyled, typeBadge, ui.SanitizeForTerminal(issue.Title), tierEmoji, priorityTag, statusStr)
 }
 
 // formatIssueMetadata returns the metadata line(s) with grouped info
@@ -88,10 +88,10 @@ func formatIssueMetadata(issue *types.Issue) string {
 	// Line 1: Created by/Assignee · Type
 	metaParts := []string{}
 	if issue.CreatedBy != "" {
-		metaParts = append(metaParts, fmt.Sprintf("Created by: %s", issue.CreatedBy))
+		metaParts = append(metaParts, fmt.Sprintf("Created by: %s", ui.SanitizeForTerminal(issue.CreatedBy)))
 	}
 	if issue.Assignee != "" {
-		metaParts = append(metaParts, fmt.Sprintf("Assignee: %s", issue.Assignee))
+		metaParts = append(metaParts, fmt.Sprintf("Assignee: %s", ui.SanitizeForTerminal(issue.Assignee)))
 	}
 
 	// Type with semantic color
@@ -159,7 +159,7 @@ func formatIssueMetadata(issue *types.Issue) string {
 	// a section on that byte alone.
 	closeReasonSection := ""
 	if issue.Status == types.StatusClosed {
-		if reason := strings.TrimSpace(issue.CloseReason); reason != "" {
+		if reason := strings.TrimSpace(ui.SanitizeForTerminal(issue.CloseReason)); reason != "" {
 			if line := "Close reason: " + reason; fitsMetadataLine(line) {
 				lines = append(lines, ui.RenderMuted(line))
 			} else {
@@ -174,7 +174,7 @@ func formatIssueMetadata(issue *types.Issue) string {
 		lines = append(lines, fmt.Sprintf("External: %s", *issue.ExternalRef))
 	}
 	if issue.SpecID != "" {
-		lines = append(lines, fmt.Sprintf("Spec: %s", issue.SpecID))
+		lines = append(lines, fmt.Sprintf("Spec: %s", ui.SanitizeForTerminal(issue.SpecID)))
 	}
 
 	// Line 5: Wisp type (if ephemeral with classification)
@@ -230,7 +230,7 @@ func formatDependencyLine(prefix string, dep *types.IssueWithDependencyMetadata)
 		return fmt.Sprintf("  %s %s %s: %s %s",
 			prefix, statusIcon,
 			ui.RenderMuted(dep.ID),
-			ui.RenderMuted(dep.Title),
+			ui.RenderMuted(ui.SanitizeForTerminal(dep.Title)),
 			ui.RenderMuted(fmt.Sprintf("P%d", dep.Priority)))
 	}
 
@@ -247,7 +247,7 @@ func formatDependencyLine(prefix string, dep *types.IssueWithDependencyMetadata)
 		typeStr = ui.TypeBugStyle.Render("(BUG)") + " "
 	}
 
-	return fmt.Sprintf("  %s %s %s: %s%s %s", prefix, statusIcon, idStr, typeStr, dep.Title, priorityTag)
+	return fmt.Sprintf("  %s %s %s: %s%s %s", prefix, statusIcon, idStr, typeStr, ui.SanitizeForTerminal(dep.Title), priorityTag)
 }
 
 // printDepSection prints one dependency section: bold heading, then a line per
@@ -306,7 +306,7 @@ func formatSimpleDependencyLine(prefix string, dep *types.Issue) string {
 		return fmt.Sprintf("  %s %s %s: %s %s",
 			prefix, statusIcon,
 			ui.RenderMuted(dep.ID),
-			ui.RenderMuted(dep.Title),
+			ui.RenderMuted(ui.SanitizeForTerminal(dep.Title)),
 			ui.RenderMuted(fmt.Sprintf("P%d", dep.Priority)))
 	}
 
@@ -315,7 +315,7 @@ func formatSimpleDependencyLine(prefix string, dep *types.Issue) string {
 	idStr := style.Render(dep.ID)
 	priorityTag := ui.RenderPriority(dep.Priority)
 
-	return fmt.Sprintf("  %s %s %s: %s %s", prefix, statusIcon, idStr, dep.Title, priorityTag)
+	return fmt.Sprintf("  %s %s %s: %s %s", prefix, statusIcon, idStr, ui.SanitizeForTerminal(dep.Title), priorityTag)
 }
 
 // formatIssueCustomMetadata renders the issue's custom JSON metadata field
@@ -335,7 +335,7 @@ func formatIssueCustomMetadata(issue *types.Issue) string {
 	var data map[string]any
 	if err := json.Unmarshal(issue.Metadata, &data); err != nil {
 		// Not a JSON object — show raw value
-		return fmt.Sprintf("%s\n  %s", ui.RenderBold("METADATA"), trimmed)
+		return fmt.Sprintf("%s\n  %s", ui.RenderBold("METADATA"), ui.SanitizeForTerminal(trimmed))
 	}
 	if len(data) == 0 {
 		return ""
@@ -351,7 +351,7 @@ func formatIssueCustomMetadata(issue *types.Issue) string {
 	var lines []string
 	for _, k := range keys {
 		v := data[k]
-		lines = append(lines, fmt.Sprintf("  %s: %s", k, formatMetadataValue(v)))
+		lines = append(lines, fmt.Sprintf("  %s: %s", ui.SanitizeForTerminal(k), ui.SanitizeForTerminal(formatMetadataValue(v))))
 	}
 
 	return fmt.Sprintf("%s\n%s", ui.RenderBold("METADATA"), strings.Join(lines, "\n"))
@@ -377,7 +377,7 @@ func formatIssueLongExtras(issue *types.Issue, formatTime func(time.Time) string
 		closeParts = append(closeParts, fmt.Sprintf("  Source system: %s", issue.SourceSystem))
 	}
 	if issue.Sender != "" {
-		closeParts = append(closeParts, fmt.Sprintf("  Sender: %s", issue.Sender))
+		closeParts = append(closeParts, fmt.Sprintf("  Sender: %s", ui.SanitizeForTerminal(issue.Sender)))
 	}
 	if issue.Ephemeral {
 		closeParts = append(closeParts, "  Ephemeral: yes")

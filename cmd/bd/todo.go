@@ -96,7 +96,7 @@ var addTodoCmd = &cobra.Command{
 			fmt.Println(string(data))
 			return nil
 		}
-		fmt.Printf("Created %s: %s\n", ui.RenderID(issue.ID), issue.Title)
+		fmt.Printf("Created %s: %s\n", ui.RenderID(issue.ID), ui.SanitizeForTerminal(issue.Title))
 		return nil
 	},
 }
@@ -171,7 +171,7 @@ func runTodoListCore(cmd *cobra.Command, _ []string) error {
 		fmt.Printf("  %s %s  %-40s  %s  %s\n",
 			statusIcon,
 			ui.RenderID(issue.ID),
-			todoTruncate(issue.Title, 40),
+			todoTruncate(ui.SanitizeForTerminal(issue.Title), 40),
 			priority,
 			issue.Status)
 	}

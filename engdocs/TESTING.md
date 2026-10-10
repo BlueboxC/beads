@@ -74,6 +74,14 @@ test environment adds `dolt` to `BEADS_TEST_SKIP`; set
 and its prerequisites are available. Do not make ordinary tests depend on a
 developer's database, daemon, global Git configuration, or filesystem state.
 
+Graph Preview server tests use an explicitly owned disposable SQL server via
+`BEADS_GRAPH_TEST_SERVER_PORT`. Run its packages sequentially (`-p 1`): CLI and
+graphstore tests both provision fresh databases, and concurrent provisioning
+on one Dolt server can fail with `no root value found in session`. Use a fresh
+data directory, disable Dolt telemetry, clean fresh authority-named fixture
+databases on test completion, and stop/reap the owned server after
+qualification. Embedded tests do not require this variable.
+
 To skip an optional service explicitly, use the existing skip mechanism:
 
 ```bash
@@ -83,6 +91,10 @@ BEADS_TEST_SKIP=dolt ./scripts/test.sh ./...
 Tests that need a temporary repository or store should use `t.TempDir()` and
 `t.Cleanup()`. Temporary repositories must set a repository-local hooks path;
 do not inherit the developer's global hooks configuration.
+Git fixture commits that precede worktree creation must pass
+`-c maintenance.auto=false -c gc.auto=0` on the command line. This prevents
+detached maintenance from pruning worktree administration files during setup,
+even when routing helpers scrub Git configuration environment variables.
 
 For manual CLI experiments, run both initialization and subsequent commands
 from a disposable working directory:

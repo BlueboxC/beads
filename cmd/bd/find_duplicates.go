@@ -230,8 +230,8 @@ func reportFindDuplicates(ctx context.Context, issues []*types.Issue, method str
 	for i, p := range pairs {
 		pct := p.Similarity * 100
 		fmt.Printf("%s Pair %d (%.0f%% similar):\n", ui.RenderAccent("━━"), i+1, pct)
-		fmt.Printf("  %s %s\n", ui.RenderPass(p.IssueA.ID), p.IssueA.Title)
-		fmt.Printf("  %s %s\n", ui.RenderPass(p.IssueB.ID), p.IssueB.Title)
+		fmt.Printf("  %s %s\n", ui.RenderPass(p.IssueA.ID), ui.SanitizeForTerminal(p.IssueA.Title))
+		fmt.Printf("  %s %s\n", ui.RenderPass(p.IssueB.ID), ui.SanitizeForTerminal(p.IssueB.Title))
 		if p.Reason != "" {
 			fmt.Printf("  %s %s\n", ui.RenderAccent("Reason:"), p.Reason)
 		}

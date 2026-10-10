@@ -50,7 +50,7 @@ func formatMemoriesForPrimeProxied(compact bool) string {
 	plane, err := primeProxiedMemoryPlane(ctx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return formatPrimeMemoryTimeout(compact, timeout)
+			return formatPrimeMemoryTimeoutAt(compact, timeout, primeMemoryFailureStage(err, "store_open"))
 		}
 		if errors.Is(err, ErrNoBeadsDatabase) {
 			return "" // No workspace here — genuinely nothing to inject.
@@ -75,18 +75,18 @@ func primeProxiedMemoryPlane(ctx context.Context) (map[string]string, error) {
 		}
 		p, err := primeProxiedProviderOpen(ctx, beadsDir)
 		if err != nil {
-			return nil, err
+			return nil, newPrimeMemoryFailure("store_open", err)
 		}
 		defer func() { _ = p.Close(ctx) }()
 		provider = p
 	}
 	memories, err := memoriesFromProvider(provider)
 	if err != nil {
-		return nil, err
+		return nil, newPrimeMemoryFailure("memory_accessor", err)
 	}
 	result, err := memories.List(ctx, memoryops.ListRequest{})
 	if err != nil {
-		return nil, err
+		return nil, newPrimeMemoryFailure("memory_list", err)
 	}
 	return result.Memories, nil
 }

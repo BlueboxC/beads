@@ -483,7 +483,7 @@ func reportMarkdownBatch(issues []*types.Issue, in createInput) error {
 	}
 	fmt.Printf("%s Created %d issues from %s:\n", ui.RenderPass("✓"), len(issues), in.markdownFile)
 	for _, issue := range issues {
-		fmt.Printf("  %s: %s [P%d, %s]\n", issue.ID, issue.Title, issue.Priority, issue.IssueType)
+		fmt.Printf("  %s: %s [P%d, %s]\n", issue.ID, ui.SanitizeForTerminal(issue.Title), issue.Priority, issue.IssueType)
 	}
 	return nil
 }

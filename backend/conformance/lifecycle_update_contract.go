@@ -1427,6 +1427,37 @@ func RunLifecycleUpdateClaimIsAMutationWhenThePatchRestoresTheRow(t *testing.T, 
 	assertLifecycleUpdateBystandersUnmoved(t, ctx, fixture, restoringID, "after the bare claim and re-claim", restoringBystanders)
 }
 
+// RunLifecycleUpdateHierarchicalDetachIsRefused keeps a dotted ID from reverting
+// to its implicit parent after an apparently successful detach. The whole patch
+// is refused; explicit reparenting remains available without renaming the ID.
+func RunLifecycleUpdateHierarchicalDetachIsRefused(t *testing.T, ctx context.Context, fixture LifecycleUpdateFixture) {
+	t.Helper()
+	if fixture.AddDependency == nil || fixture.ListDependencies == nil {
+		t.Skip("fixture cannot seed or inspect parent edges")
+	}
+	parentID := fixture.IssuePrefix + "-detach-parent"
+	newParentID := fixture.IssuePrefix + "-detach-new"
+	childID := parentID + ".1"
+	seedLifecycleUpdateIssue(t, ctx, fixture, lifecycleUpdateIssue(parentID))
+	seedLifecycleUpdateIssue(t, ctx, fixture, lifecycleUpdateIssue(newParentID))
+	seedLifecycleUpdateIssue(t, ctx, fixture, lifecycleUpdateIssue(childID))
+	seedLifecycleUpdateEdge(t, ctx, fixture, childID, parentID, types.DepParentChild)
+	before := lifecycleUpdateRow(t, ctx, fixture, childID)
+	_, err := fixture.Lifecycle.Update(ctx, publicops.UpdateRequest{Actor: "writer", IssueID: childID, Patch: publicops.IssuePatch{
+		ParentID: publicops.Field[string]{Set: true}, Title: publicops.Field[string]{Set: true, Value: "must not be applied"},
+	}})
+	if !errors.Is(err, storage.ErrValidation) {
+		t.Fatalf("hierarchical detach: %v, want ErrValidation", err)
+	}
+	assertLifecycleUpdateRowUnchanged(t, ctx, fixture, childID, "after refused detach", before)
+	assertLifecycleUpdateParents(t, ctx, fixture, childID, "after refused detach", parentID)
+	_, err = fixture.Lifecycle.Update(ctx, publicops.UpdateRequest{Actor: "writer", IssueID: childID, Patch: publicops.IssuePatch{ParentID: publicops.Field[string]{Set: true, Value: newParentID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertLifecycleUpdateParents(t, ctx, fixture, childID, "after explicit reparent", newParentID)
+}
+
 // RunLifecycleUpdateParentIDReplacesTheParentEdge pins what a set
 // IssuePatch.ParentID does (issueops/issueops.go:144-147): a nonempty value
 // replaces the parent with exactly that target and "does not inherit labels" —

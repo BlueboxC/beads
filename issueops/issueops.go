@@ -153,7 +153,8 @@ type IssuePatch struct {
 	// request.
 	Persistence Field[PersistenceMode]
 	// ParentID is unchanged when unset. A set empty value removes all outgoing
-	// parent-child edges. A set nonempty value atomically replaces all parents
+	// parent-child edges for a nondotted ID. Clearing a dotted ID is rejected
+	// because legacy readers infer its ancestry. A set nonempty value replaces all parents
 	// with exactly that target and does not inherit labels.
 	ParentID Field[string]
 	Labels   LabelPatch

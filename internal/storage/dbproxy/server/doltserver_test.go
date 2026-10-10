@@ -60,6 +60,9 @@ listener:
 func newDoltServer(t *testing.T) (*server.DoltServer, string) {
 	t.Helper()
 	bin := requireDolt(t)
+	// Dolt starts send-metrics without waiting on exit. Keep that child from
+	// recreating HOME/.dolt while TempDir cleanup removes the test config.
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 	port := freePort(t)
@@ -195,6 +198,7 @@ func TestDoltServer_StartStop_UnixSocket(t *testing.T) {
 		t.Skip("unix domain sockets not supported on windows")
 	}
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 
@@ -253,6 +257,7 @@ listener:
 
 func TestDoltServer_Stop_RunsGCWhenDatabaseSet(t *testing.T) {
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 	port := freePort(t)
@@ -301,6 +306,7 @@ func TestDoltServer_StartStopStart_SameInstanceErrors(t *testing.T) {
 
 func TestDoltServer_StartStopStart_NewInstanceSameRootDirSucceeds(t *testing.T) {
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 	logPath := filepath.Join(t.TempDir(), "server.log")
@@ -363,6 +369,7 @@ func TestDoltServer_Dial_BeforeStart(t *testing.T) {
 
 func TestDoltServer_LogFile_CapturesOutput(t *testing.T) {
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 	port := freePort(t)
@@ -404,6 +411,7 @@ func TestDoltServer_StopCancelsBeforeReady(t *testing.T) {
 
 func TestDoltServer_ConcurrentStart_SameRootDir_OneWins(t *testing.T) {
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 
 	// Pre-configure dolt's global user.name/email so doltConfigure is a
@@ -467,6 +475,7 @@ func TestDoltServer_ConcurrentStart_SameRootDir_OneWins(t *testing.T) {
 
 func TestDoltServer_DoltInit_Idempotent(t *testing.T) {
 	bin := requireDolt(t)
+	t.Setenv("DOLT_DISABLE_EVENT_FLUSH", "1")
 	t.Setenv("HOME", t.TempDir())
 	rootDir := t.TempDir()
 

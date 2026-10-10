@@ -13,7 +13,7 @@ import (
 )
 
 func deferredParentProbeRegex(issueTable string) string {
-	return `SELECT 1 FROM ` + issueTable + `\s+WHERE defer_until IS NOT NULL\s+AND defer_until > UTC_TIMESTAMP\(\)\s+LIMIT 1`
+	return `SELECT 1 FROM ` + issueTable + `\s+WHERE status = 'deferred'\s+OR \(defer_until IS NOT NULL AND defer_until > UTC_TIMESTAMP\(\)\)\s+LIMIT 1`
 }
 
 func deferredChildrenQueryRegex(depTable, issueTable string) string {
@@ -21,7 +21,7 @@ func deferredChildrenQueryRegex(depTable, issueTable string) string {
 	if issueTable == "wisps" {
 		targetCol = "depends_on_wisp_id"
 	}
-	return `SELECT dep\.issue_id\s+FROM ` + depTable + ` dep\s+JOIN ` + issueTable + ` parent ON parent\.id = dep\.` + targetCol + `\s+WHERE dep\.type = 'parent-child'\s+AND parent\.defer_until IS NOT NULL\s+AND parent\.defer_until > UTC_TIMESTAMP\(\)`
+	return `SELECT dep\.issue_id\s+FROM ` + depTable + ` dep\s+JOIN ` + issueTable + ` parent ON parent\.id = dep\.` + targetCol + `\s+WHERE dep\.type = 'parent-child'\s+AND \(parent\.status = 'deferred'\s+OR \(parent\.defer_until IS NOT NULL AND parent\.defer_until > UTC_TIMESTAMP\(\)\)\)`
 }
 
 func beginMockTx(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *sql.Tx) {
@@ -41,6 +41,12 @@ func beginMockTx(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *sql.Tx) {
 	t.Cleanup(func() { _ = tx.Rollback() })
 
 	return db, mock, tx
+}
+
+func expectNoExternalBlocks(mock sqlmock.Sqlmock) {
+	for _, table := range []string{"dependencies", "wisp_dependencies"} {
+		mock.ExpectQuery(`SELECT d.issue_id, d.depends_on_external FROM ` + table + ` d JOIN`).WillReturnRows(sqlmock.NewRows([]string{"issue_id", "depends_on_external"}))
+	}
 }
 
 func TestBuildSQLInClause(t *testing.T) {
@@ -250,6 +256,7 @@ func TestGetReadyWorkInTxOpenIncludesCustomActive(t *testing.T) {
 	_, mock, tx := beginMockTx(t)
 	mock.ExpectQuery(deferredParentProbeRegex("issues")).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(deferredParentProbeRegex("wisps")).WillReturnError(sql.ErrNoRows)
+	expectNoExternalBlocks(mock)
 	mock.ExpectQuery(`SELECT id FROM issues\s+WHERE \(status = \? OR status IN \(SELECT name FROM custom_statuses WHERE category = 'active'\)\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).WillReturnError(sql.ErrNoRows)
@@ -276,6 +283,7 @@ func TestGetReadyWorkInTxStatusesSingleQuery(t *testing.T) {
 	_, mock, tx := beginMockTx(t)
 	mock.ExpectQuery(deferredParentProbeRegex("issues")).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(deferredParentProbeRegex("wisps")).WillReturnError(sql.ErrNoRows)
+	expectNoExternalBlocks(mock)
 	mock.ExpectQuery(`SELECT id FROM issues\s+WHERE status IN \(\?,\?\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).WillReturnError(sql.ErrNoRows)

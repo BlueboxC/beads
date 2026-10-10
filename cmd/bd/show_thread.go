@@ -91,7 +91,7 @@ func showMessageThread(ctx context.Context, messageID string, jsonOutput bool) e
 	}
 
 	// Display the thread
-	fmt.Printf("\n%s Thread: %s\n", ui.RenderAccent("📬"), rootMsg.Title)
+	fmt.Printf("\n%s Thread: %s\n", ui.RenderAccent("📬"), ui.SanitizeForTerminal(rootMsg.Title))
 	fmt.Println(strings.Repeat("─", 66))
 
 	for _, msg := range threadMessages {
@@ -114,14 +114,14 @@ func showMessageThread(ctx context.Context, messageID string, jsonOutput bool) e
 		}
 
 		fmt.Printf("%s%s %s %s\n", indent, statusIcon, ui.RenderAccent(msg.ID), ui.RenderMuted(timeStr))
-		fmt.Printf("%s  From: %s  To: %s\n", indent, msg.Sender, msg.Assignee)
+		fmt.Printf("%s  From: %s  To: %s\n", indent, ui.SanitizeForTerminal(msg.Sender), ui.SanitizeForTerminal(msg.Assignee))
 		if parentID := repliesTo[msg.ID]; parentID != "" {
 			fmt.Printf("%s  Re: %s\n", indent, parentID)
 		}
-		fmt.Printf("%s  %s: %s\n", indent, ui.RenderMuted("Subject"), msg.Title)
+		fmt.Printf("%s  %s: %s\n", indent, ui.RenderMuted("Subject"), ui.SanitizeForTerminal(msg.Title))
 		if msg.Description != "" {
 			// Indent the body
-			bodyLines := strings.Split(msg.Description, "\n")
+			bodyLines := strings.Split(ui.SanitizeForTerminal(msg.Description), "\n")
 			for _, line := range bodyLines {
 				fmt.Printf("%s  %s\n", indent, line)
 			}

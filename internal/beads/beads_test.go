@@ -599,7 +599,7 @@ func setupRegularWorktreeRepo(t *testing.T) (string, string) {
 func runGitInDir(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 
-	cmd := exec.Command("git", args...)
+	cmd := exec.Command("git", append([]string{"-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1178,7 +1178,7 @@ func TestFindGitRoot_Worktree(t *testing.T) {
 	if err := cmd.Run(); err != nil {
 		t.Fatal(err)
 	}
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1299,7 +1299,7 @@ func TestFindBeadsDir_Worktree(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1400,7 +1400,7 @@ func TestFindBeadsDir_WorktreeRedirectOverride(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1509,7 +1509,7 @@ func TestFindDatabasePath_WorktreeRedirectOverride(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1632,7 +1632,7 @@ func TestFindBeadsDir_SiblingWorktree(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1753,7 +1753,7 @@ func TestFindDatabasePath_Worktree(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1858,7 +1858,7 @@ func TestFindDatabasePath_WorktreeSeparateDB(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)
@@ -1974,7 +1974,7 @@ func TestFindDatabasePath_WorktreeNoLocalDB(t *testing.T) {
 	cmd = exec.Command("git", "add", "-A")
 	cmd.Dir = mainRepoDir
 	_ = cmd.Run()
-	cmd = exec.Command("git", "commit", "-m", "Initial commit")
+	cmd = exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "-m", "Initial commit")
 	cmd.Dir = mainRepoDir
 	if err := cmd.Run(); err != nil {
 		t.Fatalf("git commit failed: %v", err)

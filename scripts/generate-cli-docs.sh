@@ -176,10 +176,10 @@ if [ "$CHECK_MODE" -eq 1 ]; then
         exit 1
     fi
 
-    if ! diff -qr "$PROJECT_ROOT/docs/cli-reference" "$TMP_OUTPUT_DIR/docs/cli-reference" >/dev/null; then
+    if ! diff -qr --exclude=DOX.md "$PROJECT_ROOT/docs/cli-reference" "$TMP_OUTPUT_DIR/docs/cli-reference" >/dev/null; then
         echo "FAIL: docs/cli-reference is out of sync with live CLI help."
         echo "Run: ./scripts/generate-cli-docs.sh ${BD_ARG:-}"
-        diff -ur "$PROJECT_ROOT/docs/cli-reference" "$TMP_OUTPUT_DIR/docs/cli-reference" | sed -n '1,160p' || true
+        diff -ur --exclude=DOX.md "$PROJECT_ROOT/docs/cli-reference" "$TMP_OUTPUT_DIR/docs/cli-reference" | sed -n '1,160p' || true
         exit 1
     fi
 

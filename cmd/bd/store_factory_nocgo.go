@@ -93,7 +93,7 @@ func newDoltStoreFromConfig(ctx context.Context, beadsDir string) (s storage.Dol
 // backend. It does not activate the events journal: the store refuses writes,
 // so there is no mutation for a journal row to accompany (exemption is recorded
 // in the construction guard).
-func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string) (storage.DoltStorage, error) {
+func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string, disableAutoStart ...bool) (storage.DoltStorage, error) {
 	cfg, err := configfile.Load(beadsDir)
 	if err != nil {
 		return nil, fmt.Errorf("load %s: %w", configfile.ConfigPath(beadsDir), err)
@@ -109,7 +109,7 @@ func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string) (storage.D
 		return nil, errProxiedStoreUnrouted()
 	}
 	if cfg != nil && cfg.IsDoltServerMode() {
-		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true})
+		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true, DisableAutoStart: len(disableAutoStart) > 0 && disableAutoStart[0]})
 	}
 	return nil, fmt.Errorf("%s", nocgoEmbeddedErrMsg)
 }

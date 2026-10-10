@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/steveyegge/beads/internal/configfile"
 	"github.com/steveyegge/beads/internal/doltserver"
@@ -15,6 +16,7 @@ import (
 	"github.com/steveyegge/beads/internal/storage/backends"
 	"github.com/steveyegge/beads/internal/storage/dbproxy/util"
 	"github.com/steveyegge/beads/internal/storage/dolt"
+	dbidentifier "github.com/steveyegge/beads/internal/storage/domain/db"
 	"github.com/steveyegge/beads/internal/storage/embeddeddolt"
 )
 
@@ -85,9 +87,10 @@ func newDoltStore(ctx context.Context, cfg *dolt.Config) (s storage.DoltStorage,
 		if cfg.DisableAutoStart {
 			// Strict --readonly (cfg.DisableAutoStart is the strict-only
 			// signal threaded from policy.disableAutoStart): the command
-			// must not write anything, not even incidentally (schema
-			// init, migrations, the post-command autocommit net). Use the
-			// genuinely write-refusing open — same one used for cross-repo
+			// refuses Beads mutations and housekeeping (schema init,
+			// migrations, post-command autocommit). The embedded driver
+			// still needs filesystem write access to open storage. Use the
+			// mutation-refusing open — same one used for cross-repo
 			// hydration of foreign projects (GH#3231, bd-6dnrw.32) — instead
 			// of OpenForReadOnlyCommand, which is "otherwise a normal
 			// writable store".
@@ -179,6 +182,9 @@ func newDoltStoreFromConfig(ctx context.Context, beadsDir string) (s storage.Dol
 	if cfg != nil {
 		database = cfg.GetDoltDatabase()
 	}
+	if err := dbidentifier.ValidateIdentifier(sanitizeDBName(database)); err != nil {
+		return nil, err
+	}
 	if sanitized := sanitizeDBName(database); sanitized != database {
 		if err := migrateHyphenatedDB(beadsDir, cfg, database, sanitized); err != nil {
 			return nil, fmt.Errorf("auto-sanitize database name %q → %q: %w", database, sanitized, err)
@@ -193,17 +199,41 @@ func newDoltStoreFromConfig(ctx context.Context, beadsDir string) (s storage.Dol
 // This handles projects initialized before GH#2142 that upgrade to
 // embedded-mode-default builds (GH#3231).
 func migrateHyphenatedDB(beadsDir string, cfg *configfile.Config, oldName, newName string) error {
+	if oldName == "" || oldName == "." || oldName == ".." || strings.ContainsAny(oldName, `/\:`) {
+		return fmt.Errorf("invalid legacy database directory name: %q", oldName)
+	}
+	if err := dbidentifier.ValidateIdentifier(newName); err != nil {
+		return err
+	}
 	dataDir := filepath.Join(beadsDir, "embeddeddolt")
 	oldDir := filepath.Join(dataDir, oldName)
 	newDir := filepath.Join(dataDir, newName)
-
-	oldExists := false
-	if info, err := os.Stat(oldDir); err == nil && info.IsDir() {
-		oldExists = true
+	if info, err := os.Lstat(dataDir); err == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("database data directory must be a real directory: %q", dataDir)
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking database data directory: %w", err)
 	}
 
+	oldExists := false
+	if info, err := os.Lstat(oldDir); err == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("legacy database must be a real directory: %q", oldDir)
+		}
+		oldExists = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("checking legacy database directory: %w", err)
+	}
+
+	newInfo, newErr := os.Lstat(newDir)
+	if newErr == nil && (!newInfo.IsDir() || newInfo.Mode()&os.ModeSymlink != 0) {
+		return fmt.Errorf("target database must be a real directory: %q", newDir)
+	}
+	if newErr != nil && !os.IsNotExist(newErr) {
+		return fmt.Errorf("checking target directory %q: %w", newDir, newErr)
+	}
 	if oldExists {
-		_, newErr := os.Stat(newDir)
 		switch {
 		case newErr == nil:
 			return fmt.Errorf("cannot auto-migrate database: both %q and %q exist under %s; remove one manually and retry",
@@ -234,8 +264,8 @@ func migrateHyphenatedDB(beadsDir string, cfg *configfile.Config, oldName, newNa
 // For embedded mode, invalid characters (hyphens, dots) are sanitized in-memory
 // only — no directory renames or metadata.json writes. This prevents cross-repo
 // hydration from mutating foreign projects (GH#3231).
-func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string) (storage.DoltStorage, error) {
-	return openNonMutatingStoreFromConfig(ctx, beadsDir, false)
+func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string, disableAutoStart ...bool) (storage.DoltStorage, error) {
+	return openNonMutatingStoreFromConfig(ctx, beadsDir, false, disableAutoStart...)
 }
 
 // newPreviewStoreFromConfig is newReadOnlyStoreFromConfig for a preview
@@ -255,7 +285,7 @@ func newPreviewStoreFromConfig(ctx context.Context, beadsDir string) (storage.Do
 // OpenForPreviewCommand, ReadOnly server config), so there is no mutation for a
 // journal row to accompany. Registered in the construction guard's exemption
 // list with that reason.
-func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, preview bool) (storage.DoltStorage, error) {
+func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, preview bool, disableAutoStart ...bool) (storage.DoltStorage, error) {
 	cfg, err := configfile.Load(beadsDir)
 	if err != nil {
 		// Same contract as newDoltStoreFromConfig: a present-but-unloadable
@@ -275,7 +305,7 @@ func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, previe
 		return nil, errProxiedStoreUnrouted()
 	}
 	if cfg != nil && cfg.IsDoltServerMode() {
-		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true})
+		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true, DisableAutoStart: len(disableAutoStart) > 0 && disableAutoStart[0]})
 	}
 	database := configfile.DefaultDoltDatabase
 	if cfg != nil {

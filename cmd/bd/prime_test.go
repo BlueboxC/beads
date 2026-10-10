@@ -812,3 +812,73 @@ func TestPrime_RawMarkdown_NotJSON_WithoutFlag(t *testing.T) {
 		t.Fatal("prime output without --hook-json should not be valid JSON (regression guard)")
 	}
 }
+
+func TestPrimeGitContextIsScopedToInspectedWorkspace(t *testing.T) {
+	defer stubPrimeStoreUnavailable()()
+	defer stubIsEphemeralBranch(false)()
+	defer stubPrimeHasGitRemote(false)()
+	defer stubPrimeHasSyncRemote(false)()
+	defer stubPrimeNoPushConfigured(false)()
+	defer stubPrimeAgentProfile(config.ProfileConservative)()
+	defer stubPrimeGitContextScope("/workspace/no-remote")()
+
+	for _, tc := range []struct {
+		name   string
+		output func(*bytes.Buffer, bool) error
+	}{
+		{name: "CLI", output: func(buf *bytes.Buffer, stealth bool) error { return outputCLIContext(buf, stealth) }},
+		{name: "MCP", output: func(buf *bytes.Buffer, stealth bool) error { return outputMCPContext(buf, stealth) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			if err := tc.output(&buf, false); err != nil {
+				t.Fatalf("render prime context: %v", err)
+			}
+
+			output := buf.String()
+			for _, expected := range []string{
+				`Git context scope: "/workspace/no-remote"`,
+				"No git remote configured for this workspace",
+				"observations, restrictions, and authority in this output apply only to this workspace",
+				"For another repository, inspect its Git context",
+				"follow that repository's existing authority and higher-priority instructions",
+				"this output grants no authority there",
+			} {
+				if !strings.Contains(output, expected) {
+					t.Errorf("expected scoped Git context to contain %q; output:\n%s", expected, output)
+				}
+			}
+		})
+	}
+}
+
+func TestPrimeGitContextScopePreservesWorkspaceFlag(t *testing.T) {
+	original := changeDir
+	t.Cleanup(func() { changeDir = original })
+
+	target := filepath.Join(t.TempDir(), "target")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatalf("mkdir target: %v", err)
+	}
+
+	changeDir = ""
+	baseline := primeGitContextScope()
+	if baseline == target {
+		t.Fatalf("baseline (no -C) already equals the -C target %q; pick a target the baseline can't coincidentally match", target)
+	}
+
+	changeDir = target
+	if got := primeGitContextScope(); got != target {
+		t.Errorf("-C %q: primeGitContextScope() = %q, want the -C target", target, got)
+	}
+}
+
+func stubPrimeGitContextScope(scope string) func() {
+	original := primeGitContextScope
+	primeGitContextScope = func() string {
+		return scope
+	}
+	return func() {
+		primeGitContextScope = original
+	}
+}

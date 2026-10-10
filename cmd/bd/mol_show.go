@@ -84,7 +84,7 @@ func showMolecule(subgraph *MoleculeSubgraph) error {
 		moleculeType = "Compound"
 	}
 
-	fmt.Printf("\n%s %s: %s\n", ui.RenderAccent("🧪"), moleculeType, subgraph.Root.Title)
+	fmt.Printf("\n%s %s: %s\n", ui.RenderAccent("🧪"), moleculeType, ui.SanitizeForTerminal(subgraph.Root.Title))
 	fmt.Printf("   ID: %s\n", subgraph.Root.ID)
 	fmt.Printf("   Steps: %d\n", len(subgraph.Issues))
 
@@ -439,7 +439,7 @@ func showMoleculeWithParallel(subgraph *MoleculeSubgraph) error {
 		moleculeType = "Compound"
 	}
 
-	fmt.Printf("\n%s %s: %s\n", ui.RenderAccent("🧪"), moleculeType, subgraph.Root.Title)
+	fmt.Printf("\n%s %s: %s\n", ui.RenderAccent("🧪"), moleculeType, ui.SanitizeForTerminal(subgraph.Root.Title))
 	fmt.Printf("   ID: %s\n", subgraph.Root.ID)
 	fmt.Printf("   Steps: %d (%d ready)\n", analysis.TotalSteps, analysis.ReadySteps)
 
@@ -485,7 +485,7 @@ func printMoleculeTreeWithParallelVisited(subgraph *MoleculeSubgraph, analysis *
 	if isRoot {
 		rootInfo := analysis.Steps[subgraph.Root.ID]
 		annotation := getParallelAnnotation(rootInfo)
-		fmt.Printf("%s   %s%s\n", indent, subgraph.Root.Title, annotation)
+		fmt.Printf("%s   %s%s\n", indent, ui.SanitizeForTerminal(subgraph.Root.Title), annotation)
 		visited[parentID] = true
 	}
 
@@ -511,10 +511,10 @@ func printMoleculeTreeWithParallelVisited(subgraph *MoleculeSubgraph, analysis *
 
 		// Cycle detection (GH#2719)
 		if visited[child.ID] {
-			fmt.Printf("%s   %s %s%s (cycle detected, skipping)\n", indent, connector, child.Title, annotation)
+			fmt.Printf("%s   %s %s%s (cycle detected, skipping)\n", indent, connector, ui.SanitizeForTerminal(child.Title), annotation)
 			continue
 		}
-		fmt.Printf("%s   %s %s%s\n", indent, connector, child.Title, annotation)
+		fmt.Printf("%s   %s %s%s\n", indent, connector, ui.SanitizeForTerminal(child.Title), annotation)
 		visited[child.ID] = true
 		printMoleculeTreeWithParallelVisited(subgraph, analysis, child.ID, depth+1, false, visited)
 	}

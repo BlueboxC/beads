@@ -1,0 +1,252 @@
+package graphstore
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+	"unicode/utf8"
+
+	graph "github.com/steveyegge/beads/graphops"
+	"github.com/steveyegge/beads/internal/storage"
+)
+
+func validatePath(path string) error {
+	if err := graph.ValidateBeadPath(path); err != nil {
+		return err
+	}
+	if len(path) > 1024 {
+		return errors.New("preview Bead path exceeds 1024 bytes")
+	}
+	return nil
+}
+
+// Create atomically reserves a never-reused canonical path, writes its current
+// payload and records the complete accepted snapshot. There is no keyed upsert
+// or optional History switch. Commit uncertainty returns no success record.
+func (s *Store) Create(ctx context.Context, req CreateRequest) (Record, error) {
+	if err := validatePath(req.Path); err != nil {
+		return Record{}, err
+	}
+	if !utf8.ValidString(req.Title) || !utf8.ValidString(req.Body) || !utf8.ValidString(req.Actor) {
+		return Record{}, errors.New("Memory title, body and actor must be valid UTF-8")
+	}
+	metadata, err := commonMetadata(req.Metadata)
+	if err != nil {
+		return Record{}, err
+	}
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(metadata, &fields)
+	if _, reserved := fields[ContinuityKeyMetadata]; reserved {
+		return Record{}, fmt.Errorf("%w: reserved %s metadata requires the continuity adapter", storage.ErrValidation, ContinuityKeyMetadata)
+	}
+	revision, err := freshToken()
+	if err != nil {
+		return Record{}, err
+	}
+	r := Record{ID: graph.CanonicalURL(s.options.Binding.ScopeURL, req.Path),
+		Type: MemoryTypeURL(s.options.Binding.ScopeURL), Revision: revision, Version: revision,
+		Properties: Properties{Title: req.Title, Body: req.Body}, Metadata: metadata, Owned: []json.RawMessage{}}
+	r.Attribution = Attribution{Actor: req.Actor, Status: "unknown", RecordedAt: time.Now().UTC().Format(time.RFC3339Nano)}
+	if req.Actor != "" {
+		r.Attribution.Status = "claimed"
+	}
+	properties, err := canonicalJSON(r.Properties)
+	if err != nil {
+		return Record{}, err
+	}
+	snapshot, err := canonicalJSON(r)
+	if err != nil {
+		return Record{}, err
+	}
+	err = s.withTx(ctx, true, func(tx *sql.Tx) error {
+		if err := checkBinding(ctx, tx, s.options); err != nil {
+			return err
+		}
+		return s.createInTx(ctx, tx, req, r, properties, snapshot)
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return r, nil
+}
+
+func (s *Store) createInTx(ctx context.Context, tx *sql.Tx, req CreateRequest, r Record, properties, snapshot []byte) error {
+	if err := s.touchCoordination(ctx, tx); err != nil {
+		return err
+	}
+	var exists int
+	err := tx.QueryRowContext(ctx, `SELECT 1 FROM graph_preview_catalog WHERE path = ?`, req.Path).Scan(&exists)
+	if err == nil {
+		return ErrAlreadyExists
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO graph_preview_catalog
+        (path, resource_kind, type_url, revision, allocation_state, backing)
+        VALUES (?, 'bead', ?, ?, 'live', 'generic')`, req.Path, r.Type, r.Revision); err != nil {
+		return err
+	}
+	if err := s.afterStage("allocation"); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `INSERT INTO graph_preview_payloads (path, properties, metadata) VALUES (?, ?, ?)`, req.Path, properties, r.Metadata); err != nil {
+		return err
+	}
+	if err := s.afterStage("payload"); err != nil {
+		return err
+	}
+	err = insertPreviewVersionInTx(ctx, tx, req.Path, r.Version, snapshot, req.Actor)
+	if err != nil {
+		return err
+	}
+	return s.afterStage("retained")
+}
+
+func (s *Store) touchCoordination(ctx context.Context, tx *sql.Tx) error {
+	// Each controlled writer changes this same cell to a fresh random value.
+	// Concurrent snapshots cannot silently merge disjoint successful mutations.
+	token, err := freshToken()
+	if err != nil {
+		return err
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE graph_preview_scope SET writer_token = ? WHERE singleton = 1`, token)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return fmt.Errorf("%w: missing writer coordination row", ErrInvalidStore)
+	}
+	if err := s.afterStage("coordination"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) afterStage(stage string) error {
+	if s.afterWrite != nil {
+		return s.afterWrite(stage)
+	}
+	return nil
+}
+
+// Show reads one canonical Memory and verifies its required retained snapshot
+// in the same read transaction. Corrupt/incomplete state is never an absence.
+func (s *Store) Show(ctx context.Context, path string) (Record, error) {
+	if err := validatePath(path); err != nil {
+		return Record{}, err
+	}
+	var record Record
+	err := s.withTx(ctx, false, func(tx *sql.Tx) error {
+		var err error
+		record, err = s.showMemoryInTx(ctx, tx, path)
+		return err
+	})
+	if err != nil {
+		return Record{}, err
+	}
+	return record, nil
+}
+
+func (s *Store) showMemoryInTx(ctx context.Context, tx *sql.Tx, path string) (Record, error) {
+	if err := checkBinding(ctx, tx, s.options); err != nil {
+		return Record{}, err
+	}
+	return s.readMemoryInTx(ctx, tx, path)
+}
+
+// readMemoryInTx requires binding validation in this same transaction. It still
+// validates allocation, canonical bytes, retained state and owned Links.
+func (s *Store) readMemoryInTx(ctx context.Context, tx *sql.Tx, path string) (Record, error) {
+	var record Record
+	var kind, typ, revision, state, backing string
+	err := tx.QueryRowContext(ctx, `SELECT resource_kind, type_url, revision, allocation_state, backing
+            FROM graph_preview_catalog WHERE path = ?`, path).Scan(&kind, &typ, &revision, &state, &backing)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Record{}, ErrNotFound
+	}
+	if err != nil {
+		return Record{}, err
+	}
+	if state == "deleted" {
+		if _, err := s.deletedMemoryInTx(ctx, tx, path); err != nil {
+			return Record{}, err
+		}
+		return Record{}, ErrGone
+	}
+	if kind != "bead" || typ != MemoryTypeURL(s.options.Binding.ScopeURL) || !authorityID.MatchString(revision) || state != "live" || backing != "generic" {
+		return Record{}, fmt.Errorf("%w: unsupported or corrupt allocation", ErrInvalidStore)
+	}
+	var payload, metadata, snapshot []byte
+	var actor string
+	if err := tx.QueryRowContext(ctx, `SELECT properties, metadata FROM graph_preview_payloads WHERE path = ?`, path).Scan(&payload, &metadata); err != nil {
+		return Record{}, fmt.Errorf("%w: missing current payload: %v", ErrInvalidStore, err)
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT snapshot, actor FROM graph_preview_versions WHERE path = ? AND version = ?`, path, revision).Scan(&snapshot, &actor); err != nil {
+		return Record{}, fmt.Errorf("%w: missing retained state: %v", ErrInvalidStore, err)
+	}
+	record = Record{ID: graph.CanonicalURL(s.options.Binding.ScopeURL, path), Type: typ,
+		Revision: revision, Version: revision, Owned: []json.RawMessage{}}
+	var retained Record
+	if err := json.Unmarshal(snapshot, &retained); err != nil {
+		return Record{}, fmt.Errorf("%w: malformed retained state", ErrInvalidStore)
+	}
+	record.Metadata, err = commonMetadata(metadata)
+	if err != nil || !bytes.Equal(record.Metadata, metadata) {
+		return Record{}, fmt.Errorf("%w: invalid current Memory metadata", ErrInvalidStore)
+	}
+	record.Owned, err = s.memoryOwnedLinksInTx(ctx, tx, path)
+	if err != nil {
+		return Record{}, err
+	}
+	record.Attribution = retained.Attribution
+	at, err := time.Parse(time.RFC3339Nano, record.Attribution.RecordedAt)
+	if err != nil || at.UTC().Format(time.RFC3339Nano) != record.Attribution.RecordedAt || actor != record.Attribution.Actor ||
+		(record.Attribution.Actor == "" && record.Attribution.Status != "unknown") ||
+		(record.Attribution.Actor != "" && record.Attribution.Status != "claimed") {
+		return Record{}, fmt.Errorf("%w: invalid retained attribution", ErrInvalidStore)
+	}
+	if err := json.Unmarshal(payload, &record.Properties); err != nil {
+		return Record{}, fmt.Errorf("%w: malformed payload", ErrInvalidStore)
+	}
+	canonicalPayload, err := canonicalJSON(record.Properties)
+	if err != nil {
+		return Record{}, err
+	}
+	canonicalSnapshot, err := canonicalJSON(record)
+	if err != nil {
+		return Record{}, err
+	}
+	if !bytes.Equal(payload, canonicalPayload) || !bytes.Equal(snapshot, canonicalSnapshot) {
+		return Record{}, fmt.Errorf("%w: current and retained state differ", ErrInvalidStore)
+	}
+	return record, nil
+}
+
+// insertPreviewVersionInTx retains one version of a Memory or Link with the
+// ordinal that orders its history and the instant it was written. It must run
+// inside the caller's write transaction so the ordinal read and the insert see
+// the same rows.
+func insertPreviewVersionInTx(ctx context.Context, tx *sql.Tx, path, version string, snapshot []byte, actor string) error {
+	// Writers must touch the store-wide coordination cell in this transaction
+	// before allocating MAX+1. The unique path/ordinal key is a backstop.
+	// Server concurrency tests require the loser to be ErrConflict; other commit
+	// errors remain ErrOutcomeUnknown and must never be automatically replayed.
+	var ordinal int64
+	if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(ordinal),0)+1 FROM graph_preview_versions WHERE path=?`, path).Scan(&ordinal); err != nil {
+		return err
+	}
+	// Keep DATETIME(6) precision. Ordinal orders history; change_at is a separate
+	// display/selection clock from the record's attribution timestamp.
+	changeAt := time.Now().UTC()
+	_, err := tx.ExecContext(ctx, `INSERT INTO graph_preview_versions (path, version, snapshot, actor, ordinal, change_at) VALUES (?, ?, ?, ?, ?, ?)`, path, version, snapshot, actor, ordinal, changeAt)
+	return err
+}

@@ -82,7 +82,7 @@ func displayRefGroup(sec depSection) {
 		if ref.Status == types.StatusClosed {
 			fmt.Printf("    %s: %s %s\n",
 				ui.RenderMuted(ref.ID),
-				ui.RenderMuted(ref.Title),
+				ui.RenderMuted(ui.SanitizeForTerminal(ref.Title)),
 				ui.RenderMuted(fmt.Sprintf("[P%d - %s]", ref.Priority, ref.Status)))
 			continue
 		}
@@ -99,7 +99,7 @@ func displayRefGroup(sec depSection) {
 		default:
 			idStr = ref.ID
 		}
-		fmt.Printf("    %s: %s [P%d - %s]\n", idStr, ref.Title, ref.Priority, ref.Status)
+		fmt.Printf("    %s: %s [P%d - %s]\n", idStr, ui.SanitizeForTerminal(ref.Title), ref.Priority, ref.Status)
 	}
 }
 

@@ -162,9 +162,11 @@ var countsEntryPoints = []countsEntryPoint{
 		prime: func(mock sqlmock.Sqlmock, wispErr error) {
 			mock.ExpectQuery(`SELECT 1 FROM wisp_dependencies LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`(?s)FROM issues i`).WillReturnRows(emptyCountsRows())
 			mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`(?s)FROM wisps i`).WillReturnError(wispErr)
 		},
 		run: func(ctx context.Context, tx *sql.Tx) (string, error) {
@@ -179,9 +181,11 @@ var countsEntryPoints = []countsEntryPoint{
 		prime: func(mock sqlmock.Sqlmock, wispErr error) {
 			mock.ExpectQuery(`SELECT 1 FROM wisp_dependencies LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`SELECT COUNT\(\*\) FROM issues`).WillReturnRows(scalarCountRows(1))
 			mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`SELECT COUNT\(\*\) FROM wisps`).WillReturnError(wispErr)
 		},
 		run: func(ctx context.Context, tx *sql.Tx) (string, error) {
@@ -194,6 +198,7 @@ var countsEntryPoints = []countsEntryPoint{
 		name:    "GetReadyWorkInTx/unbounded",
 		missing: wispPlaneAndLeases,
 		prime: func(mock sqlmock.Sqlmock, wispErr error) {
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`SELECT id FROM issues`).WillReturnRows(sqlmock.NewRows([]string{"id"}))
 			mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))
@@ -209,6 +214,7 @@ var countsEntryPoints = []countsEntryPoint{
 		name:    "GetReadyWorkInTx/paged",
 		missing: []string{"wisp_labels"},
 		prime: func(mock sqlmock.Sqlmock, wispErr error) {
+			expectNoExternalBlocks(mock)
 			mock.ExpectQuery(`SELECT id FROM issues`).WillReturnRows(sqlmock.NewRows([]string{"id"}))
 			mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).
 				WillReturnRows(sqlmock.NewRows([]string{"1"}).AddRow(1))

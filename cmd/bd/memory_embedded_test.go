@@ -12,7 +12,9 @@ import (
 	"testing"
 
 	"github.com/steveyegge/beads/internal/configfile"
+	"github.com/steveyegge/beads/internal/memoryapi"
 	"github.com/steveyegge/beads/internal/storage/embeddeddolt"
+	storagememoryops "github.com/steveyegge/beads/internal/storage/memoryops"
 )
 
 // countMemoryDoltCommits reads dolt_log for an embedded workspace. It is how
@@ -36,6 +38,30 @@ func countMemoryDoltCommits(t *testing.T, beadsDir string) int {
 		t.Fatalf("query dolt_log: %v", err)
 	}
 	return count
+}
+
+// storeMemoryValueOutOfBand overwrites a memory row's value with SQL, beneath
+// every bd code path. It is the only way a test gets an empty-valued memory:
+// `bd remember` refuses empty content, so such a row always arrives out of band.
+func storeMemoryValueOutOfBand(t *testing.T, beadsDir, key, value string) {
+	t.Helper()
+	cfg, _ := configfile.Load(beadsDir)
+	database := ""
+	if cfg != nil {
+		database = cfg.GetDoltDatabase()
+	}
+	db, cleanup, err := embeddeddolt.OpenSQL(t.Context(), filepath.Join(beadsDir, "embeddeddolt"), database, "main")
+	if err != nil {
+		t.Fatalf("OpenSQL: %v", err)
+	}
+	defer cleanup()
+	res, err := db.ExecContext(t.Context(), "UPDATE config SET value = ? WHERE `key` = ?", value, storagememoryops.StorageKey(key))
+	if err != nil {
+		t.Fatalf("update memory %q: %v", key, err)
+	}
+	if n, err := res.RowsAffected(); err != nil || n != 1 {
+		t.Fatalf("update memory %q: %d rows affected (err %v), want 1", key, n, err)
+	}
 }
 
 // bdRemember runs "bd remember" with the given args and returns stdout.
@@ -189,6 +215,49 @@ func TestEmbeddedMemory(t *testing.T) {
 		}
 	})
 
+	// Exercise the real CLI and persistence boundary: read-shaped calls must
+	// preserve every row, including an existing derived-key collision.
+	t.Run("remember_noncanonical_keys_are_read_only", func(t *testing.T) {
+		for _, key := range []string{
+			"bd-list-silent-partial-rows-take-decision-counts-with-json",
+			strings.Repeat("x", 61),
+			"memory.v2",
+		} {
+			t.Run(key, func(t *testing.T) {
+				bdRemember(t, bd, dir, "exact memory content", "--key", key)
+				derived := memoryapi.DeriveKey(key)
+				bdRemember(t, bd, dir, "derived memory content", "--key", derived)
+				before := bdMemories(t, bd, dir, "--json")
+				if out := bdRemember(t, bd, dir, key); out != "exact memory content\n" {
+					t.Errorf("exact key recall = %q", out)
+				}
+				if after := bdMemories(t, bd, dir, "--json"); after != before {
+					t.Fatalf("read changed memories: before %s after %s", before, after)
+				}
+
+				bdForget(t, bd, dir, key)
+				before = bdMemories(t, bd, dir, "--json")
+				out := bdRememberFail(t, bd, dir, key)
+				if !strings.Contains(out, "no memory named") || !strings.Contains(out, "did you mean "+derived) {
+					t.Errorf("missing exact key must refuse with suggestion: %s", out)
+				}
+				if after := bdMemories(t, bd, dir, "--json"); after != before {
+					t.Fatalf("miss changed memories: before %s after %s", before, after)
+				}
+
+				bdForget(t, bd, dir, derived)
+				before = bdMemories(t, bd, dir, "--json")
+				out = bdRememberFail(t, bd, dir, key, "--json")
+				if !strings.Contains(out, "no memory named") || strings.Contains(out, "did you mean") {
+					t.Errorf("missing keys must refuse without suggestion: %s", out)
+				}
+				if after := bdMemories(t, bd, dir, "--json"); after != before {
+					t.Fatalf("miss minted a memory: before %s after %s", before, after)
+				}
+			})
+		}
+	})
+
 	t.Run("remember_guard_bypass_with_explicit_key", func(t *testing.T) {
 		bdRemember(t, bd, dir, "original", "--key", "bypass-key")
 		// Explicit --key signals deliberate intent and bypasses the guard.
@@ -210,14 +279,7 @@ func TestEmbeddedMemory(t *testing.T) {
 		bdRecallFail(t, bd, dir, "brand-new-slug-memory")
 	})
 
-	// The two refusals that sit either side of the desire path, and the reason
-	// the bare-slug test is `derived != "" && derived == insight` rather than
-	// the shipped `slugify(insight) == insight`: DeriveKey("") is "", so empty
-	// and underivable content satisfies derived == insight and would be routed
-	// into a "recall" of the empty key instead of being refused. The shipped
-	// code was saved from that by an empty-content check that ran BEFORE the
-	// branch; that check belongs to the role now, so the branch has to exclude
-	// the empty key itself.
+	// Empty and unslugifiable content still receive the role validation errors.
 	t.Run("remember_refuses_content_no_key_derives_from", func(t *testing.T) {
 		for _, tc := range []struct{ insight, want string }{
 			{"", "memory content cannot be empty"},
@@ -278,6 +340,29 @@ func TestEmbeddedMemory(t *testing.T) {
 		bdForget(t, bd, dir, "forget-me")
 		// After forget, recall should fail
 		bdRecallFail(t, bd, dir, "forget-me")
+	})
+
+	// AN EMPTY-VALUED MEMORY IS PRESENT (#5963). These run the real commands, so
+	// they pin each RunE's wiring and not only its renderer: a call site that
+	// went back to deciding presence from value != "" fails here while
+	// TestPrintRecallResult and TestRememberBareKeyPath stay green. Its own
+	// workspace, because the row is emptied beneath bd.
+	t.Run("empty_valued_memory_is_present", func(t *testing.T) {
+		edir, ebeads, _ := bdInit(t, bd, "--prefix", "em")
+		bdRemember(t, bd, edir, "placeholder the test empties", "--key", "stored-empty")
+		storeMemoryValueOutOfBand(t, ebeads, "stored-empty", "")
+
+		// The placeholder check proves bd sees the emptied row. Without it, a
+		// write bd never read would leave this test green on a reverted fix.
+		if out := bdRecall(t, bd, edir, "stored-empty"); strings.Contains(out, "placeholder") {
+			t.Fatalf("bd recall still sees the placeholder, so the row was not emptied: %s", out)
+		}
+		// A bare key naming the empty-valued memory recalls it instead of refusing.
+		if out := bdRemember(t, bd, edir, "stored-empty"); strings.Contains(out, "placeholder") {
+			t.Fatalf("bd remember <bare-key> still sees the placeholder: %s", out)
+		}
+		bdForget(t, bd, edir, "stored-empty")
+		bdRecallFail(t, bd, edir, "stored-empty")
 	})
 
 	// THE AUTO-COMMIT EPILOGUE, which is the trap this convergence was most

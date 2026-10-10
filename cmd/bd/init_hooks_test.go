@@ -798,7 +798,7 @@ func TestInstallHooksBeads_WorktreeAccess(t *testing.T) {
 			t.Fatalf("Failed to create metadata.json: %v", err)
 		}
 
-		cmd := exec.Command("git", "commit", "--allow-empty", "--no-verify", "-m", "init")
+		cmd := exec.Command("git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "commit", "--allow-empty", "--no-verify", "-m", "init")
 		cmd.Dir = tmpDir
 		if output, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git commit failed: %v\n%s", err, string(output))

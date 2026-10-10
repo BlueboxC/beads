@@ -1,6 +1,6 @@
 # Error Handling Guidelines
 
-Last reviewed: 2026-07-07
+Last reviewed: 2026-10-10
 
 Freshness source: `cmd/bd/*.go`, especially command error exits and JSON error
 helpers in `cmd/bd/errors.go`.
@@ -37,8 +37,10 @@ the message and returns a sentinel `*exitError`; cobra unwinds the stack (runnin
 every `defer`), and `main()` maps the sentinel to exit code 1.
 
 **Characteristics:**
-- Prints `Error:` (plus `Hint:` for the `WithHint` variants) to stderr; the
-  `RespectJSON` variants emit a structured JSON error to stdout under `--json`
+- Prints `Error:` (plus `Hint:` for the `WithHint` variants) to stderr.
+  Under `--json`, `HandleErrorRespectJSON` and
+  `HandleErrorWithHintRespectJSON` emit a structured error to stdout;
+  `HandleErrorWithHint` instead emits its JSON error to stderr.
 - Returns `&exitError{Code: 1}` up through `RunE`; `main()` exits 1 after
   deferred cleanup and the metrics flush have run
 - The command's `cobra.Command` **must** set `SilenceUsage: true` and
@@ -61,8 +63,8 @@ return a `HandleError*` value instead of adding more.
 
 **When to use:**
 - **Optional operations** that enhance functionality but aren't required
-- **Metadata operations** (config updates, analytics, logging)
-- **Cleanup operations** (removing temp files, closing resources)
+- **Optional tracking metadata**, analytics or logging; authoritative
+  configuration failures remain fatal
 - **Auxiliary features** (git hooks installation, merge driver setup)
 
 **Example:**
@@ -80,10 +82,9 @@ if err := createConfigYaml(beadsDir, false); err != nil {
 - Core functionality still works
 
 **Files using this pattern:**
-- `cmd/bd/init.go` (lines 155-157, 161-163, 167-169, 188-190, 236-238, 272-274, etc.)
-- `cmd/bd/sync.go` (lines 156, 257, 281, 329, 335, 720-722, 740, 743, 752, 762)
-- `cmd/bd/create.go` (lines 333-334, 340-341)
-- `cmd/bd/sync.go` *(handles Dolt sync operations)*
+
+- `cmd/bd/init.go`: optional config-file creation and clone-local version tracking
+- `cmd/bd/dolt.go`: advisory remote checks and optional remote cleanup
 
 ---
 
@@ -107,10 +108,12 @@ _ = os.Remove(tempPath)
 - Primary error already reported
 
 **Files using this pattern:**
-- `cmd/bd/init.go` (line 209, 326-327)
-- `cmd/bd/sync.go` (lines 696-698)
-- `cmd/bd/sync.go` *(sync cleanup)*
-- Dozens of other locations throughout the codebase
+
+- `cmd/bd/main.go`: deferred store, profile and trace cleanup
+- `cmd/bd/dolt.go`: connection and file cleanup
+
+If close/finalization is needed for successful persistence, its error is fatal
+rather than best-effort cleanup; for example, the final store close in init.
 
 ---
 
@@ -286,16 +289,21 @@ if err := store.SetConfig(ctx, "issue_prefix", prefix); err != nil {
     return HandleError("failed to set issue prefix: %v", err)
 }
 
-if err := syncbranch.Set(ctx, store, branch); err != nil {
-    return HandleError("failed to set sync branch: %v", err)
-}
 ```
 
 **Examples:**
 - `issue_prefix` - Defines how all issue IDs are generated
-- `sync.branch` - Critical for git synchronization workflow
+- Workspace/backend identity - Determines which database the command may open
 
 **Rationale:** These settings are prerequisites for basic operation. Without them, the system cannot function correctly. A failure here indicates a serious problem (e.g., filesystem issues, database corruption).
+
+A present but malformed `.beads/metadata.json` is authoritative configuration
+failure, not missing optional tracking. Data commands fail instead of returning
+a false-empty result from another backend. Doctor also rejects it before opening
+a diagnostic store; ordinary init refuses to overwrite the selector automatically.
+Version remains available without a store. Preserve the corrupt file and restore
+a known-valid backup for this project before retrying. Explicit destructive
+reinitialization is a different operation and is not automatic metadata repair.
 
 #### Tracking Metadata (Pattern B: Warn and Continue)
 
@@ -303,38 +311,44 @@ Tracking metadata **enhances functionality** but the system works without it:
 
 ```go
 // Pattern B: Warn and continue
-if err := store.SetMetadata(ctx, "bd_version", Version); err != nil {
+if err := store.SetLocalMetadata(ctx, "bd_version", Version); err != nil {
     fmt.Fprintf(os.Stderr, "Warning: failed to store version metadata: %v\n", err)
     // Non-fatal - continue anyway
 }
 
-if err := store.SetMetadata(ctx, "repo_id", repoID); err != nil {
-    fmt.Fprintf(os.Stderr, "Warning: failed to set repo_id: %v\n", err)
-}
-
-if err := store.SetMetadata(ctx, "last_import_hash", hash); err != nil {
-    fmt.Fprintf(os.Stderr, "Warning: failed to update last_import_hash: %v\n", err)
-}
 ```
 
 **Examples:**
-- `bd_version` - Enables version mismatch warnings on upgrades
-- `repo_id` / `clone_id` - Helps with collision detection across clones
-- `last_import_hash` - Optimizes staleness detection (falls back to mtime if unavailable)
+- `bd_version` - Clone-local version tracking
+- `repo_id` / `clone_id` - Optional clone diagnostics when admitted by init's
+  `shouldWriteInitStateToDB` guard
 
 **Rationale:** System degrades gracefully if tracking metadata is unavailable. Core functionality (creating issues, importing data) still works. Failures here might indicate temporary issues (e.g., read-only filesystem) that shouldn't block the entire operation.
 
-**See also:** `cmd/bd/init.go` lines 206-272 for detailed inline documentation of this distinction.
+**See also:** `cmd/bd/init.go`, the configuration/tracking blocks and
+`verifyMetadata`; `cmd/bd/doctor.go`, `validateDoctorWorkspaceBackend`.
 
 ### File Permission Errors
 
-Setting file permissions is typically **Pattern B** because the file was already written:
+Choose the pattern according to the permission contract. If confidentiality or
+required access depends on the permissions, failure is fatal. An auxiliary
+permission adjustment may warn; the fact that bytes were written does not make
+the permission error optional.
 
 ```go
 if err := os.Chmod(jsonlPath, 0600); err != nil {
     fmt.Fprintf(os.Stderr, "Warning: failed to set file permissions: %v\n", err)
 }
 ```
+
+Embedded `OpenPermissionError` is a fatal store-open error with the original
+`errors.Is(os.ErrPermission)` cause. `renderTypedOpenError` emits its actionable
+hint and JSON (`embedded_open.permission_denied`, `retryable: false`) to stderr,
+then the caller returns `SilentExit`. Logical readonly does not remove the
+embedded driver's filesystem-write requirement. Classify typed permission errors,
+not arbitrary text such as “Access is denied” or “lock”; keep transient contention
+and cancellation separate. Do not retry permanent permissions unchanged or alter
+permissions/lockfiles automatically.
 
 ### Resource Cleanup
 
@@ -371,8 +385,9 @@ func HandleError(format string, args ...interface{}) error
 // Like HandleError, but emits a structured JSON error to stdout under --json
 func HandleErrorRespectJSON(format string, args ...interface{}) error
 
-// Adds a "Hint: ..." line (the …RespectJSON variant routes JSON to stdout)
+// Adds a "Hint: ..." line; under --json this helper routes JSON to stderr
 func HandleErrorWithHint(message, hint string) error
+// Under --json routes the structured error and hint to stdout
 func HandleErrorWithHintRespectJSON(message, hint string) error
 
 // Exit 1 with no message, when the error was already reported
@@ -393,4 +408,5 @@ func WarnError(format string, args ...interface{})
 - `cmd/bd/errors.go` - The `HandleError*` / `WarnError` / `SilentExit` helpers and the `exitError` sentinel that `main()` maps to an exit code
 - `cmd/bd/defer.go` - Clean example of Pattern A: `return HandleError(...)` from a `RunE` with `SilenceUsage`/`SilenceErrors` set
 - `cmd/bd/init.go` - Examples of all three patterns
-- `cmd/bd/sync.go` - Examples of Pattern B for metadata operations and Pattern C for cleanup operations
+- `cmd/bd/dolt.go` - Remote-operation errors and connection cleanup
+- `cmd/bd/doctor.go` - Workspace metadata validation before diagnostic stores

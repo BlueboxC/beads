@@ -19,6 +19,8 @@ var (
 	errClaudeHooksMissing = errors.New("claude hooks not installed")
 )
 
+const claudeStopHookCommand = "bd claude-hook stop"
+
 const claudeInstructionsFile = "CLAUDE.md"
 
 var claudeAgentsIntegration = agentsIntegration{

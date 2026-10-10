@@ -2,7 +2,7 @@
 
 ## Overview
 
-Beads uses OpenTelemetry (OTel) for structured observability of all database operations, CLI commands, and Dolt version control. Telemetry is emitted via standard OTLP HTTP to any compatible backend (metrics, traces).
+Beads uses OpenTelemetry (OTel) for structured observability of all database operations, CLI commands, and Dolt version control. Opt-in metrics can use OTLP HTTP; traces currently export only to the local console.
 
 **Backend-agnostic design**: The system emits standard OpenTelemetry Protocol (OTLP) — any OTLP v1.x+ compatible backend can consume it. You are **not obligated** to use VictoriaMetrics/VictoriaLogs; these are simply development defaults.
 
@@ -505,7 +505,7 @@ FROM dolt_conflicts;
 
 ## Appendix: Source Reference Audit
 
-Audited against **`main` @ `371df32b`**. All line numbers below refer to that commit.
+Audited against **`main` @ `371df32b`**. Line numbers below refer to that commit; the resource-detector row records the current fork correction.
 
 Every factual claim in this document is backed by a specific source location. This table exists to prevent documentation drift and to make it easy to re-verify after code changes.
 
@@ -518,7 +518,7 @@ Every factual claim in this document is backed by a specific source location. Th
 | Traces: stdout only when `BD_OTEL_STDOUT=true` | `telemetry.go:84-93` |
 | Metrics: HTTP OTLP when `BD_OTEL_METRICS_URL` set | `telemetry.go:131-139` |
 | Resource: `service.name`, `service.version` | `telemetry.go:73-75` |
-| Resource: `WithHost()`, `WithProcess()` | `telemetry.go:76-77` |
+| Resource: `WithHost()` plus explicit PID, executable and runtime detectors; no automatic argv or owner | `telemetry.go` `buildResource` (fork #7277) |
 | `Shutdown(ctx)` signature | `telemetry.go:162` |
 | `Init` called in `PersistentPreRun` | `main.go:256` |
 | Command span started with `bd.command`, `bd.version`, `bd.args` | `main.go:262-266` |

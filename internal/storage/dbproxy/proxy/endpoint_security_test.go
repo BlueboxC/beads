@@ -3,6 +3,7 @@
 package proxy
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -843,4 +844,30 @@ func quarantines(t *testing.T, root, name string) []string {
 	matches, err := filepath.Glob(filepath.Join(root, name+".stale-*"))
 	require.NoError(t, err)
 	return matches
+}
+
+func TestGetCreateContextCanceledDoesNotStartProxy(t *testing.T) {
+	root := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := GetCreateDatabaseProxyServerEndpointContext(ctx, root, externalOpenOpts(root))
+	require.ErrorIs(t, err, context.Canceled)
+	entries, err := os.ReadDir(root)
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
+
+func TestGetCreateContextDeadlineWhileLockHeld(t *testing.T) {
+	root := t.TempDir()
+	lock, err := util.TryLock(filepath.Join(root, LockFileName))
+	require.NoError(t, err)
+	defer lock.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 80*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err = GetCreateDatabaseProxyServerEndpointContext(ctx, root, externalOpenOpts(root))
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	require.Less(t, time.Since(started), time.Second)
+	assert.NoFileExists(t, filepath.Join(root, spawnMarkerFileName))
+	assert.NoFileExists(t, pidfile.Path(root, PIDFileName))
 }

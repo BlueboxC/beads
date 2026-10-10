@@ -330,7 +330,7 @@ func renderWispCreateDryRun(protoID string, subgraph *TemplateSubgraph, vars map
 	}
 	for _, issue := range issuesToShow {
 		newTitle := substituteVariables(issue.Title, vars)
-		fmt.Printf("  - %s (from %s)\n", newTitle, issue.ID)
+		fmt.Printf("  - %s (from %s)\n", ui.SanitizeForTerminal(newTitle), issue.ID)
 	}
 }
 
@@ -798,7 +798,7 @@ func runWispGC(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Dry run: would clean %d abandoned wisp(s):\n\n", len(abandoned))
 		for _, issue := range abandoned {
 			age := formatTimeAgo(issue.UpdatedAt)
-			fmt.Printf("  %s: %s (last updated: %s)\n", issue.ID, issue.Title, age)
+			fmt.Printf("  %s: %s (last updated: %s)\n", issue.ID, ui.SanitizeForTerminal(issue.Title), age)
 		}
 		fmt.Printf("\nRun without --dry-run to delete these wisps.\n")
 		return nil
