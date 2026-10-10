@@ -21,6 +21,8 @@ Root DOX.md and the parent chain remain binding.
 - HTTP event streams revalidate bearer credentials before delivery and around journal reads, including idle and backlog passes. Successful removal terminates the stream; failed token-file reloads retain the last-good token set.
 - Terminal Markdown rendering removes raw controls and numeric entities that decode into controls before Glamour parsing; renderer-generated styles and printable entities remain supported.
 
+- Telemetry remains opt-in. Its default resource collects host, process identity and runtime metadata without argv or process owner; explicit environment attributes still override/extend defaults. Command spans retain credential-scrubbed arguments in local console traces only.
+
 - Recipe SharedPaths explicitly declare section-managed instruction files; other paths retain their existing whole-file ownership semantics.
 
 ## Work Guidance

@@ -134,7 +134,8 @@ func translateLegacyEnv() []string {
 //
 // Defaults are merged with the host/process detectors and finally with the
 // FromEnv detector, so OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES can
-// override anything set by the caller.
+// override anything set by the caller. Explicit detectors omit automatic argv
+// and owner collection; WithProcess would include both.
 func buildResource(ctx context.Context, serviceName, version string) (*resource.Resource, error) {
 	return resource.New(ctx,
 		resource.WithAttributes(
@@ -142,7 +143,12 @@ func buildResource(ctx context.Context, serviceName, version string) (*resource.
 			semconv.ServiceVersionKey.String(version),
 		),
 		resource.WithHost(),
-		resource.WithProcess(),
+		resource.WithProcessPID(),
+		resource.WithProcessExecutableName(),
+		resource.WithProcessExecutablePath(),
+		resource.WithProcessRuntimeName(),
+		resource.WithProcessRuntimeVersion(),
+		resource.WithProcessRuntimeDescription(),
 		resource.WithFromEnv(),
 	)
 }

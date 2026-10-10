@@ -255,6 +255,44 @@ func TestBuildResource_OTELResourceAttributesMerged(t *testing.T) {
 	}
 }
 
+// Adapted from Julian Knutsen's #7279; process metadata excludes argv and owner.
+func TestBuildResource_ProcessAttributesBounded(t *testing.T) {
+	clearAllEnv(t)
+	res, err := buildResource(context.Background(), "bd", "1.0.0")
+	if err != nil {
+		t.Fatalf("buildResource: %v", err)
+	}
+	for _, key := range []string{"process.command_args", "process.command_line", "process.owner"} {
+		if _, ok := lookupAttr(res.Attributes(), key); ok {
+			t.Errorf("%s present, want absent", key)
+		}
+	}
+	for _, key := range []string{"process.pid", "process.executable.name", "process.executable.path", "process.runtime.name", "process.runtime.version", "process.runtime.description"} {
+		if _, ok := lookupAttr(res.Attributes(), key); !ok {
+			t.Errorf("%s missing", key)
+		}
+	}
+}
+
+func TestBuildResource_LongArgsDoNotGrowResource(t *testing.T) {
+	clearAllEnv(t)
+	original := os.Args
+	t.Cleanup(func() { os.Args = original })
+	os.Args = []string{original[0], "list"}
+	short, err := buildResource(context.Background(), "bd", "1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Args = []string{original[0], "create", "--title", strings.Repeat("private-title-", 8192)}
+	long, err := buildResource(context.Background(), "bd", "1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !short.Equal(long) {
+		t.Error("resource changed with command arguments; it must not carry argv")
+	}
+}
+
 // resetTelemetryState restores noop providers and clears registered shutdown
 // hooks after a test that called Init, so global OTel state doesn't leak
 // between tests.
