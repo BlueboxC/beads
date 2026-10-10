@@ -28,6 +28,7 @@ contain them. See [installation and workflow](docs/core-concepts/fork-continuity
 | Live viewer | Read-only graph/history queries, Actualizar grafo, Manual/Automático selection, visible disconnects and preserved layout | Refresh reads saved data; it does not parse code or renew evidence. |
 | Derived maintenance | Explicit `maintain once` and `maintain watch` over saved document/code selections | Only approved directory roots discover new files. Human records and task state are not rewritten. |
 | Session continuity | Opt-in observed operations, reported handoffs and session markers; bounded prime recovery and compact refresh/fallback | Delivered supported hooks determine coverage. Hooks do not read transcripts or accept learned solutions. |
+| GitLab gates | Optional `gl:pipeline` and `gl:mr` checks through existing authenticated glab; strict states, nested project paths and exact branch/HEAD pipeline discovery | No token storage or automatic provider activation. Fixture/process qualification does not establish live GitLab credentials. |
 | Hook diagnostics | Cold-output next-prompt fallback and bounded private compact/failure metadata with typed read-phase/reason and commit build label | Local stdout success does not prove native context admission or universal reliability. |
 | Bounded reads | Literal memory-key prefix selection across server, embedded and UOW adapters; selected-symbol provenance | Reads avoid unrelated stored values while retaining the existing case-insensitive text search. |
 | Efficient queries and process lifetime | Immutable parser fingerprints, per-query source snapshots, bulk graph dependencies, bounded recent-event selection and shared parser/client execution | Freshness checks, total/invalid counts and existing evidence are preserved; no automatic deletion or retry. MCP calls time out after 120 seconds and report an uncertain outcome. |
@@ -86,6 +87,11 @@ preserving this fork's existing corrections:
 | [#7327](https://github.com/gastownhall/beads/issues/7327) | Dolt server fixtures disable asynchronous event flushing before creating a temporary HOME, preventing detached metrics processes from racing configuration cleanup. Backend shutdown waiting remains unchanged. | Fork investigation with Dolt 2.2.0; the reported cleanup race reproduced locally |
 
 These adaptations do not merge, approve or reopen the upstream pull requests.
+
+The GitLab gate extension follows vishnujayvel's [#7432](https://github.com/gastownhall/beads/issues/7432)
+requirements. Their public synchronization branch does not implement these gate
+checks; the fork reuses its existing gate evaluation/closure path and adds a
+separate optional glab reader, without importing the unrelated sync redesign.
 
 - Project `.env` imports only documented selector/passive connection keys. Operator
   values, including explicitly empty selectors, win during early and full loading.

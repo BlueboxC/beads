@@ -50,6 +50,8 @@ Root DOX.md and the parent chain remain binding.
 
 - Human gate resolution follows storage's optional caller-asserted resolver policy; keep CLI and proxied SQL actor provenance intact. Git/user/config defaults and force do not waive it. No new human authentication, executable hook or project activation is implied.
 
+- Explicit `gl:pipeline`/`gl:mr` gates use bounded `glab api` GET subprocesses and its existing authenticated-host/repository discovery; no hostname substring guessing or token storage. Optional `metadata.repo` is a validated nested group/project path inherited by ad-hoc GitLab gates. Only pipeline success or MR merged resolve; failed/canceled pipelines and closed MRs escalate. Missing/invalid fields, mismatched IDs and provider failures remain unresolved. `gate discover --type=gl:pipeline` pins the newest exact current branch/HEAD match; foreign projects require an explicit ID and dry-run never writes. Existing human policy, close path and default GitHub discovery remain.
+
 - `migrate schema` owns its migration and post-migration version reconciliation; skip the auxiliary version-bump open for this verb so opening another store cannot consume its applied count. Other commands retain automatic version reconciliation.
 
 - CLI ready/blocked/count/explain and ready --claim resolve configured external:<project>:<capability> against closed providers carrying provides:<capability>. Provider opens are strict readonly, without auto-start/migration/hooks; use the shared five-second cooperative lookup deadline. Missing/offline/moved providers remain blocked. Explicit update --claim retains its existing manual-claim contract.

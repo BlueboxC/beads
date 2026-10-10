@@ -56,6 +56,7 @@ repository's runs of a same-named workflow.
 Examples:
   bd gate discover           # Auto-discover run IDs for all matching gates
   bd gate discover --dry-run # Preview what would be matched (no updates)
+  bd gate discover --type=gl:pipeline # Exact current-branch/HEAD GitLab discovery
   bd gate discover --branch main --limit 10  # Only match runs on 'main' branch`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
@@ -63,6 +64,7 @@ Examples:
 }
 
 func init() {
+	gateDiscoverCmd.Flags().String("type", "gh:run", "Discovery provider (gh:run or gl:pipeline)")
 	gateDiscoverCmd.Flags().BoolP("dry-run", "n", false, "Preview mode: show matches without updating")
 	gateDiscoverCmd.Flags().StringP("branch", "b", "", "Filter runs by branch (default: current branch)")
 	gateDiscoverCmd.Flags().IntP("limit", "l", 10, "Max runs to query from GitHub")
@@ -76,6 +78,13 @@ func runGateDiscover(cmd *cobra.Command, args []string) error {
 		return HandleErrorRespectJSON("gate discover is not supported in proxied-server mode")
 	}
 	CheckReadonly("gate discover")
+	provider, _ := cmd.Flags().GetString("type")
+	if provider == "gl:pipeline" {
+		return runGitLabGateDiscovery(cmd)
+	}
+	if provider != "gh:run" {
+		return fmt.Errorf("discovery type must be gh:run or gl:pipeline")
+	}
 
 	evt := metrics.NewCommandEvent("gate-discover")
 	defer func() {
@@ -376,25 +385,31 @@ func workflowNameMatches(hint, workflowName, runName string) bool {
 // This includes gates with empty AwaitID OR non-numeric AwaitID (workflow name hint).
 func findPendingGates() ([]*types.Issue, error) {
 	var gates []*types.Issue
+	allGates, err := findUnclosedGates(rootCtx)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range allGates {
+		if needsDiscovery(g) {
+			gates = append(gates, g)
+		}
+	}
+	return gates, nil
+}
 
+func findUnclosedGates(ctx context.Context) ([]*types.Issue, error) {
 	gateType := types.IssueType("gate")
 	filter := types.IssueFilter{
 		IssueType:     &gateType,
 		ExcludeStatus: []types.Status{types.StatusClosed},
 	}
 
-	allGates, err := store.SearchIssues(rootCtx, "", filter)
+	allGates, err := store.SearchIssues(ctx, "", filter)
 	if err != nil {
 		return nil, fmt.Errorf("search gates: %w", err)
 	}
 
-	for _, g := range allGates {
-		if needsDiscovery(g) {
-			gates = append(gates, g)
-		}
-	}
-
-	return gates, nil
+	return allGates, nil
 }
 
 // getGitBranchForGateDiscovery returns the current git branch name

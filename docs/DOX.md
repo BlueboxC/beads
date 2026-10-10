@@ -20,6 +20,7 @@ Document shipped behavior and distinguish fork goals from implemented capabiliti
 Code-index guidance owns conservative impact, bounded fragmented file persistence, explicit rename-review drafts and opt-in atomic pruning; distinguish live-row payload savings from unchanged Dolt history and filesystem size.
 Observability guidance distinguishes default process metadata from operator-supplied attributes and local command-span arguments; telemetry stays opt-in.
 Fork behavior and onboarding: core-concepts/fork-continuity.md. Detailed commands: core-concepts/knowledge.md and core-concepts/code-index.md. Generated CLI pages and upstream installation channels describe the upstream release. DOX contracts stay outside Mintlify navigation.
+workflows/gates.md also owns optional GitLab gate setup, glab host selection, strict outcomes, exact checkout discovery and fixture-only qualification limits.
 
 ## Verification
 

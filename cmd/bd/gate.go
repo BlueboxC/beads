@@ -32,6 +32,8 @@ Gate types:
   timer   - Expires after timeout (Phase 2)
   gh:run  - Waits for GitHub workflow (Phase 3)
   gh:pr   - Waits for PR merge (Phase 3)
+  gl:pipeline - Waits for a GitLab pipeline to succeed
+  gl:mr   - Waits for a GitLab merge request to merge
   bead    - Waits for another bead to close (Phase 4)
 
 For bead gates, await_id may be a bead ID in this rig's database (e.g.,
@@ -308,6 +310,8 @@ Gate types:
   timer   - Auto-resolves after --timeout duration
   gh:run  - Waits for GitHub Actions workflow
   gh:pr   - Waits for PR merge
+  gl:pipeline - Waits for a GitLab pipeline to succeed
+  gl:mr   - Waits for a GitLab merge request to merge
 
 Examples:
   bd gate create --blocks bd-abc
@@ -599,6 +603,9 @@ Gate types:
   gh       - Check all GitHub gates (gh:run and gh:pr)
   gh:run   - Check GitHub Actions workflow runs
   gh:pr    - Check pull request merge status
+  gl       - Check GitLab pipeline and merge request gates
+  gl:pipeline - Check GitLab pipeline status
+  gl:mr    - Check GitLab merge request state
   timer    - Check timer gates (auto-expire based on timeout)
   bead     - Check cross-rig bead gates
   all      - Check all gate types
@@ -610,12 +617,16 @@ GitHub gates use the 'gh' CLI to query status:
 A gate is resolved when:
   - gh:run: status=completed AND conclusion=success
   - gh:pr: state=MERGED
+  - gl:pipeline: status=success (uses glab API GET)
+  - gl:mr: state=merged (uses project-local MR IID)
   - timer: current time > created_at + timeout
   - bead: target bead status=closed
 
 A gate is escalated when:
   - gh:run: status=completed AND conclusion in (failure, canceled)
   - gh:pr: state=CLOSED
+  - gl:pipeline: status=failed or canceled
+  - gl:mr: state=closed without merging
 
 Examples:
   bd gate check              # Check all gates
@@ -720,6 +731,8 @@ func evaluateGates(ctx context.Context, gates []*types.Issue, now time.Time, get
 			r.resolved, r.escalated, r.reason, r.err = checkGHRun(gate, persistAwaitID)
 		case strings.HasPrefix(gate.AwaitType, "gh:pr"):
 			r.resolved, r.escalated, r.reason, r.err = checkGHPR(gate)
+		case gate.AwaitType == "gl:pipeline" || gate.AwaitType == "gl:mr":
+			r.resolved, r.escalated, r.reason, r.err = checkGitLabGate(ctx, gate)
 		case gate.AwaitType == "timer":
 			r.resolved, r.escalated, r.reason, r.err = checkTimer(gate, now)
 		case gate.AwaitType == "bead":
@@ -801,6 +814,9 @@ func shouldCheckGate(gate *types.Issue, typeFilter string) bool {
 	}
 	if typeFilter == "gh" {
 		return strings.HasPrefix(gate.AwaitType, "gh:")
+	}
+	if typeFilter == "gl" {
+		return gate.AwaitType == "gl:pipeline" || gate.AwaitType == "gl:mr"
 	}
 	return gate.AwaitType == typeFilter
 }
@@ -910,16 +926,16 @@ func isGitHubGateType(gateType string) bool {
 	return strings.HasPrefix(gateType, "gh:")
 }
 
-// repoMetadataForGate computes the metadata to store on a new ad-hoc gate,
-// inheriting a validated GitHub repo selector from the blocked issue.
-//
-// This is restricted to gh:* gate types (SF4): "repo" is legal, unrelated
-// metadata on any issue (the metadata contract allows arbitrary JSON), so
-// running GitHub-repo validation for human/timer gates would fail ordinary
-// gate creation whenever the blocked issue happened to carry a non-GitHub-
-// shaped "repo" key. Only gh:run/gh:pr gates need the value at check time,
-// so only they inherit and validate it here.
+// Provider gates inherit only their own validated repository selector.
+// Other gates retain arbitrary unrelated metadata without provider validation.
 func repoMetadataForGate(gateType string, targetIssue *types.Issue) (json.RawMessage, error) {
+	if gateType == "gl:pipeline" || gateType == "gl:mr" {
+		project, err := gitLabProjectFromIssue(targetIssue)
+		if err != nil || project == "" {
+			return nil, err
+		}
+		return json.Marshal(map[string]string{"repo": project})
+	}
 	if !isGitHubGateType(gateType) {
 		return nil, nil
 	}
@@ -1275,14 +1291,14 @@ func init() {
 	gateResolveCmd.Flags().StringP("reason", "r", "", "Reason for resolving the gate")
 
 	// gate check flags
-	gateCheckCmd.Flags().StringP("type", "t", "", "Gate type to check (gh, gh:run, gh:pr, timer, bead, all)")
+	gateCheckCmd.Flags().StringP("type", "t", "", "Gate type to check (gh, gh:run, gh:pr, gl, gl:pipeline, gl:mr, timer, bead, all)")
 	gateCheckCmd.Flags().Bool("dry-run", false, "Show what would happen without making changes")
 	gateCheckCmd.Flags().BoolP("escalate", "e", false, "Escalate failed/expired gates")
 	gateCheckCmd.Flags().IntP("limit", "l", 100, "Limit results (default 100)")
 
 	// gate create flags
 	gateCreateCmd.Flags().String("blocks", "", "Issue ID to block (required)")
-	gateCreateCmd.Flags().StringP("type", "t", "human", "Gate type (human, timer, gh:run, gh:pr)")
+	gateCreateCmd.Flags().StringP("type", "t", "human", "Gate type (human, timer, gh:run, gh:pr, gl:pipeline, gl:mr)")
 	gateCreateCmd.Flags().StringP("reason", "r", "", "Reason for the gate")
 	gateCreateCmd.Flags().String("await-id", "", "Condition identifier (run ID, PR number, etc.)")
 	gateCreateCmd.Flags().String("timeout", "", "Timeout duration (e.g., 2h, 30m)")
