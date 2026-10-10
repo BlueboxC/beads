@@ -58,6 +58,8 @@ Root DOX.md and the parent chain remain binding.
 
 - Typed embedded permission failures emit actionable stderr, including JSON code embedded_open.permission_denied and retryable=false. Retain errors.Is permission semantics and hook categories; stdout stays empty on failed open. This diagnoses filesystem restrictions, not a write-free embedded engine.
 
+- Admit graph-mode metadata before ordinary storage opening or maintenance. Route only supported Graph Preview commands; refuse unsupported flags, proxy selectors and incomplete/binding-mismatched workspaces. Opaque revision flags are graph-only on this baseline. Ordinary code/knowledge/activity/prime/viewer workflows remain unchanged. Graph setup affects project-local Claude configuration only when explicitly requested or fresh init does not skip it.
+
 ## Work Guidance
 
 Keep existing CLI primitives and machine-readable output stable. Follow AGENTS.md and ../../engdocs/TESTING.md.
@@ -67,6 +69,7 @@ Memory diagnostics expose literal key-prefix inclusion/exclusion without changin
 ## Verification
 
 Use the affected existing checks selected in engdocs/TESTING.md; verify indexed child contracts.
+Graph Preview server fixtures clean only fresh authority-named databases bound to the temporary workspace and explicitly supplied loopback test port.
 
 ## Child DOX Index
 

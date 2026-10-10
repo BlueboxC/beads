@@ -255,7 +255,7 @@ func useStorageModeGlobals(t *testing.T) {
 // So this pins what is left, and it is narrow and checkable:
 //
 //   - every httpapi.Config bd builds names exactly ONE COMPLETE database
-//     source — Provider alone, or Reader and Claimer together. A half-set pair
+//     source — Provider, Reader+Claimer, GraphViewer or GraphRead. A half-set pair
 //     binds, answers every read, and nil-dereferences on the first claim;
 //     Listen refuses it, and so does this, one layer earlier;
 //   - both arms exist, so the test cannot pass because one was deleted;
@@ -305,9 +305,9 @@ func TestServeNamesOneDatabaseSourcePerServerItBuilds(t *testing.T) {
 				reader, claimer := keys["Reader"], keys["Claimer"]
 
 				switch {
-				case keys["GraphViewer"]:
-					if provider || reader || claimer {
-						t.Errorf("%s: exclusive viewer includes an issue API source", fset.Position(lit.Pos()))
+				case keys["GraphViewer"] || keys["GraphRead"]:
+					if provider || reader || claimer || (keys["GraphViewer"] && keys["GraphRead"]) {
+						t.Errorf("%s: exclusive graph surface includes another database source", fset.Position(lit.Pos()))
 					}
 				case provider && (reader || claimer):
 					t.Errorf("%s: this httpapi.Config names two database sources; pass exactly one",

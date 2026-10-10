@@ -161,6 +161,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewDepBlocks(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("dep")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -322,6 +325,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewAddDependency(cmd, args)
+		}
 		CheckReadonly("dep add")
 
 		evt := metrics.NewCommandEvent("dep-add")

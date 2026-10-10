@@ -8,6 +8,7 @@ rather than teach concepts (that's [How Beads Works](/core-concepts/index)).
 
 ## Pages in this section
 
+- [Graph Preview in the fork](/reference/graph-preview) — optional typed graph, retained versions and BDP Read in a fresh experimental workspace.
 - [Configuration](/reference/configuration) — every config key, environment
   variable, default, and the precedence between them.
 - [Git Integration](/reference/git-integration) — hooks, `refs/dolt/data`,

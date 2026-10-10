@@ -51,6 +51,9 @@ Force: Delete and orphan dependents
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewDeleteMemory(cmd, args, false)
+		}
 		CheckReadonly("delete")
 
 		evt := metrics.NewCommandEvent("delete")

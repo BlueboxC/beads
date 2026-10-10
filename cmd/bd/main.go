@@ -1107,6 +1107,10 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		if handled, err := admitGraphPreview(cmd); handled || err != nil {
+			return err
+		}
+
 		// Block dangerous env var overrides that could cause data fragmentation (bd-hevyw).
 		if err := checkBlockedEnvVars(); err != nil {
 			return HandleError("%v", err)
@@ -2013,6 +2017,9 @@ var rootCmd = &cobra.Command{
 			setRootContext(nil, nil)
 		}()
 		defer restoreChangeDirSelection()
+		if graphPreviewActive {
+			return nil
+		}
 		// Give the hooks this command fired their moment before the process
 		// exits. Both plumbings run them fire-and-forget on their own
 		// goroutines, and a bd command is short enough that returning from main

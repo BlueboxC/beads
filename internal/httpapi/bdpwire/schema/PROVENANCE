@@ -1,0 +1,38 @@
+# Current wire-input provenance. Historical record: BDP_P0_WIRE_ADOPTION_20260914.md.
+# Four columns: SHA256 local-path upstream/source-descriptor source-token.
+# source-token: Git blob40hex; '-' only for spec fences; recipe:<registered-name>.
+# The joint read-projection/read-manifest recipes verify bdp-v0.schema.json,
+# all three upstream/*.ts inputs, and conformance/read-v1.matrix.json.
+# Projection pair bytes depend on the ordered seal and selected definitions;
+# the joint reproducer additionally checks matrix/parser roots and closure.
+upstream: https://github.com/gastownhall/bdp
+commit: de99030d13a57e77f4f2660b91ea3c39b82823cb
+schema-id: https://github.com/gastownhall/bdp/schemas/bdp-v0.schema.json
+spec: docs/specs/bdp.md
+spec-blob: 07da249da5ac8da4e15b7ee07af125b9847516db
+
+bc9d5f65d6907bdf0702ebb0587d521dc443ba643aa56fb235414e97943dd994  bdp-v0.schema.json  schemas/bdp-v0.schema.json  f48f78ca4b5c1be9d727a315f24e6ed665202a16
+792ef44119c891fd4b6be5a32b916839d93f337914b02386eb03f8fee227ad3e  fixtures/reference-domain.json  fixtures/reference-domain/reference-domain.json  55e8f093999418428039b49d1e16ba0cb03415c8
+2eb36cb0b1336cd86bf350983d20e6c6eca94fcb9b66ec3e9c8d3d2a19db3247  fixtures/read-reference-v1.json  packages/conformance/fixtures/read-reference-v1.json  1a21093bfa834c2aa2cb4895a986fb66fe79734b
+03ecf4809a6056171ac0dbb00da4ce6ab31fbb7bec7e32253092169dd675f97f  fixtures/read-bdpbd-v1.json  packages/conformance/fixtures/read-bdpbd-v1.json  cc683ee17d9a5b1e3e320628ebc4f6682d375751
+f338675885de28e01de3134a210920b8f10c02655c8a93837bedca281baa782a  conformance/read-v1.catalog.json  packages/conformance/catalog/read-v1.json  e2725a4317ca823b26374bdeb74b0f68559fca7f
+ca175737db61eba6e013f429248088ed05ccae31e26f1eb4e30539bd2dfd62a1  conformance/read-v1.matrix.json  packages/conformance/matrices/read-v1.json  9b8009941f092a27ee9e028e58e87b241d65a1f4
+d8b5968e1d309b84bfb7474394841aea090a3bea9d507c8dbc106094d67d19c8  upstream/schema-read-projection.ts  packages/conformance/src/schema-read-projection.ts  82570bd00cf318d4a214c0f4d615e1e22d17d662
+07a908343f550f9400ed659be4afad7b134c0684dc2973f68558ddbbdc32ec22  upstream/read-values.ts  packages/protocol/src/read-values.ts  564deb87522ab4c8d13aa791d1f1199d35f38e80
+05b43bfd0bdfa9301b06688980b8833014b2509dc4f7d896fecf2cd3f391a2c9  upstream/history-values.ts  packages/protocol/src/history-values.ts  64c0804913eba161cee2b4a7bfa9ac588d06159f
+72e0dcc8df7cfa508fad5cfbf44261efb68d023832bf4011932e953c05bd6021  fixtures/history-wire.json  fixtures/history/wire.json  e7f3d1dffda96536e14bf7a5672737aa6c0491f3
+d3350e0b9a9360d5315cb64733429a35c376be117c57ad8436c0383e85ec67ad  spec-examples/0593-scope-aggregate-constraints-1.json  docs/specs/bdp.md#L593-L603  -
+38ea86fb9fa6cf3056d77d5ff2f11a4bb168bd50af5036e827c0a0046779ddcf  spec-examples/2211-scope-discovery-and-human-documentation-1.json  docs/specs/bdp.md#L2211-L2220  -
+4dcb810cf799a73cc5e147cbebaa394bcdeef632b282264c17c5891930eac48c  spec-examples/2225-scope-discovery-and-human-documentation-2.json  docs/specs/bdp.md#L2225-L2236  -
+2c65695fc7038d5f87a23b47aeb801ef6100d518156547969e1f6e78c144ea70  spec-examples/2241-scope-discovery-and-human-documentation-3.json  docs/specs/bdp.md#L2241-L2260  -
+b0c0447081a88d1345f4786edbf751c4f413ee50b125d76618a83b8088d07e52  spec-examples/2405-advertised-limits-1.json  docs/specs/bdp.md#L2405-L2418  -
+fbc18b49144a427eb5b3e064391672e822aa1822d5daa36fdcc9e94bbe05135a  spec-examples/2918-resource-records-1.json  docs/specs/bdp.md#L2918-L2930  -
+6b9b495828572da8eec77f9aa4644407d2ed25537a47aa7fef6522491013cf39  spec-examples/2934-resource-records-2.json  docs/specs/bdp.md#L2934-L2946  -
+32b40661b3f30e6410026904ec350d941b070952cd1b9b6f63414367c56057ae  spec-examples/2977-resource-records-3.json  docs/specs/bdp.md#L2977-L2982  -
+d72e834701a9dd9c43a2c41dab01ab02585eb9539a1b02153bd3af21faa695dd  spec-examples/2986-resource-records-4.json  docs/specs/bdp.md#L2986-L2991  -
+e6dfc5f5d1cffac8d9dbbe872c74c3aa08e7d559c751f06934edab0c7421d5a9  spec-examples/3054-resource-views-1.json  docs/specs/bdp.md#L3054-L3079  -
+7200e7698da791d5e63d7dfd83dabc75db362cf432c813ed6059edc1a0b333bb  spec-examples/3458-types-and-type-descriptors-1.json  docs/specs/bdp.md#L3458-L3474  -
+4e1b54eebc5dd19a39ea758e2438dc8036eb296000754e3b0c458b660bf1303a  spec-examples/3500-types-and-type-descriptors-2.json  docs/specs/bdp.md#L3500-L3511  -
+fb2dafdabe75945ad885a3a99bca714b5e0f63e0c65fd1027f228267d688493d  spec-examples/3517-types-and-type-descriptors-3.json  docs/specs/bdp.md#L3517-L3536  -
+2db57a82d9bf99f3fb5d18646e8bd6c7646590d1e806aa266de8af415ee83545  read-projection.jcs.json  schemas/bdp-v0.schema.json+upstream-read-sources+read-v1.matrix  recipe:read-projection
+f79fd4224e1272ebe4606a31fa54452fd191aba08782d21148f0ae6a4d478ca5  read-projection.manifest.json  schemas/bdp-v0.schema.json+upstream-read-sources+read-v1.matrix  recipe:read-manifest

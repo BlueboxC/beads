@@ -35,6 +35,9 @@ var showCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewShow(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("show")
 		defer func() {
 			if c := metrics.Global(); c != nil {

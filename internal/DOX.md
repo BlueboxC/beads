@@ -46,3 +46,4 @@ Use the affected existing checks selected in engdocs/TESTING.md; verify indexed 
 - [codeindex/DOX.md](codeindex/DOX.md) — Derived multilingual symbols, static references and index lifecycle.
 
 - [activity/DOX.md](activity/DOX.md) — Bounded observed session/turn journal, distinct from reviewed knowledge.
+- [graphpatch/DOX.md](graphpatch/DOX.md) — Bounded ordered graph property patches.

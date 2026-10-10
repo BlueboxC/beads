@@ -59,6 +59,9 @@ Use 'bd setup <recipe> --remove' to uninstall.`,
 }
 
 func runSetup(cmd *cobra.Command, args []string) error {
+	if graphPreviewActive {
+		return runGraphPreviewSetup(cmd, args)
+	}
 	evt := metrics.NewCommandEvent("setup")
 	defer func() {
 		if c := metrics.Global(); c != nil {

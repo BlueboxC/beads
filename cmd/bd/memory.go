@@ -268,10 +268,13 @@ Examples:
   bd remember "auth module uses JWT not sessions" --key auth-jwt
   bd remember dolt-phantoms        # bare existing key: reads it (= bd recall)`,
 	GroupID:       "setup",
-	Args:          cobra.ExactArgs(1),
+	Args:          rememberArgs,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewRemember(cmd, args)
+		}
 		CheckReadonly("remember") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("remember")
@@ -369,6 +372,15 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewMemories(cmd, args)
+		}
+		if cmd.Flags().Changed("format") {
+			format, _ := cmd.Flags().GetString("format")
+			if strings.EqualFold(format, "json") {
+				jsonOutput = true
+			}
+		}
 		evt := metrics.NewCommandEvent("memories")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -420,6 +432,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewDeleteMemory(cmd, args, true)
+		}
 		CheckReadonly("forget")
 
 		evt := metrics.NewCommandEvent("forget")
@@ -463,6 +478,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewRecall(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("recall")
 		defer func() {
 			if c := metrics.Global(); c != nil {

@@ -27,6 +27,9 @@ Examples:
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewLink(cmd, args)
+		}
 		CheckReadonly("link")
 
 		evt := metrics.NewCommandEvent("link")

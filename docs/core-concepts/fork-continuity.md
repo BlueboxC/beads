@@ -10,6 +10,15 @@ and source-backed solutions matters across sessions. [FORK.md](https://github.co
 identifies the upstream baseline, implemented additions and remaining limits.
 All project data stays in that project's existing Beads Dolt.
 
+## Optional Graph Preview
+
+The fork also includes an explicit experimental graph workspace format. It adds
+typed Links and retained versions over the same Dolt engine. It does not migrate
+existing continuity workspaces or replace their code/knowledge/activity/viewer
+commands. See [Graph Preview](/reference/graph-preview) for fresh-workspace setup,
+contributor attribution and current limits. Continue using ordinary initialization
+below for projects that need the full continuity workflow.
+
 ## Manual approval records
 
 The fork adds an opt-in `gates.human.resolvers` allowlist over the existing

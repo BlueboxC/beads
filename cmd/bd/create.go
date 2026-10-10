@@ -35,6 +35,10 @@ import (
 // rejected identically for both backends, and before any invocation that is
 // guaranteed to fail wastes a store open/migration.
 func validateCreateArgs(cmd *cobra.Command, args []string) error {
+	// Typed properties may supply the title; admission rejects these flags in ordinary workspaces.
+	if cmd.Flags().Changed("properties") || cmd.Flags().Changed("bead-type") {
+		return nil
+	}
 	markdownFile, _ := cmd.Flags().GetString("file")
 	graphFile, _ := cmd.Flags().GetString("graph")
 	titleFlag, _ := cmd.Flags().GetString("title")
@@ -52,6 +56,9 @@ var createCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewCreateIssue(cmd, args)
+		}
 		CheckReadonly("create") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("create")

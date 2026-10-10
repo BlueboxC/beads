@@ -21,6 +21,8 @@ Root owns fork policy, public API packages, license, build/version files, small 
 
 - Public issueops contexts may bind a read-only ExternalResolver. Missing provider results remain blocked; local selection/claim remains transactional but provider observations are not a distributed transaction.
 
+- Graph Preview is a separate explicit workspace format adapted from versioned-beads/beads. Preserve the ordinary v1.3.1 API, continuity planes and project data. New graph workspaces use the existing Dolt engine; never convert existing projects implicitly.
+
 ## Work Guidance
 
 - Prefer the simplest complete implementation and existing extension points. Avoid speculative configuration and dependencies.
@@ -53,3 +55,4 @@ Root owns fork policy, public API packages, license, build/version files, small 
 - [npm-package/DOX.md](npm-package/DOX.md) — npm distribution.
 - [.github/DOX.md](.github/DOX.md) — GitHub automation.
 - [.beads/DOX.md](.beads/DOX.md) — Project tracking assets.
+- [graphops/DOX.md](graphops/DOX.md) — Experimental public graph vocabulary and contributor provenance.

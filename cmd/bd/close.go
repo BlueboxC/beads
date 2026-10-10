@@ -50,6 +50,9 @@ the flags appear in the command line.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewClose(cmd, args)
+		}
 		CheckReadonly("close") // also covers the migration freeze check (dc-6jaq)
 
 		evt := metrics.NewCommandEvent("close")

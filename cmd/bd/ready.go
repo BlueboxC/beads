@@ -40,6 +40,9 @@ This is useful for agents executing molecules to see which steps can run next.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewReady(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("ready")
 		defer func() {
 			if c := metrics.Global(); c != nil {
@@ -300,6 +303,9 @@ var blockedCmd = &cobra.Command{
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewBlocked(cmd, args)
+		}
 		evt := metrics.NewCommandEvent("blocked")
 		defer func() {
 			if c := metrics.Global(); c != nil {

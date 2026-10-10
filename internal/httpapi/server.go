@@ -25,6 +25,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	"github.com/steveyegge/beads/internal/httpapi/apigen"
+	"github.com/steveyegge/beads/internal/httpapi/bdpwire"
 	"github.com/steveyegge/beads/internal/storage"
 	"github.com/steveyegge/beads/internal/storage/domain"
 	"github.com/steveyegge/beads/internal/storage/uow"
@@ -112,6 +113,8 @@ const (
 // Config is everything the server needs to answer. It is assembled by the
 // caller — the package resolves no workspace state of its own.
 type Config struct {
+	// GraphRead is an exclusive BDP Read surface over a bound graph workspace.
+	GraphRead *GraphRead
 	// ExternalResolver is optional read-only provider resolution for request contexts.
 	ExternalResolver issueops.ExternalResolver
 	// GraphViewer selects an exclusive read-only presentation surface. No v0
@@ -545,6 +548,9 @@ func Listen(cfg Config) (*Server, error) {
 		maxConns: maxConns,
 	}
 
+	if cfg.GraphRead != nil {
+		s.ctxBody.Capabilities = []string{"bdp-read"}
+	}
 	if cfg.GraphViewer != nil {
 		s.ctxBody.Capabilities = []string{"project_graph_readonly"}
 	}
@@ -656,6 +662,12 @@ func anyRoleFiresHooks(cfg Config) bool {
 }
 
 func checkDatabaseSource(cfg Config) error {
+	if cfg.GraphRead != nil {
+		if cfg.GraphViewer != nil || cfg.Provider != nil || anyRoleSet(cfg) || cfg.EventsJournal != nil || cfg.EventsJournalEnabled {
+			return errors.New("httpapi: graph Read cannot be combined with legacy database sources")
+		}
+		return cfg.GraphRead.validate()
+	}
 	if cfg.GraphViewer != nil {
 		if cfg.Provider != nil || anyRoleSet(cfg) || cfg.EventsJournal != nil || cfg.EventsJournalEnabled {
 			return errors.New("httpapi: graph viewer cannot be combined with an issue API database source")
@@ -1317,6 +1329,9 @@ func orDefault(v, fallback time.Duration) time.Duration {
 // catch-all that keeps unrouted paths on the same error shape, and the
 // middleware in front of both.
 func (s *Server) handler() http.Handler {
+	if s.cfg.GraphRead != nil {
+		return s.withRequestContext(s.checkHost(s.graphReadRoute()))
+	}
 	mux := http.NewServeMux()
 	// Rows carrying a customMethod SHARE a pattern, so they get one
 	// registration between them and a dispatcher in front. Collected in table
@@ -1417,6 +1432,9 @@ func (s *Server) withRequestContext(next http.Handler) http.Handler {
 
 		// No client or intermediary may cache an answer about live work.
 		w.Header().Set("Cache-Control", "no-store")
+		if s.cfg.GraphRead != nil {
+			w.Header().Set("Cache-Control", "private, no-store")
+		}
 
 		sw := &statusWriter{
 			ResponseWriter: w,
@@ -1514,6 +1532,10 @@ func (s *Server) panicked(sw *statusWriter, r *http.Request, rec *reqInfo, p any
 		// superfluous-WriteHeader line to the log.
 		return
 	}
+	if s.cfg.GraphRead != nil {
+		graphReadResponse(sw, r, http.StatusInternalServerError, nil, "", "", nil)
+		return
+	}
 	s.fail(sw, r, newResult(CodeInternal, ""))
 }
 
@@ -1526,6 +1548,10 @@ func (s *Server) checkHost(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !s.hosts.allows(r.Host) {
 			requestInfo(r.Context()).refuse(r.Host)
+			if s.cfg.GraphRead != nil {
+				graphReadProblem(w, r, bdpwire.CodeMalformedRequest)
+				return
+			}
 			s.fail(w, r, InvalidArgument("Host", ReasonInvalidValue,
 				"Host header is not one this server answers to"))
 			return
@@ -1638,6 +1664,10 @@ func (s *Server) route(rt route) http.Handler {
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rec *reqInfo) bool {
 	if s.credentialValid(r, rec) {
 		return true
+	}
+	if s.cfg.GraphRead != nil {
+		graphReadProblem(w, r, bdpwire.CodeUnauthenticated)
+		return false
 	}
 	s.fail(w, r, newResult(CodeUnauthenticated, ""))
 	return false
@@ -2022,6 +2052,9 @@ func (s *Server) logStartup() {
 // true value and is indistinguishable, on its own, from instrumentation that
 // broke. This is the line that tells them apart.
 func (s *Server) dbSource() string {
+	if s.cfg.GraphRead != nil {
+		return "graph-read"
+	}
 	if s.cfg.GraphViewer != nil {
 		return "graph-viewer-readonly"
 	}

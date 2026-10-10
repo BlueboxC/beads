@@ -42,6 +42,9 @@ not intended to be invoked directly by users.`,
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {},
 
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		if _, err := admitGraphPreview(cmd); err != nil {
+			return err
+		}
 		backend := proxy.Backend(dbProxyChildBackend)
 		if err := backend.Validate(); err != nil {
 			return err

@@ -161,6 +161,13 @@ DESTRUCTIVE OPERATIONS
   address can erase closed work; bind it accordingly.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			opts, err := resolveServeConfig()
+			if err != nil {
+				return err
+			}
+			return runGraphServe(cmd, opts)
+		}
 		return runServe()
 	},
 }
@@ -460,7 +467,7 @@ func startServeEventsJournalMaintenance(beadsDir string, source any) func() {
 		reportEventsJournalAutoPrune)
 }
 
-// serveListen binds and runs. It is where the two database sources converge:
+// serveListen binds and runs with shared listener and security controls:
 // everything past the source is the same server.
 //
 // The operator's options and the database source arrive separately because they

@@ -22,6 +22,9 @@ This is more explicit than 'bd update --status open' and emits a Reopened event.
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if graphPreviewActive {
+			return runGraphPreviewReopen(cmd, args)
+		}
 		CheckReadonly("reopen")
 
 		evt := metrics.NewCommandEvent("reopen")
