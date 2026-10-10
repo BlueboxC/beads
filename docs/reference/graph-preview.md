@@ -15,7 +15,7 @@ This is an **experimental explicit workspace format**, not a migration of
 ordinary Beads. Existing projects keep their tasks, knowledge, code index,
 activity capture, Codex recovery and interactive viewer. The same continuity commands also work inside the experimental format through
 a storage adapter. Existing projects are preserved; conversion is still an
-explicit future operation, not an initialization flag.
+explicit future operation, not an initialization flag. See the [conversion design](https://github.com/BlueboxC/beads/blob/codex/project-continuity/engdocs/design/graph-preview-conversion.md) for preservation and qualification gates.
 
 ## Try a fresh workspace
 
