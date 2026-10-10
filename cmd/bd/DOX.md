@@ -50,6 +50,8 @@ Root DOX.md and the parent chain remain binding.
 
 - Human gate resolution follows storage's optional caller-asserted resolver policy; keep CLI and proxied SQL actor provenance intact. Git/user/config defaults and force do not waive it. No new human authentication, executable hook or project activation is implied.
 
+- `migrate schema` owns its migration and post-migration version reconciliation; skip the auxiliary version-bump open for this verb so opening another store cannot consume its applied count. Other commands retain automatic version reconciliation.
+
 ## Work Guidance
 
 Keep existing CLI primitives and machine-readable output stable. Follow AGENTS.md and ../../engdocs/TESTING.md.

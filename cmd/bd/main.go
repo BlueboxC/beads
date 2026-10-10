@@ -1669,7 +1669,9 @@ var rootCmd = &cobra.Command{
 		// apply schema migrations before RunE validates arguments or renders a
 		// dry-run plan. frozenForMaintenance excludes it for the same reason
 		// as the trackBdVersion call above — see that comment.
-		if policy.runMaintenance && !previewMode && !frozenForMaintenance {
+		// The explicit schema verb owns migration and version reconciliation.
+		// An auxiliary open would consume its applied count first (#7283).
+		if policy.runMaintenance && !previewMode && !frozenForMaintenance && !isSchemaMigrateVerb(cmd) {
 			autoMigrateOnVersionBump(beadsDir)
 		}
 

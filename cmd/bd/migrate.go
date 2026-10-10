@@ -657,15 +657,9 @@ func handleSchemaMigrate() error {
 	if applied > 0 {
 		status = "applied"
 		commandDidWrite.Store(true)
-		// Stamp the version markers the refused version-bump reconciliation
-		// could not (gastownhall/beads#5920 review). autoMigrateOnVersionBump
-		// is the only automatic writer of bd_version, it was refused by the
-		// gate this command just satisfied, and its one-shot .local_version
-		// signal is already consumed — so without this, `bd doctor` and the
-		// git-hook health check keep reporting a version mismatch after the
-		// operator has done everything the refusal told them to.
-		stampWorkspaceVersionAfterMigrate(store)
 	}
+	// This verb owns version reconciliation even when the schema is current.
+	stampWorkspaceVersionAfterMigrate(store)
 
 	if jsonOutput {
 		return outputJSON(map[string]interface{}{
