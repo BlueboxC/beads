@@ -18,6 +18,8 @@ Root DOX.md and the parent chain remain binding.
 - History compaction dates the squashed base at the boundary and retains each replayed commit’s committer/date and separate author metadata. Snapshot metadata before mutations, restore exact caller session overrides on success/error and surface restoration failures. This preserves markers inside retained history; it does not reconstruct discarded history or repair previously re-dated stores.
 - Ready-work readers withhold children connected by `parent-child` when the parent has deferred status or a future `defer_until`. `IncludeDeferred` lifts this selection filter; non-parent relations do not inherit it. Preserve parity between shared issueops and domain/db readers without rewriting stored task state.
 
+- External blocks are evaluated from a caller-bound read-only resolver before ready limits/counts/atomic selection. Unresolved prerequisites and active parent-child descendants stay blocked across issue/wisp planes; do not materialize remote status into the local is_blocked cache.
+
 ## Work Guidance
 
 Memory namespace selectors preserve exact prefix semantics across adapters. All three adapters select namespaces in SQL before transferring values; the unit-of-work adapter uses ConfigUseCase/repository within its existing read transaction. Case-insensitive memory search remains in Go.

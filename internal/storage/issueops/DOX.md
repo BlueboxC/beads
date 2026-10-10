@@ -16,6 +16,8 @@ Root DOX.md and the parent chain remain binding.
 
 - Optional `gates.human.resolvers` is a transaction-local caller-asserted allowlist. Missing key is compatible; empty/malformed policy refuses protected operations. Explicit flag/env/named API actors only; force and disabled journaling never waive it. Share gate close/update/delete/edge/persistence checks with domain/db. This is no human authentication or external execution authority; imports/config/SQL/sync/restore remain caller-controlled administrative access.
 
+- External blocker evaluation is shared with domain/db. Absent/unreadable providers fail closed; required-table and resolver failures propagate. Traverse active parent-child descendants with a visited set, preserving external references or an inherited witness in blocked output.
+
 ## Work Guidance
 
 Preserve issue semantics across supported storage adapters and shared conformance tests.

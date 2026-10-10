@@ -12,6 +12,8 @@ Installation, concepts, architecture, workflows and recovery guidance.
 
 Root DOX.md and the parent chain remain binding.
 
+- Cross-project prerequisite guidance documents closed provides capabilities, conservative unresolved blocking, optional API context resolution and the existing explicit manual-claim boundary. Embedded readonly guidance distinguishes mutation guards from driver filesystem access and permanent permission diagnostics.
+
 ## Work Guidance
 
 Document shipped behavior and distinguish fork goals from implemented capabilities. Human gate guidance owns opt-in resolver setup, protected mutations, batch behavior and caller-controlled identity/admin limits; do not describe manual resolution as authenticated approval. Audit examples use stored EventType literals; sync onboarding separates fresh `init --remote` from existing workspaces, preserves local data and describes embedded as the default. Do not advertise removed CLI modes.

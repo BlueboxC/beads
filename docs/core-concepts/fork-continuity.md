@@ -20,6 +20,25 @@ See [gates](/workflows/gates#optional-human-resolver-policy-blueboxc-fork) for s
 and batch behavior. Names are caller-asserted; your invoking system still owns
 identity, configuration permissions and authorization of external operations.
 
+## External prerequisites
+
+Configured `external:<project>:<capability>` blocks participate in ready,
+blocked, ready counts and atomic `ready --claim`. A capability is satisfied only
+by a closed provider bearing `provides:<capability>`; exporting it or forcing
+shipment while it remains open does not release consumers. Missing capabilities
+and unavailable or moved provider paths stay blocked, including active
+parent-child descendants across tasks and wisps. Limits apply after exclusion.
+
+Reads use the existing storage factory with no migration, hooks or server
+auto-start. Provider observations have a five-second cooperative lookup deadline;
+local selection/claim is atomic, but independent databases are not one distributed
+transaction. API embedders bind a read-only resolver with
+`issueops.WithExternalResolver`; HTTP callers pass `Config.ExternalResolver`.
+Without a resolver, external prerequisites remain blocked. Restart the normal
+API server after changing its configured provider paths. The explicit manual
+`update --claim` retains upstream's override semantics; use `ready --claim` for
+blocker-aware scheduling.
+
 ## Install the fork
 
 The upstream Homebrew/npm packages and upstream install script install upstream

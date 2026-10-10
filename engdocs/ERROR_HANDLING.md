@@ -1,6 +1,6 @@
 # Error Handling Guidelines
 
-Last reviewed: 2026-10-06
+Last reviewed: 2026-10-10
 
 Freshness source: `cmd/bd/*.go`, especially command error exits and JSON error
 helpers in `cmd/bd/errors.go`.
@@ -340,6 +340,15 @@ if err := os.Chmod(jsonlPath, 0600); err != nil {
     fmt.Fprintf(os.Stderr, "Warning: failed to set file permissions: %v\n", err)
 }
 ```
+
+Embedded `OpenPermissionError` is a fatal store-open error with the original
+`errors.Is(os.ErrPermission)` cause. `renderTypedOpenError` emits its actionable
+hint and JSON (`embedded_open.permission_denied`, `retryable: false`) to stderr,
+then the caller returns `SilentExit`. Logical readonly does not remove the
+embedded driver's filesystem-write requirement. Classify typed permission errors,
+not arbitrary text such as “Access is denied” or “lock”; keep transient contention
+and cancellation separate. Do not retry permanent permissions unchanged or alter
+permissions/lockfiles automatically.
 
 ### Resource Cleanup
 

@@ -478,6 +478,9 @@ func startServeEventsJournalMaintenance(beadsDir string, source any) func() {
 // from it by name (runsPostCommandMaintenance, cmd/bd/main.go).
 func serveListen(opts serveOptions, cfg httpapi.Config) error {
 	opts.applyTo(&cfg)
+	if cfg.GraphViewer == nil {
+		cfg.ExternalResolver = configuredExternalResolver()
+	}
 
 	// The posture warning belongs here rather than on either source arm: it
 	// reports what this bind does not protect, which is a property of the

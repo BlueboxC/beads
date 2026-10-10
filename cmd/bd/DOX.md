@@ -52,6 +52,10 @@ Root DOX.md and the parent chain remain binding.
 
 - `migrate schema` owns its migration and post-migration version reconciliation; skip the auxiliary version-bump open for this verb so opening another store cannot consume its applied count. Other commands retain automatic version reconciliation.
 
+- CLI ready/blocked/count/explain and ready --claim resolve configured external:<project>:<capability> against closed providers carrying provides:<capability>. Provider opens are strict readonly, without auto-start/migration/hooks; use the shared five-second cooperative lookup deadline. Missing/offline/moved providers remain blocked. Explicit update --claim retains its existing manual-claim contract.
+
+- Typed embedded permission failures emit actionable stderr, including JSON code embedded_open.permission_denied and retryable=false. Retain errors.Is permission semantics and hook categories; stdout stays empty on failed open. This diagnoses filesystem restrictions, not a write-free embedded engine.
+
 ## Work Guidance
 
 Keep existing CLI primitives and machine-readable output stable. Follow AGENTS.md and ../../engdocs/TESTING.md.

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/steveyegge/beads/internal/storage/dberrors"
+	"github.com/steveyegge/beads/internal/storage/issueops"
 	"github.com/steveyegge/beads/internal/storage/sqlbuild"
 	"github.com/steveyegge/beads/internal/types"
 )
@@ -44,6 +45,11 @@ func (r *issueSQLRepositoryImpl) buildReadyWorkPredicates(ctx context.Context, f
 		inputs.ParentDescendantIDs = descendantIDs
 	}
 
+	var err error
+	inputs.ExternalBlockedIDs, err = issueops.ExternalBlockedIDsInTx(ctx, r.runner)
+	if err != nil {
+		return nil, err
+	}
 	whereSQL, args, err := sqlbuild.BuildReadyWorkWhere(filter, tables, inputs)
 	if err != nil {
 		return nil, err

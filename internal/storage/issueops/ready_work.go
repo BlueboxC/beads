@@ -65,6 +65,11 @@ func buildReadyWorkPredicates(ctx context.Context, tx DBTX, filter types.WorkFil
 		inputs.ParentDescendantIDs = descendantIDs
 	}
 
+	var err error
+	inputs.ExternalBlockedIDs, err = ExternalBlockedIDsInTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
 	whereSQL, whereArgs, err := sqlbuild.BuildReadyWorkWhere(filter, tables, inputs)
 	if err != nil {
 		return nil, err
@@ -363,6 +368,13 @@ func filterReadyWispsInTx(ctx context.Context, tx DBTX, filter types.WorkFilter,
 	}
 
 	excluded := make(map[string]struct{})
+	externalIDs, err := ExternalBlockedIDsInTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range externalIDs {
+		excluded[id] = struct{}{}
+	}
 	if filter.ParentID != nil {
 		parentID := *filter.ParentID
 		descendantIDs, err := GetDescendantIDsInTx(ctx, tx, parentID, 0)

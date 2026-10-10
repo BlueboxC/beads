@@ -43,6 +43,12 @@ func beginMockTx(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *sql.Tx) {
 	return db, mock, tx
 }
 
+func expectNoExternalBlocks(mock sqlmock.Sqlmock) {
+	for _, table := range []string{"dependencies", "wisp_dependencies"} {
+		mock.ExpectQuery(`SELECT d.issue_id, d.depends_on_external FROM ` + table + ` d JOIN`).WillReturnRows(sqlmock.NewRows([]string{"issue_id", "depends_on_external"}))
+	}
+}
+
 func TestBuildSQLInClause(t *testing.T) {
 	t.Parallel()
 
@@ -250,6 +256,7 @@ func TestGetReadyWorkInTxOpenIncludesCustomActive(t *testing.T) {
 	_, mock, tx := beginMockTx(t)
 	mock.ExpectQuery(deferredParentProbeRegex("issues")).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(deferredParentProbeRegex("wisps")).WillReturnError(sql.ErrNoRows)
+	expectNoExternalBlocks(mock)
 	mock.ExpectQuery(`SELECT id FROM issues\s+WHERE \(status = \? OR status IN \(SELECT name FROM custom_statuses WHERE category = 'active'\)\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).WillReturnError(sql.ErrNoRows)
@@ -276,6 +283,7 @@ func TestGetReadyWorkInTxStatusesSingleQuery(t *testing.T) {
 	_, mock, tx := beginMockTx(t)
 	mock.ExpectQuery(deferredParentProbeRegex("issues")).WillReturnError(sql.ErrNoRows)
 	mock.ExpectQuery(deferredParentProbeRegex("wisps")).WillReturnError(sql.ErrNoRows)
+	expectNoExternalBlocks(mock)
 	mock.ExpectQuery(`SELECT id FROM issues\s+WHERE status IN \(\?,\?\)`).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}))
 	mock.ExpectQuery(`SELECT 1 FROM wisps LIMIT 1`).WillReturnError(sql.ErrNoRows)

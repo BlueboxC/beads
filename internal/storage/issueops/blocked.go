@@ -239,6 +239,15 @@ func GetDescendantIDsInTx(ctx context.Context, tx DBTX, rootID string, maxDepth 
 
 //nolint:gosec // G201: tables are hardcoded
 func GetBlockedIssuesInTx(ctx context.Context, tx DBTX, filter types.WorkFilter) ([]*types.BlockedIssue, error) {
+	external, err := ExternalBlockersInTx(ctx, tx)
+	if err != nil {
+		return nil, err
+	}
+	externalIDs := make([]string, 0, len(external))
+	for id := range external {
+		externalIDs = append(externalIDs, id)
+	}
+	sort.Strings(externalIDs)
 	var blockedIDList []string
 	blockedSet := make(map[string]bool)
 	// Label predicates are applied here, in the per-table scan, rather than to
@@ -252,11 +261,17 @@ func GetBlockedIssuesInTx(ctx context.Context, tx DBTX, filter types.WorkFilter)
 		if len(labelWhere) > 0 {
 			labelClause = " AND " + strings.Join(labelWhere, " AND ")
 		}
-		//nolint:gosec // G201: table is one of two hardcoded values; labelClause is literal SQL plus ? placeholders.
+		blockedWhere := "is_blocked = 1"
+		if len(externalIDs) > 0 {
+			ph, args := sqlbuild.InPlaceholders(externalIDs)
+			blockedWhere = "(is_blocked = 1 OR id IN (" + ph + "))"
+			labelArgs = append(args, labelArgs...)
+		}
+		//nolint:gosec // G201: table is one of two hardcoded values; predicates are literals and ? placeholders.
 		rows, err := tx.QueryContext(ctx, fmt.Sprintf(`
 			SELECT id FROM %s
-			WHERE is_blocked = 1 AND status <> 'closed' AND status <> 'pinned'%s
-		`, table, labelClause), labelArgs...)
+			WHERE %s AND status <> 'closed' AND status <> 'pinned'%s
+		`, table, blockedWhere, labelClause), labelArgs...)
 		if err != nil {
 			if optionalBlockedTable(table) && isTableNotExistError(err) {
 				continue
@@ -284,6 +299,11 @@ func GetBlockedIssuesInTx(ctx context.Context, tx DBTX, filter types.WorkFilter)
 	}
 
 	blockerMap := make(map[string][]string)
+	for _, id := range blockedIDList {
+		if refs := external[id]; len(refs) > 0 {
+			blockerMap[id] = append([]string(nil), refs...)
+		}
+	}
 	blockingDeps, err := loadBlockingDepsForIssueIDsInTx(ctx, tx, []string{"dependencies", "wisp_dependencies"}, blockedIDList)
 	if err != nil {
 		return nil, fmt.Errorf("get blocking deps: %w", err)

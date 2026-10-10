@@ -16,6 +16,8 @@ Listener, Host allowlist, optional bearer authentication, request/concurrency li
 
 - CLI JSONL, HTTP pages and SSE share the optional journal `actor_source` field through the canonical Record alias. Keep OpenAPI and the wire-tag bijection current; caller provenance never changes bearer authorization or authenticates a human.
 
+- Normal API callers may supply ExternalResolver; bind it to each request context behind existing Host/auth controls. Provider paths remain caller-owned and missing resolution stays blocked. The exclusive graph viewer does not acquire external provider configuration.
+
 ## Work Guidance
 
 Reuse the transport; do not create a second API or persistence engine for graphs.

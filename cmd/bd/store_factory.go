@@ -87,9 +87,10 @@ func newDoltStore(ctx context.Context, cfg *dolt.Config) (s storage.DoltStorage,
 		if cfg.DisableAutoStart {
 			// Strict --readonly (cfg.DisableAutoStart is the strict-only
 			// signal threaded from policy.disableAutoStart): the command
-			// must not write anything, not even incidentally (schema
-			// init, migrations, the post-command autocommit net). Use the
-			// genuinely write-refusing open — same one used for cross-repo
+			// refuses Beads mutations and housekeeping (schema init,
+			// migrations, post-command autocommit). The embedded driver
+			// still needs filesystem write access to open storage. Use the
+			// mutation-refusing open — same one used for cross-repo
 			// hydration of foreign projects (GH#3231, bd-6dnrw.32) — instead
 			// of OpenForReadOnlyCommand, which is "otherwise a normal
 			// writable store".
@@ -263,8 +264,8 @@ func migrateHyphenatedDB(beadsDir string, cfg *configfile.Config, oldName, newNa
 // For embedded mode, invalid characters (hyphens, dots) are sanitized in-memory
 // only — no directory renames or metadata.json writes. This prevents cross-repo
 // hydration from mutating foreign projects (GH#3231).
-func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string) (storage.DoltStorage, error) {
-	return openNonMutatingStoreFromConfig(ctx, beadsDir, false)
+func newReadOnlyStoreFromConfig(ctx context.Context, beadsDir string, disableAutoStart ...bool) (storage.DoltStorage, error) {
+	return openNonMutatingStoreFromConfig(ctx, beadsDir, false, disableAutoStart...)
 }
 
 // newPreviewStoreFromConfig is newReadOnlyStoreFromConfig for a preview
@@ -284,7 +285,7 @@ func newPreviewStoreFromConfig(ctx context.Context, beadsDir string) (storage.Do
 // OpenForPreviewCommand, ReadOnly server config), so there is no mutation for a
 // journal row to accompany. Registered in the construction guard's exemption
 // list with that reason.
-func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, preview bool) (storage.DoltStorage, error) {
+func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, preview bool, disableAutoStart ...bool) (storage.DoltStorage, error) {
 	cfg, err := configfile.Load(beadsDir)
 	if err != nil {
 		// Same contract as newDoltStoreFromConfig: a present-but-unloadable
@@ -304,7 +305,7 @@ func openNonMutatingStoreFromConfig(ctx context.Context, beadsDir string, previe
 		return nil, errProxiedStoreUnrouted()
 	}
 	if cfg != nil && cfg.IsDoltServerMode() {
-		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true})
+		return dolt.NewFromConfigWithOptions(ctx, beadsDir, &dolt.Config{ReadOnly: true, DisableAutoStart: len(disableAutoStart) > 0 && disableAutoStart[0]})
 	}
 	database := configfile.DefaultDoltDatabase
 	if cfg != nil {

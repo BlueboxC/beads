@@ -19,10 +19,12 @@ Root owns fork policy, public API packages, license, build/version files, small 
 
 - Public journal rows expose optional actor resolution provenance, not authenticated identity or authority. `journalops.WithActorSource` binds it to a caller actor; absent historical provenance stays absent. Existing issue/audit identity strings and SDK operation signatures remain compatible.
 
+- Public issueops contexts may bind a read-only ExternalResolver. Missing provider results remain blocked; local selection/claim remains transactional but provider observations are not a distributed transaction.
+
 ## Work Guidance
 
 - Prefer the simplest complete implementation and existing extension points. Avoid speculative configuration and dependencies.
-- The owner authorizes publishing the verified fork corrections and extensions to BlueboxC/beads. Pull request creation/reopening remains suspended until separately authorized; keep project data, installation records and private evidence out of public commits.
+- The owner authorizes publishing the verified fork corrections and extensions to BlueboxC/beads. The owner has authorized the open fork PR #2 and correction comments on upstream issues; other PR creation/reopening and merges require separate authorization; keep project data, installation records and private evidence out of public commits.
 - Include every verified correction in this fork and its local installed build without waiting for upstream review. Keep private disclosure and publication approval separate from local fixes.
 - The fork objective is continuity: recover project direction, existing modules, verified fixes and their evidence. Use one Beads product and its existing Dolt storage boundary.
 - Native baseline is upstream v1.3.1 at c1c4b642ac1c08d8c828007a1c2f96e47e43ef7c. Verified corrections preserve its baseline API; continuity extensions reuse the existing Dolt memory boundary. Keep main available for upstream synchronization and publish fork work on codex/project-continuity.

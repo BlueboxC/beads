@@ -71,7 +71,7 @@ func OpenSQL(ctx context.Context, dir, database, branch string) (*sql.DB, func()
 	}
 
 	if err := db.PingContext(ctx); err != nil {
-		return nil, nil, errors.Join(err, cleanup())
+		return nil, nil, errors.Join(classifyOpenError(err), cleanup())
 	}
 
 	if strings.TrimSpace(database) != "" {

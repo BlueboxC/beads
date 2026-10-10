@@ -112,6 +112,8 @@ const (
 // Config is everything the server needs to answer. It is assembled by the
 // caller — the package resolves no workspace state of its own.
 type Config struct {
+	// ExternalResolver is optional read-only provider resolution for request contexts.
+	ExternalResolver issueops.ExternalResolver
 	// GraphViewer selects an exclusive read-only presentation surface. No v0
 	// issue API is registered and no persistent database handle is held.
 	GraphViewer http.Handler
@@ -1357,7 +1359,13 @@ func (s *Server) handler() http.Handler {
 		s.fail(w, r, newResult(CodeNotFound, "no such route on this server"))
 	}))
 
-	return s.withRequestContext(s.checkHost(mux))
+	handler := http.Handler(mux)
+	if s.cfg.ExternalResolver != nil {
+		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mux.ServeHTTP(w, r.WithContext(issueops.WithExternalResolver(r.Context(), s.cfg.ExternalResolver)))
+		})
+	}
+	return s.withRequestContext(s.checkHost(handler))
 }
 
 // reqInfo is the per-request record the log line is assembled from. Layers fill

@@ -72,6 +72,8 @@ func BuildReadyWorkOrder(policy types.SortPolicy, createdCol, priorityCol string
 // clause folds in. Computing them takes queries, which is execution-context
 // work each stack does its own way.
 type ReadyWorkWhereInputs struct {
+	// ExternalBlockedIDs includes unsatisfied external consumers and descendants.
+	ExternalBlockedIDs []string
 	// DeferredChildIDs are children of future-deferred parents; consulted
 	// only when !filter.IncludeDeferred.
 	DeferredChildIDs []string
@@ -116,6 +118,12 @@ func BuildReadyWorkWhere(filter types.WorkFilter, tables FilterTables, in ReadyW
 		statusClause,
 		"(pinned = 0 OR pinned IS NULL)",
 		"is_blocked = 0",
+	}
+	for start := 0; start < len(in.ExternalBlockedIDs); start += QueryBatchSize {
+		end := min(start+QueryBatchSize, len(in.ExternalBlockedIDs))
+		ph, a := InPlaceholders(in.ExternalBlockedIDs[start:end])
+		whereClauses = append(whereClauses, fmt.Sprintf("id NOT IN (%s)", ph))
+		args = append(args, a...)
 	}
 	if !filter.IncludeEphemeral {
 		whereClauses = append(whereClauses, "(ephemeral = 0 OR ephemeral IS NULL)")

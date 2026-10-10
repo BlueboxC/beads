@@ -44,6 +44,7 @@ import (
 	"github.com/steveyegge/beads/internal/telemetry"
 	"github.com/steveyegge/beads/internal/ui"
 	"github.com/steveyegge/beads/internal/utils"
+	"github.com/steveyegge/beads/issueops"
 	"github.com/steveyegge/beads/journalops"
 	"go.opentelemetry.io/otel/attribute"
 	oteltrace "go.opentelemetry.io/otel/trace"
@@ -415,6 +416,16 @@ func renderTypedOpenError(err error) bool {
 		}
 		return true
 	}
+	var permissionErr *embeddeddolt.OpenPermissionError
+	if errors.As(err, &permissionErr) {
+		if jsonOutput {
+			handleEmbeddedOpenPermissionJSON(permissionErr)
+		} else {
+			fmt.Fprintf(os.Stderr, "%s\n\n%s\n", permissionErr.Error(), permissionErr.Hint())
+		}
+		return true
+	}
+
 	return false
 }
 
@@ -1554,7 +1565,7 @@ var rootCmd = &cobra.Command{
 
 		// Set actor for audit trail
 		actor, actorSource = resolveActorIdentity()
-		setRootContext(journalops.WithActorSource(rootCtx, actor, actorSource), rootCancel)
+		setRootContext(issueops.WithExternalResolver(journalops.WithActorSource(rootCtx, actor, actorSource), configuredExternalResolver()), rootCancel)
 		// Attach actor to the command span now that we have it.
 		if commandSpan != nil {
 			commandSpan.SetAttributes(attribute.String("bd.actor", actor))
