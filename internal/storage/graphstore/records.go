@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	graph "github.com/steveyegge/beads/graphops"
+	"github.com/steveyegge/beads/internal/storage"
 )
 
 func validatePath(path string) error {
@@ -36,6 +37,11 @@ func (s *Store) Create(ctx context.Context, req CreateRequest) (Record, error) {
 	metadata, err := commonMetadata(req.Metadata)
 	if err != nil {
 		return Record{}, err
+	}
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(metadata, &fields)
+	if _, reserved := fields[ContinuityKeyMetadata]; reserved {
+		return Record{}, fmt.Errorf("%w: reserved %s metadata requires the continuity adapter", storage.ErrValidation, ContinuityKeyMetadata)
 	}
 	revision, err := freshToken()
 	if err != nil {

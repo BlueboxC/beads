@@ -14,10 +14,10 @@ All project data stays in that project's existing Beads Dolt.
 
 The fork also includes an explicit experimental graph workspace format. It adds
 typed Links and retained versions over the same Dolt engine. It does not migrate
-existing continuity workspaces or replace their code/knowledge/activity/viewer
-commands. See [Graph Preview](/reference/graph-preview) for fresh-workspace setup,
-contributor attribution and current limits. Continue using ordinary initialization
-below for projects that need the full continuity workflow.
+existing continuity workspaces. Its adapter also supports the same
+code/knowledge/recovery/viewer commands, plus embedded activity and maintenance. See [Graph Preview](/reference/graph-preview) for fresh-workspace setup,
+contributor attribution and current limits. Ordinary initialization below preserves the current format of existing projects;
+new experimental graph projects can use the integrated continuity workflow.
 
 ## Manual approval records
 

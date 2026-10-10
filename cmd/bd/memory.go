@@ -24,6 +24,9 @@ import (
 // is reachable by neither route. It is per-verb because the shipped text names
 // the verb.
 func openMemories(directRequirement string) (memoryops.Memories, error) {
+	if graphPreviewActive {
+		return graphContinuityRole{}, nil
+	}
 	if usesProxiedServer() {
 		return proxiedMemories()
 	}
@@ -72,7 +75,7 @@ func memoriesFromProvider(provider uow.UnitOfWorkProvider) (memoryops.Memories, 
 // route they are on, which is the point. So the guard lives here, once, the way
 // noteDirectConfigWrite does for the settings plane.
 func noteDirectMemoryWrite() {
-	if !usesProxiedServer() {
+	if !graphPreviewActive && !usesProxiedServer() {
 		commandDidWrite.Store(true)
 	}
 }

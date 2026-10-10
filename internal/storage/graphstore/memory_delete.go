@@ -44,6 +44,16 @@ func (s *Store) DeleteMemory(ctx context.Context, request MemoryDeleteRequest) (
 	}
 	var result MemoryDeleteResult
 	err := s.withTx(ctx, !request.Preview, func(tx *sql.Tx) error {
+		var err error
+		result, err = s.deleteMemoryInTx(ctx, tx, request)
+		return err
+	})
+	return result, err
+}
+
+func (s *Store) deleteMemoryInTx(ctx context.Context, tx *sql.Tx, request MemoryDeleteRequest) (MemoryDeleteResult, error) {
+	var result MemoryDeleteResult
+	err := func() error {
 		if err := checkBinding(ctx, tx, s.options); err != nil {
 			return err
 		}
@@ -110,8 +120,11 @@ func (s *Store) DeleteMemory(ctx context.Context, request MemoryDeleteRequest) (
 			return err
 		}
 		result.Deleted = true
+		if err := s.removeContinuityPointerInTx(ctx, tx, request.Path, memory); err != nil {
+			return err
+		}
 		return nil
-	})
+	}()
 	if err != nil {
 		return MemoryDeleteResult{}, err
 	}

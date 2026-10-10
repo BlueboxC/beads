@@ -321,6 +321,8 @@ func TestGraphPreviewC0DeferredCommandsRefuseBeforeLegacyOpen(t *testing.T) {
 		// from historyExact, which stays false and describes the HTTP profile.
 		"versionList",
 		"memoryPropertiesPatch", "linkPropertiesPatch",
+		"forkKnowledge", "forkSupervisedLearning", "forkCodeIndex", "forkCodexRecovery",
+		"forkProjectViewer", "forkObservedActivity", "forkDerivedMaintenance",
 	} {
 		wantEnabled[capability] = true
 		if !result.Result.Capabilities[capability] {

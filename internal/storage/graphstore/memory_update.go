@@ -99,6 +99,16 @@ func (s *Store) writeMemory(ctx context.Context, request memoryWriteRequest) (Me
 	}
 	var result MemoryMutationResult
 	err := s.withTx(ctx, true, func(tx *sql.Tx) error {
+		var err error
+		result, err = s.writeMemoryInTx(ctx, tx, request)
+		return err
+	})
+	return result, err
+}
+
+func (s *Store) writeMemoryInTx(ctx context.Context, tx *sql.Tx, request memoryWriteRequest) (MemoryMutationResult, error) {
+	var result MemoryMutationResult
+	err := func() error {
 		if err := checkBinding(ctx, tx, s.options); err != nil {
 			return err
 		}
@@ -132,6 +142,9 @@ func (s *Store) writeMemory(ctx context.Context, request memoryWriteRequest) (Me
 		}
 		metadata, err = commonMetadata(metadata)
 		if err != nil {
+			return err
+		}
+		if err := preserveContinuityKey(memory.Metadata, metadata); err != nil {
 			return err
 		}
 		if memory.Properties == next && !metadataChanged {
@@ -168,7 +181,7 @@ func (s *Store) writeMemory(ctx context.Context, request memoryWriteRequest) (Me
 		}
 		result = MemoryMutationResult{Memory: accepted.(Record), Changed: true, Replaced: replaced}
 		return nil
-	})
+	}()
 	if err != nil {
 		return MemoryMutationResult{}, err
 	}

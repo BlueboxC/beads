@@ -21,7 +21,7 @@ Root owns fork policy, public API packages, license, build/version files, small 
 
 - Public issueops contexts may bind a read-only ExternalResolver. Missing provider results remain blocked; local selection/claim remains transactional but provider observations are not a distributed transaction.
 
-- Graph Preview is a separate explicit workspace format adapted from versioned-beads/beads. Preserve the ordinary v1.3.1 API, continuity planes and project data. New graph workspaces use the existing Dolt engine; never convert existing projects implicitly.
+- Graph Preview is a separate explicit workspace format adapted from versioned-beads/beads. Preserve the ordinary v1.3.1 API, continuity planes and project data. New graph workspaces use the existing Dolt engine and the fork continuity adapter; never convert existing projects implicitly. Human knowledge binds canonical retained Memories through private key pointers; derived code/catalogs and observed activity remain separate projections in that same database.
 
 ## Work Guidance
 

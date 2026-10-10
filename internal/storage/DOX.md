@@ -24,7 +24,7 @@ Root DOX.md and the parent chain remain binding.
 
 Memory namespace selectors preserve exact prefix semantics across adapters. All three adapters select namespaces in SQL before transferring values; the unit-of-work adapter uses ConfigUseCase/repository within its existing read transaction. Case-insensitive memory search remains in Go.
 
-Embedded Memories also offers optional guarded atomic batches. Expected values, equal-value skips and all writes/deletes share one existing transaction; a mismatch or failed write rolls back the batch. Other adapters do not advertise this optional capability or qualify pruning.
+Embedded Memories also offers optional guarded atomic batches. Expected values, equal-value skips and all writes/deletes share one existing transaction; a mismatch or failed write rolls back the batch. The Graph Preview adapter also implements guarded batches in its coordinated transaction. Ordinary server/proxy adapters do not advertise this optional capability or qualify pruning.
 
 Dolt server fixtures suppress asynchronous usage-event flushing before spawning the backend; shutdown waits retain their process contract and temporary configuration homes must not have detached writers.
 

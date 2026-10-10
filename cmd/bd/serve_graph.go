@@ -13,7 +13,6 @@ import (
 
 	"github.com/steveyegge/beads/internal/graphview"
 	"github.com/steveyegge/beads/internal/httpapi"
-	"github.com/steveyegge/beads/internal/storage/contextinfo"
 )
 
 // runGraphViewer holds no store. The existing CLI owns each strict read-only
@@ -26,7 +25,7 @@ func runGraphViewer(opts serveOptions) error {
 	if err != nil {
 		return err
 	}
-	info, err := contextinfo.NewContextProvider(cwd, Version).ContextUseCase().GetContextInfo(rootCtx)
+	info, err := continuityWorkspaceInfo(rootCtx, cwd)
 	if err != nil {
 		return err
 	}
@@ -37,7 +36,11 @@ func runGraphViewer(opts serveOptions) error {
 	}
 	// Pin the selected workspace even if the launcher environment routes other
 	// commands elsewhere. No request can supply a root, command or selection.
-	env := graphViewerEnv(os.Environ(), info.BeadsDir, info.Database)
+	database := info.Database
+	if graphPreviewActive && graphPreviewConfig.DoltMode == "embedded" {
+		database = ""
+	}
+	env := graphViewerEnv(os.Environ(), info.BeadsDir, database)
 	load := func(ctx context.Context) (graphview.Page, error) {
 		args := []string{"graph", "--project", "--readonly", "--json"}
 		child := exec.CommandContext(ctx, exe, args...) // #nosec G204 -- own executable, fixed arguments; no shell or project script

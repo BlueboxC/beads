@@ -13,9 +13,9 @@ pins, licenses and fork adaptations are recorded in
 
 This is an **experimental explicit workspace format**, not a migration of
 ordinary Beads. Existing projects keep their tasks, knowledge, code index,
-activity capture, Codex recovery and interactive viewer. Those continuity
-commands are not admitted inside the experimental format. Keep ordinary Beads
-for existing production project memory.
+activity capture, Codex recovery and interactive viewer. The same continuity commands also work inside the experimental format through
+a storage adapter. Existing projects are preserved; conversion is still an
+explicit future operation, not an initialization flag.
 
 ## Try a fresh workspace
 
@@ -52,13 +52,65 @@ before changing preview versions.
   patches. Informational Links do not imply scheduling dependencies.
 - Current records, exact retained versions, comparison and local ordered version
   lists. Version tokens address snapshots; local ordinals do not.
-- Bounded generic graph traversal in JSON/text. This differs from the ordinary
-  fork's interactive task/knowledge/code viewer.
+- Bounded generic graph traversal in JSON/text, plus the fork's interactive
+  task/knowledge/code viewer through `graph --project --html` and
+  `serve --graph-viewer`.
+- Document/DOX catalogs, supervised proposals and reviews, 23-language code
+  indexing and conservative impact queries, bounded prime/Codex recovery.
+- Opt-in observed Codex activity and derived maintenance in embedded workspaces.
+  Shared-server activity and maintenance remain refused.
 
 Use the complete output of `bd status --graph --json` for implemented capabilities
 and numerical limits. Unsupported flags/commands fail explicitly before ordinary
 storage opens. On this v1.3.1 fork, `--if-revision` is graph-only; it does not add
 upstream's newer decimal revision CLI to ordinary workspaces.
+
+## Integrated continuity
+
+After fresh graph initialization, use the existing fork workflows:
+
+```sh
+bd knowledge scan DOX.md docs --json
+bd knowledge sources docs/solution.md --json
+# Prepare a proposal with those exact inspected source/DOX hashes.
+bd knowledge propose --file=proposal.json --json
+bd knowledge review PROPOSAL_ID --decision accept --reviewer BlueboxC \
+  --reason "Sources and verification inspected" --scope tested \
+  --evidence "Name the actual passing verification" --json
+bd code scan src --languages all --json
+bd code impact src/module.go --json
+bd prime --memories-only
+bd activity enable --json
+bd maintain once --json
+bd serve --graph-viewer --addr 127.0.0.1:18740
+```
+
+Review claims must name actual evidence; this example does not qualify your
+project. Codex hooks use the existing installed integration and explicit event
+workspace; initialization does not add global hooks or trust. `activity enable`
+requires the previously installed lifecycle hooks to receive events.
+
+Human assertions, proposals and reviews are canonical Graph Preview Memories.
+Their body stores the unchanged fork envelope, while `forkContinuityKey` metadata
+and a config pointer connect the existing keyed API to that one body. Updates
+retain prior versions, deletes retain tombstones/history, and failures roll back
+pointer/payload/history together. Informational Links still refuse implicit
+cascading deletion. Managed key metadata cannot be rebound by a native edit.
+
+Derived code/document catalogs and observed session events remain existing
+config rows in the **same Dolt database**, outside canonical Memory retention.
+They are not assertions and do not consume one preview Resource per symbol.
+The project viewer overlays provenance/code relations with canonical Beads and
+Links from one transaction; overlay edges do not acquire scheduling authority.
+Explicit native informational Links can connect canonical solution Memories to
+Issues without turning code symbols into tasks. Accepted solutions show their
+canonical record/version in node evidence. Plain native graph Memories also
+participate in bounded recovery, as untrusted memory content.
+
+The preview's complete inventory limit (1,000 live Resources) and current-read
+byte budget remain in force. Continuity publication refuses a result that would
+exceed them. This does not establish production scalability or upstream public
+Type/Memory/History compatibility.
 
 ## Guard an edit
 
@@ -80,12 +132,14 @@ Stored actor claims are projected as `writer-supplied`, not authenticated identi
 Graph Preview `bd serve` requires an explicitly configured **ordinary shared
 Dolt SQL server**. It exposes bounded BDP Read records, Types and pagination through
 the existing HTTP Host/auth/deadline/concurrency controls. It exposes no issue
-write routes, HTTP History or aliases. Embedded Graph Preview serving is refused.
+write routes, HTTP History or aliases. Embedded BDP Read serving is refused; the separate read-only interactive viewer
+supports embedded workspaces.
 Pagination cursors are process-local and expire; a restart invalidates them.
 Non-loopback binds retain the ordinary explicit authorization requirements.
 
-Graph Preview `serve` and the ordinary `serve --graph-viewer` are exclusive modes.
-The ordinary viewer continues showing ordinary project memory.
+`serve` and `serve --graph-viewer` are exclusive modes in both formats. The
+viewer releases embedded Dolt between bounded queries, supports manual/automatic
+refresh, and does not run parsers or renew evidence.
 
 ## Setup and limits
 

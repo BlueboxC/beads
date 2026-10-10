@@ -17,6 +17,13 @@ import (
 // No initialization, legacy storage source, hooks or write routes are involved.
 // The store outlives HTTP drain; the short CLI operation helper cannot own it.
 func runGraphServe(cmd *cobra.Command, opts serveOptions) (result error) {
+	viewer, _ := cmd.Flags().GetBool("graph-viewer")
+	if viewer {
+		if err := graphPreviewFlags(cmd, "graph-viewer", "addr", "allow-non-loopback", "auth-token-file", "insecure-no-auth", "allowed-host"); err != nil {
+			return err
+		}
+		return runGraphViewer(opts)
+	}
 	if err := graphPreviewFlags(cmd, "addr", "allow-non-loopback", "auth-token-file", "insecure-no-auth", "allowed-host"); err != nil {
 		return err
 	}
